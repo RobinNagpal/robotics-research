@@ -9,34 +9,25 @@ score highest across every criterion and are detailed further down.
 ## Subfield map
 
 ```
-                                 ROBOTICS
-                                    |
-        +---------------------------+---------------------------+
-        |                           |                           |
-   PERCEPTION                  COGNITION / AI                  ACTION
-        |                           |                           |
-   +----+----+              +-------+--------+             +----+----+
-   |         |              |                |             |         |
-[*] Perception   SLAM &  [*] Robot Learning   HRI &     Motion       Manipulation
-    & Computer   Navi-       & Foundation     Language  Planning     & Grasping
-    Vision      gation       Models (VLA)     Interfaces & Control
-   (3D, pose,  (LiDAR,      (RT-2, OpenVLA,  (LLM-on-   (MPC, RL    (dexterous,
-    NeRF, GS)   visual-      pi0, GR00T)      robot,      control,   bin-pick,
-                inertial)                     speech)    trajectory) tactile)
-                                    |
-                  +-----------------+-----------------+
-                  |                                   |
-            [*] Simulation                     Multi-Robot &
-                & Digital Twins                Swarm Systems
-                (Isaac Sim/Lab,                (fleet coordi-
-                 MuJoCo, Sim2Real,              nation, MARL,
-                 synthetic data)                consensus)
-                                    |
-                              Robotics Infra
-                              & Middleware
-                              (ROS2, DDS,
-                               observability,
-                               CI for robots)
+                        +-- [*] Perception & Computer Vision  (3D, pose, NeRF, Gaussian splat)
+            PERCEPTION -+
+           /            +--     SLAM & Navigation             (LiDAR, visual-inertial, planning)
+          /
+         /              +-- [*] Robot Learning & Foundation   (VLA: RT-2, OpenVLA, pi0, GR00T)
+         |              |       Models
+ROBOTICS +-- COGNITION -+
+         |   / AI       +--     HRI & Language Interfaces     (LLM-on-robot, speech, dialogue)
+         |
+         |              +--     Motion Planning & Control     (MPC, RL control, trajectory opt.)
+          \             |
+           \  ACTION   -+--     Manipulation & Grasping       (dexterous, bin-pick, tactile)
+            \           |
+                        +-- [*] Simulation & Digital Twins    (Isaac Sim/Lab, MuJoCo, Sim2Real,
+                        |                                      synthetic data)
+                        |
+                        +--     Multi-Robot & Swarm Systems   (fleet coordination, MARL, consensus)
+                        |
+                        +--     Robotics Infra & Middleware   (ROS2, DDS, observability, CI)
 
   Legend:  [*] = top-3 pick (highest score across all criteria)
 ```
