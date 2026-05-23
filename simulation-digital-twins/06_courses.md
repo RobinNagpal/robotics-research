@@ -6,11 +6,74 @@ the order a junior web developer should take them. All links go to
 the official course page; many are free to audit or have free YouTube
 uploads.
 
-A note on choosing: sim / digital-twin work spans three skill stacks
-— (1) reinforcement learning (to train policies inside the sim), (2)
-robotics fundamentals (kinematics, dynamics, ROS), and (3) the
-NVIDIA Isaac / Omniverse stack specifically. At least one course from
-each stack is recommended.
+A note on choosing: sim / digital-twin work spans five skill stacks
+— (0) absolute basics if you're brand new, (1) reinforcement learning
+(the main payload that lives inside sim), (2) robotics fundamentals
+(kinematics, dynamics, ROS), (3) the NVIDIA Isaac / Omniverse stack
+specifically, and (4) project-driven courses where you build a
+simulated robot end-to-end. Pick at least one from each stack you
+don't already know.
+
+---
+
+## Stack 0: Foundational basics (skip if you already have a CS degree)
+
+These are the prereqs every later course assumes. If you're a working
+web dev, you already have the Python side; you may still want the
+math refreshers.
+
+### A. Python for Everybody Specialization — University of Michigan (Charles Severance) on Coursera
+
+- **Link:** https://www.coursera.org/specializations/python
+- **Length:** 5 courses, ~8 months at 3 hrs/week.
+- **Cost:** Free to audit; $49/mo for certificates.
+- **Why this is 100% relevant.** Every sim / RL framework (Isaac
+  Lab, MuJoCo, Genesis, Brax) is Python-first. NumPy fluency
+  (which the specialization builds toward) is the lingua franca of
+  Isaac Lab's observation / action arrays.
+
+### B. Mathematics for Machine Learning Specialization — Imperial College London on Coursera
+
+- **Link:** https://www.coursera.org/specializations/mathematics-machine-learning
+- **Length:** 3 courses (Linear Algebra, Multivariate Calculus,
+  PCA), ~4 months at 4 hrs/week.
+- **Cost:** Free to audit; $49/mo for certificates.
+- **Why this is 100% relevant.** Linear algebra (SE(3), SO(3),
+  rotation matrices) is *the* math of robot kinematics. Calculus
+  (gradients, chain rule) is what PPO / SAC actually compute. This
+  specialization is the most direct math prep for both Modern
+  Robotics and the RL courses below.
+
+### C. Essence of Linear Algebra + Essence of Calculus — 3Blue1Brown (YouTube)
+
+- **Link:** https://www.3blue1brown.com/topics/linear-algebra and
+  https://www.3blue1brown.com/topics/calculus
+- **Length:** ~6 hours total.
+- **Cost:** Free.
+- **Why this is 100% relevant.** Visual intuition for matrices as
+  transforms makes SE(3) / quaternions click instantly. Watch
+  before any robotics course if you want intuition first, formulas
+  later.
+
+### D. Machine Learning Specialization — DeepLearning.AI + Stanford on Coursera
+
+- **Link:** https://www.coursera.org/specializations/machine-learning-introduction
+- **Length:** 3 courses, ~2 months at 9 hrs/week.
+- **Cost:** Free to audit; $49/mo for certificates.
+- **Why this is 100% relevant.** RL builds on supervised-learning
+  vocabulary: loss functions, gradient descent, function
+  approximation. Andrew Ng's rebuild covers all of this in 2
+  months and is the single most-recommended ML on-ramp.
+
+### E. CS50's Introduction to Artificial Intelligence with Python — Harvard on edX
+
+- **Link:** https://www.edx.org/learn/artificial-intelligence/harvard-university-cs50-s-introduction-to-artificial-intelligence-with-python
+- **Length:** 7 weeks at ~12 hrs/week.
+- **Cost:** Free to audit; $200 for certificate.
+- **Why this is 100% relevant.** Each week ends with a real Python
+  project (search, knowledge representation, optimization, neural
+  nets). Builds the "I can wire AI into a Python program" reflex
+  you'll need before stepping into Isaac Lab.
 
 ---
 
@@ -138,6 +201,119 @@ each stack is recommended.
   is the most popular hands-on ROS2 / Gazebo training platform,
   with browser-based simulators you don't need to install. Customers
   buying digital twins will expect ROS2-fluent integration.
+
+---
+
+## Stack 4: Project-driven / hands-on courses (where you actually ship something)
+
+The courses above teach the *what* and *why* of simulation. The
+courses below push you through building real systems end-to-end —
+the kind of artifacts that become portfolio pieces or paid projects.
+
+### 10. The Construct — ROS2 Basics in 5 Days + URDF for Robot Modeling + Mastering Gazebo
+
+- **Link:** https://app.theconstruct.ai (courses listed at
+  https://www.theconstruct.ai/robotigniteacademy_learnros/ros-courses-library/)
+- **Length:** ~25-50 hours per course.
+- **Cost:** Free starter content; $20-30/mo for full library.
+- **Why this is 100% relevant.** Browser-based ROS2 + Gazebo
+  simulators — zero local setup. Every course is project-driven:
+  by the end of "URDF for Robot Modeling" you have built a custom
+  robot in Gazebo from scratch and driven it around. The Construct
+  is the most popular hands-on ROS2 / Gazebo training platform in
+  the world; nothing else comes close for "I want to actually drive
+  a simulated robot today."
+
+### 11. Udacity Robotics Software Engineer Nanodegree
+
+- **Link:** https://www.udacity.com/course/robotics-software-engineer--nd209
+- **Length:** ~4 months.
+- **Cost:** $399/month (often discounted).
+- **Why this is 100% relevant.** Five reviewed projects, every one
+  in Gazebo: build a search-and-sample robot, build a home-service
+  robot (mapping + localization + navigation), build a robotic
+  arm pick-and-place, build a Map-My-World SLAM project, and a
+  deep-learning capstone. Pricey, but the project list maps
+  exactly onto entry-level sim-engineering interview questions.
+
+### 12. Robotics Back-End (Edouard Renard) on Udemy — ROS2 For Beginners, Modern Robotics with ROS2
+
+- **Link:** https://www.udemy.com/user/edouardrenard/ (search
+  "Edouard Renard" on Udemy)
+- **Length:** 8-20 hours per course; 8+ courses in the catalog.
+- **Cost:** $15-100 per course on Udemy sales (often $15 during
+  sales).
+- **Why this is 100% relevant.** Renard's ROS2 courses are the
+  highest-rated paid ROS2 training online (consistently >4.5
+  stars, 100k+ students). Every course is build-along: by lesson
+  3 you're publishing topics, by the end you've built a complete
+  pick-and-place pipeline in Gazebo. Extremely high project
+  density per dollar.
+
+### 13. NVIDIA DLI — "Introduction to Robotic Simulations in Isaac Sim"
+
+- **Link:** https://www.nvidia.com/en-us/training/ (filter
+  "Isaac" / "Omniverse")
+- **Length:** ~4-8 hours per lab.
+- **Cost:** Free or $90 per course.
+- **Why this is 100% relevant.** NVIDIA's official hands-on labs
+  build a complete sim scene, attach a robot, run a perception
+  pipeline, and trigger an RL policy — all inside Isaac Sim. After
+  reading the docs, this is the fastest path to "I've made a robot
+  do something useful in Isaac Sim." DLI completion certificates
+  are recognized by NVIDIA recruiters directly.
+
+### 14. Hugging Face Deep RL Course (project-driven side)
+
+- **Link:** https://huggingface.co/learn/deep-rl-course
+- **Length:** 8 units, ~30 hours.
+- **Cost:** Free.
+- **Why this is 100% relevant.** Each unit ends with you training
+  an agent in a real environment (Lunar Lander, Frozen Lake, Pong,
+  Unity ML-Agents Pyramid, etc.) and uploading it to the Hugging
+  Face Hub. By the end you have **8 trained policies on your
+  HF profile** — a tangible portfolio of "I can drive RL inside a
+  simulator." This dual-listing (also in Stack 1) is intentional:
+  it's both the gentlest RL intro and one of the most concretely
+  project-driven courses on this list.
+
+### 15. CARLA Autonomous Driving Tutorials and Hands-On Labs
+
+- **Link:** https://carla.readthedocs.io/en/latest/tuto_first_steps/
+  and the Coursera "Self-Driving Cars" capstone (Course 4) uses
+  CARLA end-to-end.
+- **Length:** A weekend for the official tutorials; ~6 weeks for
+  the Coursera capstone.
+- **Cost:** Free.
+- **Why this is 100% relevant.** CARLA is the most-used AV
+  simulator in research and at companies like Wayve. The official
+  tutorials walk you through spawning vehicles, attaching sensors,
+  capturing data, and driving via control APIs. Concrete artifact:
+  a video of your code driving a car through CARLA Town 03 with
+  your own perception stack.
+
+### 16. Full Stack Deep Learning (FSDL)
+
+- **Link:** https://fullstackdeeplearning.com/course/
+- **Length:** ~9 lectures + a multi-week capstone.
+- **Cost:** Free.
+- **Why this is 100% relevant.** While not sim-specific, FSDL
+  teaches *shipping* an ML system end-to-end — data, training
+  infra, deployment, monitoring, testing. The exact production
+  muscle that sim-engineering customers (Applied Intuition, NVIDIA
+  Isaac team, humanoid startups) want from a Sim Software Engineer.
+
+### 17. Sentdex YouTube — Self-Driving Cars in CARLA + GTA V + AI Series
+
+- **Link:** https://www.youtube.com/@sentdex
+- **Length:** 50+ tutorial videos in the relevant playlists.
+- **Cost:** Free.
+- **Why this is 100% relevant.** Sentdex (Harrison Kinsley)
+  produces some of the most hands-on Python + sim + AI tutorials
+  on YouTube. Specifically the CARLA self-driving series and the
+  "AI plays GTA V" series both walk through end-to-end
+  perception + control pipelines in a simulator. Fun and project-
+  driven.
 
 ---
 
