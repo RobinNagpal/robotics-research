@@ -1,43 +1,80 @@
 # Examples of Work
 
-## Production / near-production VLAs
+This file is a tour of "things that exist in this field." If you're new,
+treat it like skimming the showcase page of a JS framework: you don't
+need to understand every entry, just absorb the shape of the landscape.
 
-- **Figure Helix** (2024) — dual-system VLA running on Figure 02
-  humanoid; sub-second latency, dexterous bimanual tasks.
-- **Physical Intelligence pi0 / pi0.5** (2024-25) — generalist VLA;
-  open-weights base + commercial deployment with partners.
-- **Google DeepMind RT-2, RT-X, Gemini Robotics** (2023-25) — Gemini
-  fine-tuned for embodied tasks.
-- **NVIDIA GR00T N1** (2025) — open foundation model for humanoid
-  manipulation.
-- **Tesla Optimus** — internal multi-task imitation policies.
-- **1X World Model / NEO policies** (2024-25) — generative video models
-  as policy infra.
-- **Skild AI Skild Brain** (2024) — robot-agnostic generalist policy.
+## Production / near-production VLAs (real robots running these today)
 
-## Landmark research
+These are the equivalent of "GPT-4 in production" — the headline models
+that the industry watches.
 
-- **RT-1 -> RT-2 -> RT-X** (Google, 2022-23) — proved VLM-as-policy
-  works.
-- **Open X-Embodiment** (2024) — 970k trajectories across 22 robots, the
-  ImageNet moment for robotics.
-- **OpenVLA-7B** (Stanford / Google, 2024) — open VLA fine-tunable on a
-  single A100.
-- **Diffusion Policy** (Chi et al., 2023) — diffusion models for action
-  generation; SOTA on many manipulation benchmarks.
-- **ACT / Aloha** (Stanford, 2023) — low-cost bimanual teleop +
-  action-chunking transformer.
-- **pi0, pi0-FAST, pi0.5** (Physical Intelligence, 2024-25) — flow
-  matching for high-frequency control.
-- **HumanPlus, OKAMI, H1-2 humanoid policies** (2024) — humanoid
-  whole-body imitation from human video.
-- **DreamerV3, TD-MPC2** — world-model RL.
+- **Figure Helix** (announced Feb 2025) — runs on the Figure 02
+  humanoid. Uses a "System 1 / System 2" split: a small fast network
+  (~200 Hz) does the low-level motor control, a big slow VLM
+  (~7-9 Hz) does the reasoning. Same idea as a fast UI thread plus a
+  slow worker thread.
+- **Physical Intelligence pi0 and pi0.5** (Oct 2024 / Apr 2025) —
+  open-weights generalist policies. "pi0" uses flow-matching (a
+  diffusion-model variant) for action generation. pi0.5 added language
+  reasoning and broader generalization. Physical Intelligence has a
+  $2.4B valuation off these models alone.
+- **Google DeepMind RT-2, RT-X, Gemini Robotics** (2023-2025) —
+  Google's line of VLAs. Gemini Robotics (2025) is Gemini fine-tuned
+  for embodied tasks: speech in, joint angles out.
+- **NVIDIA GR00T N1** (Mar 2025) — open-weights foundation model
+  aimed at humanoids. Shipped with full training code on Hugging Face.
+- **Tesla Optimus** — internal-only, but Tesla has shown end-to-end
+  imitation policies for laundry-folding, factory work, etc.
+- **1X NEO + World Model** (2024-2025) — 1X uses a generative video
+  model as the "imagined future" for planning. Think of it as letting
+  the policy hallucinate the next 5 seconds before deciding what to do.
+- **Skild AI "Skild Brain"** (2024) — a single policy meant to be
+  dropped onto many different robot bodies.
 
-## Open-source stack
+## Landmark research papers (the canon — read these eventually)
 
-- **LeRobot** (Hugging Face) — datasets, training, hardware (SO-100,
-  Koch, Aloha).
-- **OpenVLA, pi0-base, RDT** — open VLA checkpoints.
-- **Open X-Embodiment, DROID, BridgeData V2** — datasets.
-- **Robosuite, RoboCasa, LIBERO, Meta-World** — benchmark suites.
-- **diffusion-policy, lerobot, OpenPI** — training codebases.
+The papers that shaped the modern VLA stack. Order matters: each builds
+on the previous.
+
+- **RT-1 -> RT-2 -> RT-X** (Google, 2022-2023) — RT-2 was the first
+  big demonstration that you can take an off-the-shelf vision-language
+  model (PaLI-X) and fine-tune it to output robot actions. This is
+  the "GPT-3 paper" moment for robotics.
+- **Open X-Embodiment** (CoRL 2023, updated 2024) — 21 institutions
+  pooled their robot data: ~970k trajectories across 22 different
+  robot bodies. People call this "the ImageNet moment for robotics"
+  because suddenly there was a big shared dataset.
+- **OpenVLA-7B** (Stanford / Berkeley, June 2024) — first fully open
+  VLA, fine-tunable on a single A100 GPU. If you only run one model
+  hands-on, run this one.
+- **Diffusion Policy** (Chi et al., RSS 2023) — uses a diffusion
+  model (same math as Stable Diffusion, but generating actions instead
+  of pixels) for the policy. State of the art on a lot of benchmarks.
+- **ACT / ALOHA** (Zhao et al., Stanford 2023) — introduced
+  "action chunking" (predict the next 50 actions instead of just one)
+  and a $20k bimanual teleop rig. The follow-up "Mobile ALOHA" went
+  viral on Twitter for cooking shrimp.
+- **pi0 / pi0-FAST / pi0.5** (Physical Intelligence, 2024-2025) —
+  flow-matching for high-frequency control. pi0-FAST uses DCT
+  (discrete cosine transform — yes, the JPEG one) to compress actions
+  into tokens an LLM can output.
+- **HumanPlus, OKAMI, H1-2 policies** (2024) — humanoids that imitate
+  poses from regular human YouTube video.
+- **DreamerV3, TD-MPC2** — the world-model branch of robot learning:
+  the network learns to predict what happens next, then plans against
+  its own imagination.
+
+## Open-source stack (the equivalent of "npm packages you'll actually use")
+
+- **LeRobot** (Hugging Face) — the closest thing to a Rails for robot
+  learning. Includes dataset format, training scripts, model zoo, and
+  drivers for cheap arms (SO-100, Koch, ALOHA).
+- **OpenVLA, pi0-base, RDT-1B, Octo** — open-weight VLA checkpoints
+  on Hugging Face. Download and `model.generate()`.
+- **Open X-Embodiment, BridgeData V2, DROID** — the big public
+  training datasets.
+- **Robosuite, RoboCasa, LIBERO, Meta-World** — simulator benchmarks.
+  Like Jest test suites for policies.
+- **OpenPI** (Physical Intelligence) — official training code for the
+  pi0 family. Apache-2.0 licensed.

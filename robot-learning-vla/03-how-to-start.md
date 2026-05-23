@@ -1,49 +1,121 @@
 # How to Get Started
 
-## Week 1: Set up the stack
+A concrete 8-week plan. The goal isn't to read everything — it's to
+ship a working policy you can demo, end to end, by the end. Treat it
+like learning a new web framework: build a toy project first, then go
+back and read the docs that suddenly make sense.
 
-- Install LeRobot from HuggingFace; run the SO-100 / Koch tutorials in
-  simulation.
-- Pull OpenVLA-7B from HuggingFace; run inference on a sample episode.
-- Get one cloud GPU (Lambda / RunPod / Modal) with at least 24 GB.
+## Prerequisites (1 week, can overlap with Week 1)
 
-## Week 2: Train a small behavior-cloning policy
+- Comfortable Python.
+- A Hugging Face account.
+- A GPU. You have three options:
+  - **Rent**: Lambda Labs, RunPod, Modal, Vast.ai. ~$0.40-$2/hr
+    for an A100/H100. This is by far the easiest start.
+  - **Colab Pro** ($10/mo) — fine for tutorials, not for fine-tuning a
+    7B VLA.
+  - **Local 24GB GPU** (RTX 3090 / 4090) — great if you already own one.
+- Basic Git + Docker.
 
-- Use LeRobot to train ACT or Diffusion Policy on the pre-built PushT or
-  Aloha-Sim datasets.
-- Hit the published numbers; understand exactly which knobs matter.
+## Week 1: Stand up the stack and run inference
+
+Goal: load a pretrained VLA and watch it produce actions.
+
+- Install [LeRobot](https://github.com/huggingface/lerobot) — follow
+  the README. It's a `pip install` + a couple of dataset downloads.
+- Run the LeRobot "pretrained policy in simulation" tutorial. You
+  should see a sim robot in a window doing a task.
+- Download **OpenVLA-7B** from Hugging Face. Run inference on a
+  single image + instruction. Print the action it predicts. Don't
+  worry that the action is meaningless yet — the goal is "I can
+  call `.generate()` on a VLA."
+- Read the README files of LeRobot and OpenVLA cover to cover.
+
+## Week 2: Train a small policy from scratch
+
+Goal: get the "hello world" of imitation learning working.
+
+- Use LeRobot to train **ACT** or **Diffusion Policy** on the bundled
+  **PushT** dataset (cursor pushing a block — a 2D toy task) or the
+  **ALOHA-Sim** insertion dataset.
+- Reproduce the published success rate (typically 80-95%). When you
+  hit it, you've validated your pipeline.
+- Skim the LeRobot source for the trainer loop. It's only ~500
+  readable lines.
 
 ## Week 3: Fine-tune a real VLA
 
-- Fine-tune OpenVLA-7B on the BridgeData V2 subset or your own small
-  LeRobot dataset (~100 episodes).
-- Compare zero-shot vs fine-tuned success rate on LIBERO or RoboCasa.
+Goal: take a pretrained 7B model and adapt it.
 
-## Week 4: Sim-to-real or simulator-only deployment
+- Pick a small slice of **BridgeData V2** (~200 episodes of a single
+  task) or record your own teleop data if you have hardware.
+- Fine-tune OpenVLA-7B with **LoRA** (low-rank adapters — same trick
+  used to fine-tune LLaMA). This makes training fit on a single
+  24GB GPU.
+- Compare zero-shot vs fine-tuned success rate on **LIBERO** (a
+  standard benchmark — 130 tasks split into 4 suites).
 
-- Run your fine-tuned policy in Robosuite or RoboCasa with a robot arm.
-- If you have a real arm (SO-100 ~$300, Koch ~$500, or rent time on a
-  university Aloha), deploy and iterate.
+## Week 4: Sim deployment or real deployment
 
-## Datasets to know
+Goal: see your policy control something.
 
-Open X-Embodiment (970k traj), BridgeData V2, DROID (Stanford), RT-1
-data, LIBERO, RoboCasa, Meta-World, RoboMimic, ALOHA datasets.
+**Path A (sim only):** run your fine-tuned policy in **RoboCasa**
+(kitchen tasks, runs on Robosuite/MuJoCo). You'll get a video.
 
-## Benchmarks
+**Path B (real hardware):** if you have or rent an arm, deploy it.
+Cheap options below.
 
-LIBERO (4 task suites), RoboCasa (kitchen tasks), Meta-World (MT-50),
-SimplerEnv (real-to-sim transfer), CALVIN.
+## Weeks 5-8: Build one substantial project
 
-## Cheap hardware to own
+Pick something you'd want to put on a portfolio. Some ideas:
 
-- **SO-100** (~$300) — Hugging Face's 6-DoF arm, LeRobot-native.
-- **Koch v1.1** (~$500) — leader-follower bimanual teleop.
-- **LeRobot Aloha kit** (~$5k) — bimanual + base, full ACT pipeline.
-- **WidowX 250s** (~$2k) — BridgeData / OpenVLA native.
+- A LeRobot fine-tune for one specific task with a clean repo, demo
+  video, and a HF model card.
+- A "VLA inference server" that wraps OpenVLA in a FastAPI app —
+  POST an image + instruction, get back actions. Add streaming.
+- A benchmark dashboard that runs LIBERO on every commit (CI for
+  policies). Easy to demo.
+- A small dataset you collected yourself with an SO-100 arm, uploaded
+  to Hugging Face Datasets, with a baseline policy trained on it.
+
+## Datasets you should know by name
+
+- **Open X-Embodiment** — 970k trajectories, 22 robots. The big one.
+- **BridgeData V2** — Berkeley, single-arm tabletop manipulation.
+- **DROID** — Stanford et al., 2024, ~76k trajectories across many
+  scenes; high quality.
+- **LeRobot community datasets** — small but growing fast.
+- **RT-1 data** — Google's original, single robot, kitchen tasks.
+
+## Benchmarks (so you can compare your numbers to papers)
+
+- **LIBERO** — 130 tasks, four suites (spatial, object, goal, long).
+- **RoboCasa** — large kitchen sim built on Robosuite.
+- **Meta-World MT-50** — 50 tabletop tasks; an old but standard RL
+  benchmark.
+- **SimplerEnv** — sim that's calibrated to match real WidowX / Google
+  Robot setups, so sim scores predict real-world scores.
+- **CALVIN** — long-horizon language-conditioned tasks.
+
+## Cheap hardware (optional but motivating)
+
+Prices fluctuate; ranges below reflect Q1 2025:
+
+- **SO-100 / SO-ARM100** (~$100-$200 in parts) — 6-DoF arm designed
+  by Hugging Face's LeRobot team. The cheapest path to real-robot
+  experiments.
+- **Koch v1.1** (~$500-$700 in parts) — leader-follower bimanual
+  teleop, also LeRobot-native.
+- **LeRobot ALOHA kit** (~$5k) — full bimanual ALOHA pipeline at
+  about a quarter of the original $20k cost.
+- **WidowX 250s** (Trossen Robotics, ~$5-6k) — used in BridgeData and
+  many OpenVLA experiments.
 
 ## Communities
 
-CoRL, RSS, NeurIPS robotics workshops; LeRobot Discord; OpenVLA Slack;
-Physical Intelligence newsletter; X/Twitter: @chelseabfinn,
-@svlevine, @kvfrans, @physical_int.
+- **CoRL, RSS, NeurIPS** robotics workshops (papers + recorded talks).
+- **LeRobot Discord** — most beginner-friendly.
+- **OpenVLA Slack** — research-leaning.
+- **r/robotics, r/MachineLearning** — for general lurking.
+- X/Twitter: @chelseabfinn, @svlevine, @kvfrans, @physical_int,
+  @drjimfan.
