@@ -368,321 +368,351 @@ uses **all four**.
 About 60% Python, 40% C++ (most production SLAM and high-rate
 perception is C++).
 
-### A typical week of a junior perception engineer
+---
 
-Composite from real new-hire schedules at AV / warehouse / humanoid
-shops.
+## Three real-world projects a 5-10 dev shop ships for clients
 
-- **Monday:** standup + overnight CI triage (mAP dropped 0.4 points
-  — why?); bisect the regression across training-data subsets; pair
-  on a TensorRT engine that won't compile a custom ONNX op (segfault
-  in C++, no stack trace); write a bag-replay script that pulls a
-  30-second rosbag from S3 and reruns your detector.
-- **Tuesday:** data labeling QA — spot-check 200 contractor-labeled
-  images, find 18 wrong (the "forklift" class is being applied to
-  pallet jacks), write a one-pager for the vendor; tweak data
-  augmentation (brightness, motion blur) in your PyTorch
-  `Dataset.__getitem__` and kick off an overnight 8xH100 run that
-  costs $200; triage a depth camera that reads NaN for the first
-  50 ms after boot.
-- **Wednesday:** calibration day — hold a 1m checkerboard in front
-  of three cameras and an IMU in 40 poses while Kalibr crunches
-  geometry, output new YAML with sub-millimeter intrinsics; build a
-  ROS2 node in C++ that subscribes to `/camera/image_raw`, runs your
-  detector, publishes `/perception/detections`; chase down why the
-  new node drops every 5th frame (you forgot `SensorDataQoS`).
-- **Thursday:** deep work — read the FoundationPose paper, prototype
-  a pose-estimation node in a notebook against a saved rosbag;
-  quantize a PyTorch model to INT8 on a Jetson Orin (45 ms -> 18 ms,
-  accuracy drops 1.2 points — worth it?); code review for two
-  teammates.
-- **Friday:** demo the week in a perception sync (replay a rosbag,
-  show before/after); write a one-page design doc for next sprint
-  (nighttime cyclist detector); cleanup.
-
-Rough mix: ~40% code, ~25% data, ~20% meetings/reviews/docs, ~15%
-physical-world work (calibration, sensor mounts, robot pilots).
+These are the shape of CV / perception work that a small-to-mid
+services agency actually sells and delivers. Each one starts with
+**Public references** naming real shops and clients that have
+published work in this category, so you can look up the
+case-studies yourself. The detailed project below is the typical
+pattern those references describe, scaled to a 5-10 dev shop's
+engagement size.
 
 ---
 
-## Three fully developed real-world use cases
+### Use case 1 — Production-line visual quality inspection
 
-Deployed perception systems as of 2025. For each, the **hardware**
-(sensors, compute) and **software** (models, frameworks, libraries).
+**Public references.** This is the most-documented category of CV
+agency work. Real shops with public case studies on this pattern:
 
----
+- **Landing AI** (Andrew Ng's company) — case studies with Foxconn
+  (phone-assembly defect inspection), Bombardier (aluminum panel
+  inspection), and AstraZeneca (drug-vial inspection). Published at
+  landing.ai/case-studies. ~100 people total, but the per-engagement
+  delivery team is 5-10.
+- **Plainsight** (formerly Sixgill) — case studies with Tyson Foods
+  (poultry-quality grading) and energy operators (substation
+  inspection). plainsight.ai.
+- **Cogniac** — case studies with U.S. Steel and others.
+- **MobiDev** — a published wineyard yield estimation case study
+  (mobidev.biz) is one of the clearest "small-team services-shop"
+  walkthroughs publicly available.
+- **Datature**, **Encord**, **Roboflow**'s customer showcase list
+  many similar industrial deployments.
 
-### Use case 1 — Waymo robotaxi (multi-sensor AV perception)
+A 5-10 dev shop ships this exact pattern for smaller customers
+(50-500 employee manufacturers) that the above companies are too
+expensive to take on.
 
-**What it does.** Waymo runs fully driverless robotaxi service in
-Phoenix, San Francisco, Los Angeles, Austin, and Atlanta. Their
-6th-generation Driver must detect and track every car, pedestrian,
-cyclist, traffic light, lane marking, construction sign, and
-unexpected obstacle at highway speeds, in heavy rain, at night, and
-inside underground parking garages — all on-vehicle.
+**The client and the problem.** A mid-size manufacturer — say, a
+200-employee precision-fastener factory, a 50-employee chocolate
+plant, a small PCB assembler — currently has 4-6 humans rejecting
+bad parts visually at the end of a line. They want to: catch 5-10×
+more defects than humans miss, free up the humans for higher-value
+work, and have an auditable record of every part inspected (for ISO
+9001 compliance).
 
-**The technical novelty.** Waymo fuses RGB cameras + LiDAR + radar
-+ ultrasonics into a unified "occupancy + trajectory" representation.
-Their stack is the most-tested in the industry: 30+ million
-autonomous miles on public roads and tens of billions of simulator
-miles by 2024.
+**What you actually deliver to the customer (the artifact).**
 
-**Hardware stack.**
+- **4-8 industrial cameras** mounted around the inspection station,
+  on a custom aluminum rig you design. Typical hardware: **Basler
+  ace-2** or **Allied Vision Mako** cameras using **GigE Vision**
+  (an industrial standard for streaming camera data over Ethernet
+  instead of USB; works at longer cable runs and has hardware
+  trigger sync).
+- **An edge inference computer** sitting next to the line. Either an
+  **NVIDIA Jetson AGX Orin** (an embedded computer-on-module with
+  GPU for AI inference at the edge, ~$2-3k each) or a fanless
+  industrial PC with an RTX-class GPU.
+- **A trained model**. Two common choices: **anomalib's PatchCore**
+  (open-source anomaly-detection library by Intel; the killer
+  feature is that it needs only 100-200 "good" sample images and no
+  defect labels), or a fine-tuned **Ultralytics YOLO v11** detector
+  if the defect classes can be enumerated and labeled.
+- **A FastAPI inference service** on the edge box, with the model
+  exported through **ONNX** (a portable cross-framework model
+  format) and compiled to **TensorRT** (NVIDIA's GPU-specific model
+  compiler, produces a `.engine` file that runs ~5-10× faster than
+  raw PyTorch on the same hardware).
+- **PLC integration**. A **PLC** (Programmable Logic Controller) is
+  the rugged industrial computer that drives factory equipment.
+  Your service talks to it via **OPC-UA** (the modern industrial
+  pub/sub-and-RPC protocol; the `python-opcua` library is the
+  canonical client) and fires a reject solenoid within 50 ms of a
+  flagged frame.
+- **A React + FastAPI dashboard** for the QC supervisor: live
+  camera feed, history of flagged parts, ability to mark misses for
+  retraining, weekly PDF reports for compliance audits.
+- **Monitoring**: **Prometheus + Grafana** (open-source metrics
+  collection and dashboarding) for uptime, false-positive rate, and
+  model-drift alerts.
 
-- **Vehicles:** Jaguar I-PACE (current fleet), Geely Zeekr (next-gen,
-  announced 2024).
-- **Cameras:** 29+ per vehicle — long-range telephoto for highway,
-  wide-angle for intersections, perimeter for cyclists / pedestrians.
-  Multiple exposure modes for HDR.
-- **LiDAR:** Waymo's proprietary long-range LiDAR + perimeter
-  short-range LiDARs. 5 LiDARs per vehicle in the 6th-gen system.
-- **Radar:** 6 imaging radars for adverse-weather and long-range
-  velocity sensing.
-- **Compute:** custom Waymo-designed platform (proprietary; widely
-  reported to use NVIDIA + custom ASICs). On the order of 100-300 W
-  for inference.
-- **Cooling:** liquid cooling for the compute stack.
-- **Data backhaul:** 4G/5G + offline upload at depots; petabytes of
-  recordings per day across the fleet.
+**Team for a 12-16 week engagement (5 people).**
 
-**Software stack.**
+- 1 CV/ML engineer — model training, anomalib/YOLO tuning,
+  evaluation against held-out defect sets.
+- 1 edge deployment engineer — ONNX export, TensorRT compilation,
+  Jetson setup, latency profiling.
+- 1 industrial integration engineer — cameras, lighting, PLC,
+  factory networking. Often a contractor with an electrical
+  background.
+- 1 full-stack web developer — React dashboard, FastAPI backend,
+  user auth, PDF generation.
+- 1 project manager / customer-success person — site visits, QC
+  team training, post-launch support.
 
-- **Detection / segmentation:** custom transformer-based detectors
-  trained on Waymo Open Dataset + internal data. Published papers
-  include MultiPath++ (trajectory prediction), MVF (multi-view
-  fusion), Wayformer.
-- **3D object detection:** PointPillars, CenterPoint, VoxelNet
-  variants for LiDAR.
-- **Sensor fusion:** occupancy networks that consume camera + LiDAR
-  + radar and emit a unified 3D voxel grid.
-- **Tracking:** custom multi-object trackers with per-class motion
-  models.
-- **Trajectory prediction:** transformer-based predictors
-  (MultiPath++, Wayformer).
-- **Localization:** HD map matching with LiDAR + visual features.
-- **Calibration:** custom rigs and self-calibration routines that
-  run every drive.
-- **Frameworks:** internal stack on top of **TensorFlow**
-  (historically a TF shop, though PyTorch usage has grown); C++ for
-  inference hot paths; Bazel for build.
-- **Sim:** tightly coupled with Waymo's internal AV simulator
-  (CarCraft) for training and validation.
-- **Edge inference:** custom-tuned model graphs, low-precision
-  quantization, custom kernels.
+**Pricing and timeline.** $80-180k for the initial 12-16 week build,
+plus $2-5k/month support retainer, plus per-additional-camera-station
+expansion fees. Some shops bundle it as a $5-15k/month subscription
+instead of a one-time build.
 
-**What would surprise a web dev.** Each camera's intrinsic matrix
-(focal length, principal point, distortion) is calibrated to roughly
-micrometer precision and then treated as a near-constant for the
-life of the camera. A fender-bender that shifts a sensor by 0.5 mm
-can flag the vehicle out of service. The other surprise: the
-perception stack is not one giant end-to-end net. It's a graph of
-dozens of smaller models and classical algorithms wired together —
-closer to a microservice architecture than a monolithic LLM.
-
-**Failure modes they specifically engineer around.**
-
-- *Sensor occlusion:* mud, snow, bird droppings, sunscreen smears.
-  The fusion layer gracefully degrades when one modality goes dark.
-- *Adversarial pedestrians:* people in costumes, on scooters
-  carrying mirrors, holding umbrellas that change silhouette
-  frame-to-frame. Novelty detectors flag low-confidence regions for
-  more cautious behavior.
-- *Phantom braking from radar multi-path:* a radar return bouncing
-  off an overpass can look like a stopped vehicle. Cross-checking
-  against camera + LiDAR catches this.
-
-**Why this matters.** Waymo is the proof point that multi-sensor
-perception can be reliable enough for unsupervised public deployment.
-Almost every other AV team has converged on a variant of this recipe
-(Cruise, Zoox, Mobileye, Pony.ai all run camera + LiDAR + radar
-fusion; only Tesla diverges with vision-only).
-
----
-
-### Use case 2 — Apple Vision Pro (real-time spatial scene understanding)
-
-**What it does.** A head-mounted mixed-reality device that does what
-Waymo does, but on a head, at 90 Hz, with single-digit-millisecond
-motion-to-photon latency. The perception stack handles 6-DoF head
-tracking, real-time 3D scene reconstruction (mesh of your room),
-plane detection, sub-millimeter hand tracking, 240 Hz gaze tracking,
-and persistent room-scale mapping that survives reboots.
-
-**The technical novelty.** Entirely on-device. Two custom Apple
-chips split the workload: M2 does general compute; R1 does sensor
-I/O and fusion with sub-12 ms latency. The combination of latency,
-accuracy, and power efficiency is unmatched.
-
-**Hardware stack.**
-
-- **Cameras:** 12 total — 2 main pass-through (high res), 2
-  lower-res for world tracking, 4 IR for hand tracking, 4 IR for
-  eye tracking.
-- **Sensors:** TrueDepth (structured light) for face tracking, LiDAR
-  for room reconstruction, IR illuminators for hand tracking in the
-  dark, IMUs, ambient light sensors.
-- **Compute:** Apple M2 + Apple R1. R1 has 256 GB/s memory bandwidth.
-- **Displays:** dual 4K micro-OLED, 90/96/100 Hz refresh.
-- **Power:** ~2-2.5 hours per external battery; ~30 W total.
-
-**Software stack.**
-
-- **OS:** visionOS, derived from iOS / macOS XNU kernel.
-- **Spatial framework:** **ARKit** (extended for visionOS) plus
-  internal extensions.
-- **Hand tracking:** per-finger 3D pose from IR cameras. Custom
-  Apple neural net on the R1.
-- **Eye tracking:** 240 Hz pupil + gaze, used for input (look +
-  pinch) and foveated rendering (only the pixels you're looking at
-  render at full quality).
-- **Scene reconstruction:** real-time mesh from LiDAR + RGB.
-  Persistent across sessions ("World Sense").
-- **Plane / surface detection:** same lineage as ARKit on iPhones,
-  but real-time and 3D.
-- **SLAM:** visual-inertial SLAM. Apple doesn't publish details, but
-  the system is known to combine VIO + LiDAR + persistent map
-  alignment.
-- **Foveated rendering:** dynamically lowers resolution outside the
-  gaze cone. Cuts GPU load ~50%.
-- **Developer frameworks:** ARKit, RealityKit, Metal, SwiftUI with
-  spatial extensions.
-
-**What would surprise a web dev.** The motion-to-photon budget is
-~12 ms — from physical head motion to new pixels on display.
-Anything more and your inner ear notices and nausea sets in. Compare
-that to a web app where 100 ms of input latency is invisible. The
-other surprise: the "pass-through view" is not a passthrough at all.
-It's a fully rendered 3D reconstruction of the room with the live
-camera feed warped onto it. Every frame is a render, not a relay.
-
-**Failure modes they specifically engineer around.**
-
-- *Texture-poor rooms* (white walls, empty hallways) starve visual
-  SLAM of features. LiDAR is the backup.
-- *Rapid head motion* (sneezing, sports) blurs cameras and saturates
-  the IMU. The R1's tight VIO loop recovers within a couple frames.
-- *Re-localization* after taking the headset off and back on has to
-  land in the same world frame, or virtual monitors hop a foot to
-  the left. Persistent map storage and re-localization are a major
-  engineering investment.
-
-**Why this matters.** The most polished consumer perception stack on
-Earth. Head-worn, battery-powered, no perceptible latency — those
-constraints push every part of the pipeline. Almost every CV
-technique you'll learn for robotics shows up here, with
-consumer-product discipline applied.
+**The hardest part.** Specular surfaces (shiny metal, chrome,
+polished aluminum, plastic foil). Reflections from overhead factory
+lights mimic defects; subtle real defects hide in glare. Most
+agencies retain a lighting-design specialist (often a $20-50k
+contracted optical engineer) who designs the LED arrays, polarizers,
+and diffusers. Budget 2-3 weeks of lighting iteration on any
+chrome-or-aluminum project before model training even starts.
 
 ---
 
-### Use case 3 — Pickle Robot (autonomous truck unloading)
+### Use case 2 — Phone-scan-to-digital-twin for AEC, real estate, or insurance
 
-**What it does.** Pickle's robot sits at the back of a 53-foot
-semi-trailer and unloads packages (1-65 lbs, random shapes,
-sometimes crushed or wedged) onto a conveyor. It handles 1000+
-packages per hour, runs unsupervised, and has been in commercial
-deployment with Maersk, Estes, and Wilson Logistics since 2023.
+**Public references.** Shops and platforms that publicly document
+this category of work:
 
-**The technical novelty.** Trailer unloading is one of the hardest
-in-the-wild perception problems: cluttered, occluded, SKU-diverse,
-lighting-variable, time-pressured. The stack does real-time 6-DoF
-pose estimation on arbitrary boxes (no CAD models), plans grasps
-that won't damage fragile items, and continuously re-perceives as
-the pile collapses.
+- **Matterport** runs a large partner network of small CV agencies
+  that build custom workflows on top of Matterport scans. Verticals:
+  insurance claims, real estate listings, commercial property.
+- **NavVis** (German) has a similar partner ecosystem for AEC
+  (Architecture, Engineering, Construction) digital twins.
+- **Polycam** Pro is used by many small AEC / interior-design agencies
+  as their capture layer; the agency adds workflow software on top.
+- **Buildots** (Israeli) does this for construction progress
+  monitoring — they're 100+ people now, but their published workflow
+  is the canonical small-shop pattern.
+- **HoloBuilder**, **OpenSpace**, **Reconstruct** — published case
+  studies in construction-progress documentation.
+- **Visual Layer**, **Imerso**, **Pointivo** — smaller specialists
+  with public customer cases.
 
-**Hardware stack.**
+**The client and the problem.** Pick one:
 
-- **Robot:** custom mobile gantry with a multi-DoF arm optimized
-  for trailer geometry. Multiple end-effectors (suction cup arrays
-  for boxes, custom grippers for irregular items).
-- **Cameras:** multiple RGB-D cameras (publicly demonstrated units
-  resemble Intel RealSense D400-series — active-stereo depth,
-  1280x720 at 30 FPS, ~0.3-3 m effective range) mounted on the arm
-  and gantry for full interior coverage. An RGB-D camera returns
-  both a color image and a parallel per-pixel depth array in meters.
-- **Lighting:** on-board LED arrays — trailers are pitch dark.
-- **Force / torque sensors:** on the end-effector for contact and
-  weight detection.
-- **Compute:** industrial PC (likely NVIDIA RTX-based) on the mobile
-  base. Some inference offloaded to a nearby edge server.
-- **Safety:** light curtains and area scanners around the work cell
-  (humans can't be in the trailer while it operates).
+- *An insurance adjuster firm* needs to document 100-200 damaged
+  houses per week after a hurricane. Current cost: $300/house
+  through Matterport's pro photographer network, 2 hours per house.
+- *A regional real-estate brokerage* wants searchable 3D listings
+  with automatic floor-plan extraction. Current option: pay
+  Matterport per scan, no measurement extraction.
+- *A construction general contractor* wants weekly progress
+  documentation: "show me every wall built last week, and how it
+  compares to the BIM model." Current method: a project manager
+  walks the site with a clipboard and an iPhone.
 
-**Software stack.**
+In all three cases, the customer wants the cost per scan down to
+$30-80 and the turnaround down to minutes, with structured data
+(measurements, segmented rooms, BIM comparison) the existing tools
+don't provide.
 
-- **Detection + segmentation:** custom-trained detectors (likely
-  YOLO / Mask R-CNN lineage) for box detection and instance
-  segmentation, plus generalist segmenters (SAM 2 lineage) for
-  novel item types.
-- **6-DoF pose estimation:** per-box pose from RGB-D using a mix of
-  classical PCA-on-point-cloud and learned methods
-  (FoundationPose-style render-and-compare).
-- **Grasp planning:** a separate "where to suction" planner that
-  scores candidate grasp points.
-- **Motion planning:** collision-aware trajectory generation through
-  a chaotic, ever-changing pile.
-- **State estimation / tracking:** the pile shifts constantly, so the
-  system re-perceives after every grasp instead of trusting an old
-  map.
-- **Frameworks:** ROS2 for middleware (Pickle has publicly discussed
-  ROS2, on Humble or Iron LTS distros). PyTorch for perception
-  (likely 2.x with TensorRT export for the hot path); OpenCV for
-  image preprocessing; Open3D for point-cloud processing.
-- **Failure recovery:** if a grasp fails or an item is too heavy, a
-  fallback policy kicks in (different angle, switch end-effector,
-  escalate to remote human review).
-- **Fleet management:** cloud dashboard monitoring uptime, throughput,
-  and failure modes across deployments.
+**What you actually deliver.**
 
-**What would surprise a web dev.** There is no training set for
-what shows up in a trailer. Every truck is different, every load is
-different, and many SKUs the robot has never seen before. The system
-can't rely on a fixed class taxonomy — it must generalize to novel
-objects on the first frame. This is why generalist foundation models
-(SAM 2, FoundationPose) are a big deal for this class of work: they
-collapse the "we don't have data for this SKU" problem.
+- **A custom iPhone app** built in Swift using **ARKit** (Apple's
+  augmented-reality framework that exposes camera frames, ARKit
+  anchors, and on-device LiDAR depth) plus **AVFoundation** (the
+  iOS camera/video API). The app captures synchronized RGB +
+  depth + IMU + ARKit poses, batches them, and uploads to your
+  cloud. (Alternative: skip building an app, use **Polycam Pro**
+  or **Scaniverse**'s SDK as the capture layer and build only the
+  cloud pipeline.)
+- **A cloud processing pipeline** on AWS or GCP:
+  - **COLMAP** or **glomap** for *Structure-from-Motion* — given
+    the captured photos, recover the precise camera pose for each
+    photo and a sparse 3D point cloud of the scene. (glomap is the
+    newer, faster open-source rewrite of COLMAP.)
+  - **Nerfstudio** with the **`splatfacto`** trainer (or **gsplat**
+    directly) to fit a **3D Gaussian Splat** of the scene —
+    photoreal, real-time renderable. (Gaussian Splatting is the
+    current default for "photoreal 3D from photos"; replaced NeRF
+    in 2023.)
+  - **Open3D** (a 3D processing library by Intel) for mesh
+    extraction (turning the point cloud into a watertight surface)
+    and floor / wall detection.
+  - **SAM 2** (Meta's universal segmentation model) to segment
+    each room, wall, window, and door across the photos. The masks
+    get back-projected into 3D to label the splat.
+  - **Plane fitting via RANSAC** (a classical outlier-tolerant
+    fitting algorithm — picks the best plane from a noisy point
+    set) for floor-area and wall-length measurements.
+- **A web viewer** in React. Renders the Gaussian splat via
+  **`@playcanvas/supersplat`** or **`gsplat.js`** (WebGL libraries
+  for splat rendering in the browser). Customer measures walls, drops
+  pins, exports floor plans.
+- **An export pipeline**: floor plans as PDF or DXF (the standard
+  CAD format), measurements as CSV, the full splat as a `.ply` or
+  `.splat` file for download.
+- **CRM / BIM integrations** depending on vertical: Salesforce for
+  insurance, Autodesk Construction Cloud or Procore for AEC,
+  Zillow / MLS for real estate.
 
-**Failure modes they specifically engineer around.**
+**Team for a 16-20 week engagement (6 people).**
 
-- *Collapsing pile:* grab the top box, two others slide into the
-  gap, the pile geometry is now stale. Re-perceive between every
-  grasp.
-- *Shrink-wrapped or shiny boxes:* specular reflections wreck
-  active-stereo depth. Multiple angles plus RGB-only fallback pose
-  estimation cover this.
-- *Crushed / non-rectangular items:* the box-prior model expects a
-  cuboid. Fallback: run a generalist segmenter and grasp the largest
-  flat patch the suction cups can seal against.
+- 1 iOS / Swift developer (ARKit capture app).
+- 1 backend Python engineer (cloud pipeline, COLMAP / Nerfstudio
+  orchestration, S3 storage, job queue with Celery or RQ).
+- 1 CV/ML engineer (SAM 2 prompting, measurement-extraction
+  algorithms, evaluation).
+- 1 frontend developer (React + Three.js + supersplat viewer).
+- 1 full-stack developer (auth, billing, exports, CRM integrations).
+- 1 project manager.
 
-**Why this matters.** Pickle is a perception-heavy product company
-that's profitable per-deployment — a rare outcome in robotics. It
-proves that foundation models + cleverly engineered hardware can
-displace a million-dollar union loader job at price points shippers
-will pay. Many techniques are public (job listings, conference
-talks, trade press), making it one of the best case studies for a
-junior engineer to study.
+**Pricing and timeline.** $120-250k for the initial 16-20 week build.
+Recurring: $20-100/scan SaaS pricing, or $1-5k/month per "seat" for
+unlimited scans, or per-vertical enterprise contracts at
+$50-200k/year. The economics improve dramatically once you have a
+reference customer in a vertical — the second insurance company is
+80% the same product.
+
+**The hardest part.** Capture quality. Untrained users hold the phone
+wrong (too fast, too few overlapping frames, jumps cuts). The first
+6 weeks of any engagement is usually spent on a guided capture UX:
+real-time feedback in the app ("slow down", "you missed this
+corner"), validation thresholds before upload, and a fallback path
+("our pipeline rejected this scan, here's why; please re-capture
+these specific rooms").
 
 ---
 
-## What ties the three use cases together
+### Use case 3 — Drone-based aerial inspection for agriculture, solar, or utilities
+
+**Public references.** This category has dozens of public reference
+shops:
+
+- **DroneDeploy** runs a partner network of small CV agencies that
+  build vertical-specific apps on top of DroneDeploy's capture
+  platform. Verticals: crop scouting, solar inspection, roof
+  inspection, mining stockpile measurement.
+- **Pix4D** (Swiss) — similar platform-plus-partners model.
+  Photogrammetry SDK + cloud processing.
+- **Sentera** — agriculture-focused, ~80 people, published case
+  studies with farm cooperatives.
+- **Skycatch** — construction earthwork measurement, public
+  case studies with mining and infrastructure customers.
+- **PrecisionHawk**, **DroneSense**, **Aerodyne** (Malaysia) —
+  larger but documented end-to-end deployments.
+- **TerraSentia / EarthSense Inc** — ag-robotics with documented
+  in-row scouting work.
+- **Iris Automation** — drone safety, published deployment data.
+
+A 5-10 dev shop usually plays in one vertical (just solar, or just
+almonds, or just oil-pipelines) and builds a turnkey workflow for
+operators in that vertical.
+
+**The client and the problem.** Pick one:
+
+- *A 200-acre solar farm operator* wants thermal-anomaly inspection.
+  Damaged panels run hotter than healthy ones. A drone with a
+  thermal camera can spot 500+ defects per flight. Currently they
+  hire a $5k/day drone pilot quarterly; they want monthly.
+- *An almond orchard manager* wants per-tree health scoring across
+  4000 acres. Stressed trees (water, disease, frost damage) have
+  distinct multispectral signatures. Currently nobody scores at
+  per-tree resolution; decisions are made per-block.
+- *A transmission utility* wants powerline inspection: rust on
+  insulators, vegetation encroachment in the right-of-way, broken
+  wires. Currently helicopter inspections at $10-30k per mile.
+
+**What you actually deliver.**
+
+- **A drone fleet protocol**. Customer flies their own drones (you
+  don't pilot). You give them a flight plan: a `.kmz` mission file
+  for **DJI Pilot 2** (DJI's flight-planning app) or a Litchi
+  mission. Typical drones: **DJI Mavic 3 Enterprise** with the
+  Mavic 3T thermal payload, or **Skydio X2D**, or **Autel EVO Max
+  4T**.
+- **A cloud processing pipeline**:
+  - **Photogrammetry**: **OpenDroneMap** (open-source) or **Pix4D
+    API** (commercial) stitches the 500-2000 captured photos into
+    an *orthomosaic* (one huge top-down image of the whole field,
+    georeferenced) plus a *DSM* (Digital Surface Model — a depth
+    map of the terrain) plus a *DTM* (Digital Terrain Model — DSM
+    minus vegetation).
+  - **GDAL** (Geospatial Data Abstraction Library — the standard
+    open-source toolkit for geospatial raster and vector data) for
+    handling orthomosaics, reprojections, and tiling.
+  - **CV models**: **Ultralytics YOLO** or **RT-DETR** fine-tuned
+    on aerial imagery (often starting from **Roboflow Universe**
+    datasets) for trees, panels, towers, or pipeline-defect
+    detection.
+  - **Thermal-anomaly detection**: usually a temperature-threshold
+    pipeline written in Python + GDAL, sometimes augmented with
+    **anomalib** for unsupervised hot-spot detection.
+  - **Multispectral indices** for ag: **NDVI** (Normalized
+    Difference Vegetation Index — a 2-channel formula from red and
+    near-infrared bands; the canonical "is this plant healthy"
+    score) plus newer indices (NDRE, GNDVI) for stress detection.
+- **A web app** with an interactive map. **React + Mapbox GL JS**
+  or **Leaflet** for the map; **PostGIS** (the geospatial extension
+  for PostgreSQL) as the backend store for detected anomalies,
+  flight history, and customer-asset metadata. Anomalies show as
+  pins, click-through to the original photo, with PDF export for
+  compliance.
+- **Compute**: AWS **EC2 g5.xlarge** or **g6.xlarge** for GPU
+  photogrammetry stitching (~$1-1.50/hr), batched per flight.
+
+**Team for a 10-14 week engagement (4-5 people).**
+
+- 1 CV/ML engineer (YOLO fine-tuning on aerial datasets, anomaly
+  detection).
+- 1 geospatial / photogrammetry engineer (OpenDroneMap or Pix4D
+  pipeline, GDAL, ortho/DSM generation). Often the rarest hire.
+- 1 backend developer (job queue, PostGIS, S3, AWS automation).
+- 1 frontend developer (Mapbox / Leaflet UI, anomaly review UX,
+  PDF reports).
+- 1 PM / customer-success.
+
+**Pricing and timeline.** $60-150k for the initial 10-14 week build,
+plus $2-5k per flight processed, plus $1-3k/month per active customer
+SaaS. Successful shops graduate to a $50-150k/year enterprise
+contract per major customer once they prove the workflow on a few
+sites.
+
+**The hardest part.** Calibrating the model to a specific customer's
+asset type. A YOLO trained on Roboflow's "solar panels" dataset will
+detect 70% of one customer's panels and miss 30% because the brand
+is different. Plan for 1-2 weeks of per-customer fine-tuning on
+their first 200-500 hand-labeled photos. Tools that smooth this:
+**Roboflow** for the labeling + auto-augmentation pipeline,
+**Encord** or **Datature** for higher-end labeling workflows,
+**fiftyone** (Voxel51's open-source dataset visualization tool) for
+finding the failure cases.
+
+---
+
+## What ties the three projects together
 
 All three share five layers:
 
-1. **A sensor suite** chosen for the failure modes that matter
-   (LiDAR for adverse weather + long range in Waymo; LiDAR + IR in
-   Vision Pro for low-light hand tracking; RGB-D + on-board lighting
-   in Pickle for dark trailers).
-2. **Calibration infrastructure** to keep all those sensors in a
-   consistent coordinate frame.
-3. **A perception model stack** mixing classical techniques (feature
-   matching, EKF, point-cloud processing) with learned models
-   (transformers for detection, NN depth, learned pose estimators).
-4. **An edge-inference runtime** that hits real-time frame rates on
-   whatever compute fits the form factor.
-5. **A failure-mode-aware safety layer** that catches mistakes before
-   they propagate to actuation.
+1. **A capture layer** — industrial cameras, an iPhone with ARKit,
+   or a drone with photogrammetry. The interface to the physical
+   world.
+2. **A calibration / preprocessing layer** — geometry corrections,
+   coordinate alignment, format conversion.
+3. **A model layer** — usually 1-3 open-source models (YOLO,
+   anomalib, SAM 2, Depth-Anything, Nerfstudio) fine-tuned on
+   100-2000 customer-specific samples.
+4. **A delivery layer** — a web dashboard, a PDF report, an API,
+   or a CAD export. The customer rarely wants the raw model output;
+   they want it in the format their existing workflow consumes.
+5. **A long-tail support layer** — model retraining when accuracy
+   drifts, customer-specific edge cases, integrations with the
+   customer's CRM / ERP / BIM tools.
 
-Understand these five and you can read any robotics perception job
-description and immediately know which slot each required skill fills.
+The pattern: open-source CV models are now strong enough that the
+*model* is rarely the moat. The moat is the *capture protocol +
+delivery integration + per-customer fine-tuning loop*. That's a
+classic services-shop opportunity.
 
 ---
 
@@ -734,6 +764,214 @@ topics and publishing to others). Times are typical budgets for a
 Total wall-clock budget at 30 Hz: ~33 ms per frame. The inference
 node usually eats half of that. Anything above 33 ms means you're
 dropping frames and downstream consumers are reading stale state.
+
+---
+
+## Tools, libraries, and terms used in this file
+
+Quick definitions for everything named above. Use it as a lookup,
+not a read-through.
+
+### Models and model families
+
+- **YOLO (Ultralytics, v8 / v11)** — the most-used open-source
+  object detector. CNN-based. Fast (real-time on a Jetson). Easy to
+  fine-tune on 50-500 labeled images. `pip install ultralytics`.
+- **DETR / RT-DETR** — transformer-based object detectors.
+  Higher-accuracy alternative to YOLO, comparable speed in RT-DETR.
+- **Mask R-CNN** — older but still-shipped detector that also
+  produces segmentation masks per detection.
+- **Mask2Former** — modern transformer-based segmentation. Higher
+  accuracy than Mask R-CNN; slower.
+- **SAM / SAM 2** (Meta, 2023 / 2024) — *Segment Anything*. A
+  universal segmentation model: click a point or draw a box on an
+  image, get back a clean mask of the object. Trained on 1B+ masks.
+  Hugging Face model id `facebook/sam2-hiera-large`.
+- **DINOv2** (Meta, 2023) — a self-supervised vision model that
+  produces general-purpose image features. The "CLIP for pure
+  pixels." Useful for clustering, retrieval, and as a backbone for
+  other tasks.
+- **Depth-Anything v2** (2024) — predicts depth (meters per pixel)
+  from a single RGB image. Hugging Face model id
+  `depth-anything/Depth-Anything-V2-Small-hf` (and larger variants).
+- **FoundationPose** (NVIDIA, 2024) — current default for 6-DoF
+  pose estimation from RGB-D + a CAD model. Works on novel objects.
+- **MegaPose, GigaPose, FFB6D** — older or alternative 6-DoF pose
+  estimators.
+- **anomalib** (Intel / OpenVINO) — open-source library bundling
+  modern anomaly-detection methods (PatchCore, EfficientAD, PaDiM).
+  Trains on "good" samples only, no defect labels needed.
+- **PatchCore, EfficientAD, PaDiM** — specific anomaly-detection
+  methods inside anomalib.
+- **PointPillars, CenterPoint, VoxelNet** — 3D object detectors
+  that work on LiDAR point clouds. Used by every AV team.
+- **MultiPath++, Wayformer, MVF** — Waymo's published trajectory-
+  prediction and multi-view-fusion models.
+- **ORB-SLAM3** — the canonical open-source classical SLAM system.
+  C++. Camera + IMU + stereo support.
+- **VINS-Fusion** — visual-inertial SLAM (camera + IMU). The default
+  for fast-moving platforms like drones.
+- **DROID-SLAM** — modern learned (neural-network-based) SLAM. More
+  accurate than ORB-SLAM3 on benchmarks; more compute-hungry.
+- **Spectacular AI** — commercial visual-inertial SLAM with an easy
+  SDK; popular when you want SLAM without building from source.
+
+### Libraries (CV and 3D)
+
+- **OpenCV** — the foundational computer-vision library. 25 years
+  old, ubiquitous. Python and C++. Handles image I/O, classical
+  feature detection, calibration, drawing.
+- **Open3D** (Intel) — point clouds, meshes, RGB-D, ICP
+  registration. The 3D companion to OpenCV.
+- **PyTorch3D** (Meta) — differentiable 3D operations inside
+  neural networks. For research-grade 3D ML work.
+- **Kornia** — differentiable OpenCV-style operations in PyTorch.
+- **Nerfstudio** — turnkey training framework for NeRF and Gaussian
+  Splatting. CLI commands like `ns-process-data` and `ns-train`.
+- **gsplat** — the fast CUDA backbone for Gaussian Splatting.
+- **`splatfacto`** — the Gaussian-Splatting trainer inside
+  Nerfstudio. The most common entry point.
+- **COLMAP** — the classical structure-from-motion pipeline. Given
+  photos, recovers each camera's pose and a sparse 3D point cloud.
+  The first step in most NeRF / Gaussian Splat pipelines.
+- **glomap** — modern faster open-source rewrite of COLMAP (2024+).
+- **VGGT** (2025) — feed-forward transformer that reconstructs a
+  3D scene from a few images, skipping COLMAP's optimization step.
+- **Polycam, Scaniverse, Niantic Scaniverse** — consumer iOS apps
+  that capture and reconstruct 3D scenes; some expose an SDK that
+  agencies build on.
+- **`@playcanvas/supersplat`, `gsplat.js`** — WebGL libraries for
+  rendering Gaussian splats in the browser.
+- **fiftyone** (Voxel51) — open-source tool for exploring,
+  comparing, and debugging vision datasets.
+- **Roboflow** — labeling-plus-training-plus-deployment platform.
+  Roboflow Universe is a large public dataset repository.
+- **Encord, Datature** — higher-end commercial labeling platforms.
+
+### Deployment and inference
+
+- **PyTorch** — the deep-learning framework. The de-facto standard;
+  TensorFlow has been losing ground for years.
+- **TensorFlow** — Google's deep-learning framework. Still in use at
+  Waymo / Google and parts of TF-Hub, less common in new projects.
+- **ONNX** (Open Neural Network Exchange) — a portable cross-
+  framework model format. PyTorch → ONNX → TensorRT / OpenVINO /
+  Core ML is a common deployment path.
+- **TensorRT** (NVIDIA) — compiler that turns ONNX models into
+  faster, smaller `.engine` files optimized for a specific NVIDIA
+  GPU. 5-10× speedup over raw PyTorch typical.
+- **Triton Inference Server** (NVIDIA) — model-serving HTTP/gRPC
+  server. Like nginx for ML models.
+- **OpenVINO** (Intel) — TensorRT's equivalent for Intel CPUs and
+  iGPUs.
+- **INT8 quantization** — converting model weights from 32-bit
+  floats to 8-bit integers. ~4× memory reduction, 2-4× speedup,
+  usually 0-2% accuracy loss. Standard for edge deployment.
+
+### Hardware
+
+- **Intel RealSense D435 / D455** — the workhorse RGB-D camera.
+  Active-stereo depth, 1280×720 at 30 FPS, $300-400.
+- **Orbbec Femto Bolt** — newer time-of-flight depth camera, $300.
+  Successor to the Microsoft Azure Kinect.
+- **Basler ace-2, Allied Vision Mako** — industrial machine-vision
+  cameras. GigE Vision protocol, hardware triggering, much more
+  rugged than consumer cameras.
+- **GigE Vision** — industrial standard for streaming high-
+  resolution camera data over Gigabit Ethernet (vs. USB). Allows
+  long cable runs and hardware-synced multi-camera rigs.
+- **DJI Mavic 3 Enterprise / Mavic 3T** — current standard
+  professional drone. Mavic 3T adds a thermal imager.
+- **Skydio X2D** — Skydio's professional drone, strong autonomy.
+- **NVIDIA Jetson AGX Orin / Orin Nano** — embedded computer
+  modules with GPU, the standard edge target for robotics. ~$2-3k
+  (AGX) / ~$500 (Nano).
+
+### Industrial protocols and tooling
+
+- **PLC** (Programmable Logic Controller) — the rugged industrial
+  computer that drives factory equipment.
+- **OPC-UA** — modern industrial pub/sub-and-RPC protocol for
+  talking to PLCs. Python: `python-opcua`.
+- **Modbus TCP** — older industrial protocol; still ubiquitous.
+- **GDAL** (Geospatial Data Abstraction Library) — the standard
+  open-source toolkit for geospatial raster and vector data.
+- **PostGIS** — geospatial extension for PostgreSQL.
+- **NDVI** (Normalized Difference Vegetation Index) — a 2-channel
+  formula `(NIR - Red) / (NIR + Red)` from multispectral imagery;
+  the canonical "is this plant healthy" score. NDRE and GNDVI are
+  newer variants.
+- **DSM / DTM** — Digital Surface Model / Digital Terrain Model.
+  Per-pixel elevation; DSM includes vegetation, DTM excludes it.
+- **Orthomosaic** — a single huge top-down image stitched from
+  hundreds of drone photos, with all distortion corrected so
+  measurements are accurate.
+- **Pix4D** — commercial photogrammetry SaaS. The expensive option.
+- **OpenDroneMap (ODM)** — open-source photogrammetry. Slower but
+  free.
+
+### Capture frameworks and SDKs
+
+- **ARKit** (Apple) — iOS augmented-reality framework. Exposes
+  camera frames, IMU, LiDAR depth (on Pro iPhones), plane
+  detection, and ARKit anchors (persistent 3D coordinate
+  references).
+- **AVFoundation** (Apple) — the underlying iOS camera/video API
+  used by ARKit and any custom capture app.
+- **RealityKit, Metal, SwiftUI** — Apple's higher-level 3D rendering
+  framework, low-level GPU API, and UI framework respectively.
+- **visionOS** — the OS on Apple Vision Pro. Derived from iOS /
+  macOS XNU.
+
+### Robotics middleware
+
+- **ROS2** (Robot Operating System 2) — the de-facto open-source
+  middleware for robotics. Provides typed pub/sub topics, services,
+  parameters, the `tf2` transform tree, lifecycle management.
+- **ROS2 distros** — major versioned releases. Current LTS:
+  **Humble** (Ubuntu 22.04, until 2027), **Jazzy** (Ubuntu 24.04,
+  until 2029). **Iron** was a non-LTS interim.
+- **rclpy, rclcpp** — Python and C++ client libraries for ROS2.
+- **rosbag** — recorded log file of all topic data from a ROS
+  session. The CI fixture format for perception teams.
+- **`tf2`** — the ROS2 library that tracks coordinate-frame
+  transforms across the robot.
+- **QoS / SensorDataQoS** — ROS2's Quality-of-Service profiles for
+  topics. `SensorDataQoS` is the "best-effort, latest-N" profile
+  appropriate for high-rate sensor streams; using the wrong profile
+  causes silent frame drops.
+
+### Calibration and math
+
+- **Kalibr** — the standard open-source toolkit for multi-camera
+  and camera-IMU calibration. Requires waving a checkerboard.
+- **`cv2.calibrateCamera`** — OpenCV's single-camera intrinsics
+  routine; the first calibration you'll ever run.
+- **PnP** (Perspective-n-Point) — the math problem: given known 3D
+  points and their pixel observations, solve for camera pose.
+- **RANSAC** — RANdom SAmple Consensus. A robust fitting algorithm
+  that tolerates many outliers; used everywhere in classical CV
+  (line fitting, fundamental matrix estimation, plane fitting).
+- **Bundle adjustment** — the big joint optimization inside every
+  SLAM system: refine all camera poses and 3D points so projection
+  error is minimized. Libraries: Ceres, g2o, GTSAM.
+- **EKF / UKF** — Extended / Unscented Kalman Filter. Classical
+  state estimators that fuse noisy sensor streams.
+- **Kalman update** — one step of an EKF/UKF: take a new
+  measurement, update the state estimate and its uncertainty.
+- **Hungarian algorithm** — the standard solver for the
+  "assignment problem" (which detection in frame T matches which
+  in frame T+1?). Used in multi-object tracking.
+
+### AV-specific extras
+
+- **HD map** — high-definition lane-level map used by AVs to
+  localize and plan.
+- **Occupancy network** — a model that consumes camera (+/- LiDAR)
+  and emits a 3D voxel grid of free vs. occupied space. Tesla's
+  big bet.
+- **Bazel** — Google's build system; Waymo and other Google-derived
+  AV teams use it.
 
 ---
 
