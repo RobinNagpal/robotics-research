@@ -56,7 +56,7 @@ constraints:
 4. Glance at Week 1 of `03-start.md` to see what your first weekend
    would look like — 5 min.
 
-The deeper files (`02-learn.md`, `04-employers.md`, `05-projects.md`,
+The deeper files (`02-learn.md`, `04-market.md`, `05-projects.md`,
 `06-courses.md`) are reference material — open them when you need
 them.
 
@@ -70,7 +70,7 @@ them.
 - [02-learn.md](02-learn.md) — layered curriculum from camera math
   to neural rendering.
 - [03-start.md](03-start.md) — concrete 8-week ramp-up.
-- [04-employers.md](04-employers.md) — who hires perception
+- [04-market.md](04-market.md) — who hires perception
   engineers, with comp bands.
 - [05-projects.md](05-projects.md) — projects you can ship and bill
   for.

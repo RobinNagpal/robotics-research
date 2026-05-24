@@ -14,7 +14,7 @@ the end — per-project entries assume you have read those.
 
 Cross-references: `00-basics.md` for vocabulary, `01-examples.md` for
 code snippets, `02-learn.md` for the 12-week curriculum, `03-start.md`
-for the zero-to-first-commit ramp, `04-employers.md` for who is
+for the zero-to-first-commit ramp, `04-market.md` for who is
 buying, `06-courses.md` for deeper ML study.
 
 ---

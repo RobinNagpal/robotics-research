@@ -4,7 +4,7 @@ A tour of perception code in the wild. Skim it — the goal is to know
 the names so the rest of the material has hooks to land on.
 
 Cross-references: `00-basics.md` for vocabulary, `02-learn.md` for the
-learning path, `03-start.md` for setup, `04-employers.md` for the
+learning path, `03-start.md` for setup, `04-market.md` for the
 company list, `05-projects.md` for portfolio ideas, `06-courses.md`
 for structured learning.
 
@@ -242,7 +242,7 @@ detector" from "I can ship a robot."
 - **Robohub** (`robohub.org`).
 - **ROS Discourse** (`discourse.ros.org`).
 - **X / Twitter** — `@AIatMeta`, `@NVIDIAAIDev`, `@_akhaliq`,
-  `@karpathy`, `@jonbarron`. See `04-employers.md` for more handles.
+  `@karpathy`, `@jonbarron`. See `04-market.md` for more handles.
 - **Hugging Face Spaces and Models tabs**.
 - **Papers With Code** (`paperswithcode.com`) — benchmark leaderboards.
 - **GitHub trending in Python**.
