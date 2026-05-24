@@ -281,11 +281,11 @@ declare a topic and a message type, get a callback on every publish.
 rviz2 recording showing the camera feed and a live segmentation
 mask overlay.
 
-## Weeks 7-8 — One substantial portfolio project
+## Weeks 7-8 — Ship one substantial internal reference build
 
-Pick something you'd put on your resume. Scope ruthlessly. A
-perception project with no demo video does not exist in the job
-market.
+Pick something the team can show as a credibility anchor in client
+pitches. Scope ruthlessly. A perception project with no demo video
+does not exist as far as a prospective client is concerned.
 
 Ideas:
 
@@ -319,9 +319,10 @@ Ideas:
   VINS-Fusion + a learned method (DROID-SLAM or NICER-SLAM), get a
   side-by-side video and an `evo`-generated trajectory-error PDF.
   Target: research engineers comparing baselines. Open-source it
-  as a hiring signal. Demo: three trajectories overlaid on EuRoC
-  ground truth with APE/RPE numbers in a corner. Ship Dockerfiles
-  per SLAM system and a `python bench.py --bag my.bag` entrypoint.
+  as a credibility signal for the team. Demo: three trajectories
+  overlaid on EuRoC ground truth with APE/RPE numbers in a corner.
+  Ship Dockerfiles per SLAM system and a `python bench.py --bag
+  my.bag` entrypoint.
 
 **Week 8 deliverable**: a 60-second demo video plus a polished
 README, linked from one tweet or LinkedIn post. README needs a hero

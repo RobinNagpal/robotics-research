@@ -2,7 +2,7 @@
 
 A curated list of online courses that map to the skills needed to ship a perception project. Listed roughly in the order a junior web developer should take them. All links go to the official course page; many are free to audit or have free YouTube uploads.
 
-Perception work spans six skill stacks: (0) absolute basics if you're brand new, (1) classical CV and multi-view geometry, (2) deep learning for vision, (3) robotics-specific perception (SLAM, 3D, sensor fusion), (4) project-driven courses where you build something portfolio-grade, and (5) reference books. Pick at least one from each stack you don't already know.
+Perception work spans six skill stacks: (0) absolute basics if you're brand new, (1) classical CV and multi-view geometry, (2) deep learning for vision, (3) robotics-specific perception (SLAM, 3D, sensor fusion), (4) project-driven courses where the team builds shippable artifacts, and (5) reference books. Pick at least one from each stack you don't already know.
 
 A note on auditing vs. building: treat every course as a scaffold. If you don't have a small repo (even a few notebooks) per course on your GitHub by the end, you didn't really take the course. Watching ten hours of tutorial videos won't build the muscle — only typing along while pausing every two minutes will.
 
@@ -24,7 +24,7 @@ Prereqs every later course assumes. If you're a working web dev, you already hav
 - **Link:** https://www.coursera.org/specializations/mathematics-machine-learning
 - **Length:** 3 courses (Linear Algebra, Multivariate Calculus, PCA), ~4 months at 4 hrs/week.
 - **Cost:** Free to audit; $49/mo for certificates.
-- **Why relevant.** Linear algebra (SVD, eigenvectors, projections) is the language of multi-view geometry and 3D reconstruction. The most direct math prep for CS231A. Most perception interviews include at least one whiteboard linear-algebra question (typical: derive the 8-point algorithm, or explain why SVD recovers rotation).
+- **Why relevant.** Linear algebra (SVD, eigenvectors, projections) is the language of multi-view geometry and 3D reconstruction. The most direct math prep for CS231A. The team learns to derive the 8-point algorithm and explain why SVD recovers rotation, because every multi-view client project hinges on those two operations.
 
 ### C. Essence of Linear Algebra - 3Blue1Brown (YouTube)
 
@@ -63,7 +63,7 @@ Prereqs every later course assumes. If you're a working web dev, you already hav
 - **Link:** https://web.stanford.edu/class/cs231a/ (notes + slides free).
 - **Length:** ~20 lectures, full semester.
 - **Cost:** Free.
-- **Why relevant.** The most-recommended single course for robotics perception. Covers the pinhole camera model, epipolar geometry, triangulation, PnP, bundle adjustment, structure from motion — the math powering ORB-SLAM3, COLMAP, and every 3D-from-photos pipeline. The bundle-adjustment problem set is exactly what you'll write a Python wrapper around at Skydio, Wayve, Nuro, or Cobalt Robotics. If you pick one course from this stack, pick this one. Assignment 2 produces a two-view structure-from-motion notebook — already a portfolio-grade artifact.
+- **Why relevant.** The most-recommended single course for robotics perception. Covers the pinhole camera model, epipolar geometry, triangulation, PnP, bundle adjustment, structure from motion — the math powering ORB-SLAM3, COLMAP, and every 3D-from-photos pipeline. The bundle-adjustment problem set is exactly the kind of Python wrapper the team writes around client camera rigs. If you pick one course from this stack, pick this one. Assignment 2 produces a two-view structure-from-motion notebook the team can adapt into a client demo.
 
 ### 3. Robotics: Perception - University of Pennsylvania (Kostas Daniilidis) on Coursera
 
@@ -77,7 +77,7 @@ Prereqs every later course assumes. If you're a working web dev, you already hav
 - **Link:** Search "Berkeley CS280" on the EECS course site (slides are linked from the current instructor's home page).
 - **Length:** Full semester; ~24 lectures.
 - **Cost:** Free.
-- **Why relevant.** Berkeley's flagship grad CV course — Malik (perceptual grouping, segmentation) and Efros (texture synthesis, image-to-image translation). Skews toward the history and philosophy of vision, which makes it the better course if you want to do research. After Malik's lectures you'll instinctively know whether a "novel" arXiv paper is a 2003 idea with a transformer attached.
+- **Why relevant.** Berkeley's flagship grad CV course — Malik (perceptual grouping, segmentation) and Efros (texture synthesis, image-to-image translation). Skews toward the history and philosophy of vision, which makes it the better course if the team wants to evaluate research-flavored client briefs. After Malik's lectures the team instinctively knows whether a "novel" arXiv paper is a 2003 idea with a transformer attached.
 
 ### 3c. 16-385: Computer Vision - Carnegie Mellon University
 
@@ -91,14 +91,14 @@ Prereqs every later course assumes. If you're a working web dev, you already hav
 - **Link:** Search "UMich EECS 442" or "EECS 504" — Fouhey's course pages are usually the top hit.
 - **Length:** Full semester; ~28 lectures.
 - **Cost:** Free.
-- **Why relevant.** Famously clear lectures. EECS 442 is undergrad-friendly, EECS 504 the grad follow-on. Together they cover roughly CS231A + CS231n with more practical, less theoretical assignments. Fouhey's homeworks force you to debug your own implementation — the same muscle you use when a model fine-tune plateaus on a customer's data.
+- **Why relevant.** Famously clear lectures. EECS 442 is undergrad-friendly, EECS 504 the grad follow-on. Together they cover roughly CS231A + CS231n with more practical, less theoretical assignments. Fouhey's homeworks force you to debug your own implementation — the same muscle the team uses when a model fine-tune plateaus on a customer's data.
 
 ### 3e. 3D Vision - ETH Zurich (Marc Pollefeys)
 
 - **Link:** Search "ETH 3D Vision Pollefeys" — slides and recordings on the CVG group's site.
 - **Length:** Full semester; ~14 lectures plus project.
 - **Cost:** Free.
-- **Why relevant.** Pollefeys leads the Microsoft HoloLens spatial-mapping group on top of his ETH professorship; this is the graduate-level treatment of SfM, multi-view stereo, and dense reconstruction. Highly relevant for AR / XR / spatial-mapping roles (Niantic, Meta Reality Labs, Apple Vision Pro). Produces a multi-view stereo reconstruction from 20 phone photos — excellent demo material.
+- **Why relevant.** Pollefeys leads the Microsoft HoloLens spatial-mapping group on top of his ETH professorship; this is the graduate-level treatment of SfM, multi-view stereo, and dense reconstruction. Highly relevant for AR / XR / spatial-mapping client work. Produces a multi-view stereo reconstruction from 20 phone photos — excellent demo material for prospective customers.
 
 ---
 
@@ -116,7 +116,7 @@ Prereqs every later course assumes. If you're a working web dev, you already hav
 - **Link:** https://www.coursera.org/specializations/deep-learning
 - **Length:** Course 4 is ~4 weeks at 5 hrs/week.
 - **Cost:** Free to audit; $49/mo for certificates.
-- **Why relevant.** The most beginner-friendly treatment of detection (YOLO), segmentation (U-Net), face recognition, and neural style transfer. Pairs well with CS231n if CS231n's pace feels too aggressive. Builds the mental model of detection vs. segmentation vs. classification — the three most common interview filter questions for junior CV roles. Ends with a YOLO fine-tune on a ~200-image custom dataset.
+- **Why relevant.** The most beginner-friendly treatment of detection (YOLO), segmentation (U-Net), face recognition, and neural style transfer. Pairs well with CS231n if CS231n's pace feels too aggressive. Builds the mental model of detection vs. segmentation vs. classification — the three task framings every client conversation snaps into. Ends with a YOLO fine-tune on a ~200-image custom dataset.
 
 ### 6. Hugging Face Computer Vision Course
 
@@ -148,14 +148,14 @@ Prereqs every later course assumes. If you're a working web dev, you already hav
 - **Link:** https://www.coursera.org/specializations/self-driving-cars
 - **Length:** 4 courses, ~7 months at 7 hrs/week.
 - **Cost:** Free to audit; $49/mo for certificates.
-- **Why relevant.** "Visual Perception for Self-Driving Cars" (Course 3) is the most comprehensive online treatment of multi-sensor perception. Depth estimation, feature matching, ego-motion, semantic segmentation for driving, 3D object detection. Waymo / Zoox / Tesla / Cruise perception job descriptions read like this course's syllabus. Builds multi-sensor reasoning: when to trust camera vs. lidar vs. radar, how to fuse them, how latency compounds. Course 3 ends with a lane-detection + vehicle-detection pipeline on a KITTI sequence.
+- **Why relevant.** "Visual Perception for Self-Driving Cars" (Course 3) is the most comprehensive online treatment of multi-sensor perception. Depth estimation, feature matching, ego-motion, semantic segmentation for driving, 3D object detection. Covers the full sensor stack the team encounters when AV-adjacent clients (fleet operators, yard automation, mining) come in. Builds multi-sensor reasoning: when to trust camera vs. lidar vs. radar, how to fuse them, how latency compounds. Course 3 ends with a lane-detection + vehicle-detection pipeline on a KITTI sequence.
 
 ### 8. Visual SLAM for Robotics - Cyrill Stachniss / University of Bonn (YouTube + photogrammetry course)
 
 - **Link:** https://www.ipb.uni-bonn.de/teaching/ (lectures on Cyrill Stachniss's YouTube channel — search "Cyrill Stachniss SLAM").
 - **Length:** Two playlists: "Mobile Sensing and Robotics 2" and "Photogrammetry I & II" — ~60+ hours.
 - **Cost:** Free.
-- **Why relevant.** Stachniss is the most approachable lecturer in SLAM. Covers Kalman filtering, EKF / particle filter SLAM, graph SLAM, and bundle adjustment — the math behind ORB-SLAM3 and the production stacks at Skydio, Boston Dynamics, Wayve. Once you can hand-derive the EKF update, the giant Eigen expressions in any C++ SLAM library stop looking like noise. Produces a 2D EKF-SLAM notebook by ~lecture 12 and an ORB-SLAM3 demo on phone video by month 3.
+- **Why relevant.** Stachniss is the most approachable lecturer in SLAM. Covers Kalman filtering, EKF / particle filter SLAM, graph SLAM, and bundle adjustment — the math behind ORB-SLAM3 and the production-grade SLAM stacks the team integrates for client projects. Once you can hand-derive the EKF update, the giant Eigen expressions in any C++ SLAM library stop looking like noise. Produces a 2D EKF-SLAM notebook by ~lecture 12 and an ORB-SLAM3 demo on phone video by month 3.
 
 ### 8b. Photogrammetry I & II - Cyrill Stachniss (separate from the SLAM playlist)
 
@@ -168,7 +168,7 @@ Prereqs every later course assumes. If you're a working web dev, you already hav
 
 - **Link:** https://www.nvidia.com/en-us/training/
 - **Cost:** Many free; paid courses ~$90.
-- **Why relevant.** CUDA-accelerated perception, TensorRT inference, DeepStream pipelines, and Jetson deployment — the production stack at most robotics teams. After CS231n and CS231A teach you the algorithms, NVIDIA DLI teaches you to ship them at 30+ Hz on edge hardware. Turning a research-grade PyTorch model into an ONNX + TensorRT engine is the most-asked, least-taught skill in robotics perception.
+- **Why relevant.** CUDA-accelerated perception, TensorRT inference, DeepStream pipelines, and Jetson deployment — the production stack the team ships on for most edge-deployed client work. After CS231n and CS231A teach the algorithms, NVIDIA DLI teaches the team to ship them at 30+ Hz on edge hardware. Turning a research-grade PyTorch model into an ONNX + TensorRT engine is the single biggest delivery bottleneck the team needs to remove.
 
 ### 9b. ROS2 in 5 Days - The Construct (perception sub-track)
 
@@ -181,35 +181,35 @@ Prereqs every later course assumes. If you're a working web dev, you already hav
 
 ## Stack 4 - Project-driven / hands-on courses
 
-The courses above teach the what and why of perception. These push you through building real systems end-to-end — the kind of artifacts that become portfolio pieces or paid projects.
+The courses above teach the what and why of perception. These push the team through building real systems end-to-end — the kind of shippable artifacts that become client deliverables or internal reference builds.
 
 ### 10. PyImageSearch University - Adrian Rosebrock
 
 - **Link:** https://pyimagesearch.com/pyimagesearch-university/
 - **Length:** Self-paced library of 60+ courses; pick lessons by project.
 - **Cost:** $497/year (often discounted; trials available).
-- **Why relevant.** The most project-driven CV resource on the internet. Every lesson ends with code you can drop into a service: license-plate readers, document scanners, face-recognition systems, OCR pipelines, custom-data detector trainings. If you learn by building, the highest-ROI paid course in CV. Within 30 days you can have a working OCR app, a face-recognition door cam, and a custom detector — all three.
+- **Why relevant.** The most project-driven CV resource on the internet. Every lesson ends with code the team can drop into a client service: license-plate readers, document scanners, face-recognition systems, OCR pipelines, custom-data detector trainings. If the team learns by building, the highest-ROI paid course in CV. Within 30 days the team has a working OCR app, a face-recognition door cam, and a custom detector — all three adaptable for client demos.
 
 ### 11. LearnOpenCV Courses - OpenCV University (Satya Mallick)
 
 - **Link:** https://opencv.org/university/
 - **Length:** Course-by-course; 4-12 weeks each.
 - **Cost:** $500-1500 depending on bundle (frequent sales).
-- **Why relevant.** Run by the OpenCV maintainers themselves. "Computer Vision I: Introduction" and "Deep Learning with PyTorch" tracks both end in deployable projects. The instructors maintain the library you'll use every day, and the OpenCV-backed certificate carries weight with hiring managers. The OpenCV API is huge and inconsistent; this is the closest thing to a guided tour.
+- **Why relevant.** Run by the OpenCV maintainers themselves. "Computer Vision I: Introduction" and "Deep Learning with PyTorch" tracks both end in deployable projects. The instructors maintain the library the team uses every day. The OpenCV API is huge and inconsistent; this is the closest thing to a guided tour.
 
 ### 12. Udacity Self-Driving Car Engineer Nanodegree
 
 - **Link:** https://www.udacity.com/course/self-driving-car-engineer-nanodegree--nd013
 - **Length:** ~6 months.
 - **Cost:** $399/month (often discounted).
-- **Why relevant.** The most project-driven program for AV perception specifically. Projects: lane detection, traffic-sign classifier, behavioral cloning, advanced lane finding, sensor fusion (Kalman filter), localization, path planning, and a system-integration capstone on a real Lincoln MKZ via Carla. If your goal is Waymo / Cruise / Zoox, the most direct paid path. Reviewers grade your code; you can cite the projects directly on your resume.
+- **Why relevant.** The most project-driven program for AV perception specifically. Projects: lane detection, traffic-sign classifier, behavioral cloning, advanced lane finding, sensor fusion (Kalman filter), localization, path planning, and a system-integration capstone on a real Lincoln MKZ via Carla. If the team plans to take on AV-adjacent client work, the most direct paid path. Reviewers grade the code; the projects become adaptable internal reference builds the team can show prospective customers.
 
 ### 13. Roboflow Notebooks and YouTube Series
 
 - **Link:** https://github.com/roboflow/notebooks (notebooks), https://www.youtube.com/@Roboflow (videos)
 - **Length:** Per-tutorial 30 min - 3 hours.
 - **Cost:** Free.
-- **Why relevant.** Ready-to-run Colab notebooks for every major perception model (YOLO v8/v11, RT-DETR, SAM 2, Florence-2, PaliGemma). Each is end-to-end: load data, fine-tune, evaluate, export to ONNX. Pair with Roboflow Universe (free datasets) and you can ship a new detector or segmenter every weekend. The difference between a junior who needs three days to fine-tune a model and one who does it in three hours is usually just Roboflow notebook familiarity.
+- **Why relevant.** Ready-to-run Colab notebooks for every major perception model (YOLO v8/v11, RT-DETR, SAM 2, Florence-2, PaliGemma). Each is end-to-end: load data, fine-tune, evaluate, export to ONNX. Pair with Roboflow Universe (free datasets) and the team can ship a new detector or segmenter every weekend. The difference between a teammate who needs three days to fine-tune a model on a client dataset and one who does it in three hours is usually just Roboflow notebook familiarity.
 
 ### 14. Zero to Mastery - PyTorch for Deep Learning
 
@@ -223,7 +223,7 @@ The courses above teach the what and why of perception. These push you through b
 - **Link:** https://www.kaggle.com/learn/computer-vision
 - **Length:** ~6 hours micro-course; competitions extend indefinitely.
 - **Cost:** Free.
-- **Why relevant.** The course is intentionally small; the real value is entering Kaggle's vision competitions (classification, segmentation, detection) and reading the winning notebooks. Builds the muscle of reading and ruthlessly adapting other people's high-performance code — the actual daily activity of most CV engineers. A few Expert-tier finishes punch above a CS degree on a junior resume.
+- **Why relevant.** The course is intentionally small; the real value is entering Kaggle's vision competitions (classification, segmentation, detection) and reading the winning notebooks. Builds the muscle of reading and ruthlessly adapting other people's high-performance code — the actual daily activity for the team when a client dataset lands. A few Expert-tier finishes give the team concrete proof points to cite in pitches.
 
 ### 16. NVIDIA DLI - "Getting Started with DeepStream for Video Analytics"
 
@@ -241,7 +241,7 @@ The courses above teach the what and why of perception. These push you through b
 - **Link:** https://www.udacity.com/course/computer-vision-nanodegree--nd891
 - **Length:** ~3 months.
 - **Cost:** $399/month (often discounted).
-- **Why relevant.** Structured program with reviewed projects. Capstones (landmark detection, image captioning, facial-keypoint detection) are reasonable resume artifacts if you don't have an academic background. Worth the cost only if structured curriculum and mentor reviews matter to you.
+- **Why relevant.** Structured program with reviewed projects. Capstones (landmark detection, image captioning, facial-keypoint detection) are reasonable internal reference builds the team can adapt for client demos. Worth the cost only if structured curriculum and mentor reviews matter to the team.
 
 ### LinkedIn Learning: "Building Computer Vision Applications with Python" - Eduardo Corpeño
 
@@ -317,6 +317,6 @@ A realistic timeline if you're a working web dev keeping your day job. Total bud
 - **Months 1-3 - Stack 0 basics.** ~6 hrs/week. Math refreshers, Python / NumPy, 3Blue1Brown. ~75 hours.
 - **Months 4-9 - Stacks 1 + 2 (classical and deep CV).** ~8 hrs/week. CS231A + CS231n in parallel (or sequence), with one Roboflow / Hugging Face notebook per fortnight. ~200 hours.
 - **Months 10-15 - Stacks 3 + 4 (robotics-specific and project-driven).** ~10 hrs/week. U Toronto SDC, Stachniss SLAM, NVIDIA DLI, ROS2 in 5 Days, and one PyImageSearch / Roboflow project per month. ~260 hours.
-- **Months 16-24 - portfolio project + job apps in parallel.** ~10 hrs/week. One publicly-deployed project that takes 2-3 months (visual SLAM on phone video packaged as a web app; or a Jetson-deployed detector for a real customer-shaped problem). Remainder: interview prep, networking, open-source contributions. ~360 hours.
+- **Months 16-24 - team capability rollout.** ~10 hrs/week. Ship one publicly-deployed reference project that takes 2-3 months (visual SLAM on phone video packaged as a web app; or a Jetson-deployed detector for a real customer-shaped problem). Remainder: open-source contributions and writing case studies for the sales pipeline. ~360 hours.
 
-Total ~895 hours over 24 months, leaving ~100 hours of slack. You can compress to 12-15 months if aggressive, but quality of portfolio matters more than speed of arrival.
+Total ~895 hours over 24 months, leaving ~100 hours of slack. The team can compress to 12-15 months if aggressive, but quality of the reference builds matters more than speed of arrival.

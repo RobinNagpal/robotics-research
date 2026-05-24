@@ -1,9 +1,11 @@
-# How to Get Started
+# How the Team Ramps on VLA
 
-A concrete 8-week plan. The goal isn't to read everything — it's to
-ship a working policy you can demo, end to end, by the end. Treat it
-like learning a new web framework: build a toy project first, then go
-back and read the docs that suddenly make sense.
+A concrete 8-week plan our team works through to build VLA delivery
+capability. The goal isn't to read everything — it's to ship a
+working policy the team can demo end to end, both as an internal
+reference build and as a credibility-anchor demo for client pitches.
+Treat it like learning a new web framework: build a toy project
+first, then go back and read the docs that suddenly make sense.
 
 ## Prerequisites (1 week, can overlap with Week 1)
 
@@ -65,18 +67,25 @@ Goal: see your policy control something.
 **Path B (real hardware):** if you have or rent an arm, deploy it.
 Cheap options below.
 
-## Weeks 5-8: Build one substantial project
+## Weeks 5-8: Ship one substantial internal reference build
 
-Pick something you'd want to put on a portfolio. Some ideas:
+Pick something the shop can keep as an internal reference and reuse
+as a credibility-anchor demo when pitching VLA work to clients.
+Some patterns we've found land well in sales conversations:
 
-- A LeRobot fine-tune for one specific task with a clean repo, demo
-  video, and a HF model card.
+- A LeRobot fine-tune for one specific task with a clean internal
+  repo, demo video, and a HF model card we can show to prospective
+  clients.
 - A "VLA inference server" that wraps OpenVLA in a FastAPI app —
   POST an image + instruction, get back actions. Add streaming.
+  Doubles as the deployment template we reuse across engagements.
 - A benchmark dashboard that runs LIBERO on every commit (CI for
-  policies). Easy to demo.
-- A small dataset you collected yourself with an SO-100 arm, uploaded
+  policies). Easy to walk a client through; also the eval harness
+  we ship inside client repos.
+- A small dataset the team collected with an SO-100 arm, uploaded
   to Hugging Face Datasets, with a baseline policy trained on it.
+  Useful as a teleop-pipeline reference for clients who haven't
+  collected demonstrations before.
 
 ## Datasets you should know by name
 

@@ -102,9 +102,10 @@ Goal: train without RL.
   reason.
 - Read **DiffMimic** / Brax differentiable-control examples.
 
-## Week 7-8: Build one substantial portfolio project
+## Week 7-8: Build one substantial reference project
 
-Pick something you'd put on your resume. Some ideas:
+Pick something the team can show as a credibility-anchor in client
+pitches. Some ideas:
 
 - **A procedural warehouse generator.** Python tool that takes a
   CAD floor plan and emits 100s of randomized USD scenes
@@ -117,8 +118,10 @@ Pick something you'd put on your resume. Some ideas:
   it, compare to real-data training.
 - **An Isaac Lab task as an open-source repo + W&B run.** Pick
   something not in Isaac Lab's stock examples (e.g., bimanual
-  insertion, peg-hole). This is the most-requested portfolio
-  artifact by NVIDIA recruiters.
+  insertion, peg-hole). This is exactly the kind of artifact
+  recognized by NVIDIA Inception evaluators and the Omniverse
+  partner team when we apply for partner status; it also doubles
+  as a pitch reference for customer conversations.
 
 ## Datasets / benchmarks worth knowing
 

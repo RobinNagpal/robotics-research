@@ -1,26 +1,27 @@
 # Courses for Simulation & Digital Twins
 
-A curated list of online courses that map directly to the skills you
-need to ship a simulation or digital-twin project. Listed roughly in
-the order a junior web developer should take them. All links go to
-the official course page; many are free to audit or have free YouTube
-uploads.
+A curated list of online courses that map directly to the skills our
+team needs to ship a simulation or digital-twin project for a
+customer. Listed roughly in the order a team member ramping from
+general software should take them. All links go to the official
+course page; many are free to audit or have free YouTube uploads.
 
 A note on choosing: sim / digital-twin work spans five skill stacks
-— (0) absolute basics if you're brand new, (1) reinforcement learning
-(the main payload that lives inside sim), (2) robotics fundamentals
-(kinematics, dynamics, ROS), (3) the NVIDIA Isaac / Omniverse stack
-specifically, and (4) project-driven courses where you build a
-simulated robot end-to-end. Pick at least one from each stack you
-don't already know.
+— (0) absolute basics for new hires without a CS background, (1)
+reinforcement learning (the main payload that lives inside sim),
+(2) robotics fundamentals (kinematics, dynamics, ROS), (3) the
+NVIDIA Isaac / Omniverse stack specifically, and (4) project-driven
+courses where the team builds a simulated robot end-to-end and
+keeps the artifact as a reusable internal asset. Each team member
+picks at least one from each stack they don't already know.
 
 ---
 
-## Stack 0: Foundational basics (skip if you already have a CS degree)
+## Stack 0: Foundational basics (skip if the team member already has a CS background)
 
-These are the prereqs every later course assumes. If you're a working
-web dev, you already have the Python side; you may still want the
-math refreshers.
+These are the prereqs every later course assumes. Team members
+joining from a working-software background usually have the Python
+side; the math refreshers are still useful.
 
 ### A. Python for Everybody Specialization — University of Michigan (Charles Severance) on Coursera
 
@@ -173,9 +174,10 @@ math refreshers.
 - **Why this is 100% relevant.** NVIDIA's official training for
   the exact stack the industry pays for: Isaac Sim, Isaac Lab,
   Omniverse Kit, Replicator (synthetic data), and the new Cosmos
-  world-foundation-models. As of 2025 NVIDIA has aggressive Isaac /
-  Omniverse hiring; DLI certificates on your resume are a directly
-  recognized signal to NVIDIA recruiters.
+  world-foundation-models. DLI certificates are recognized
+  credentials when we apply for NVIDIA Inception, pursue Omniverse
+  Solution Partner status, and put expertise badges on customer
+  pitches.
 
 ### 8. Pixar's OpenUSD Tutorials / NVIDIA "Learn OpenUSD" Path
 
@@ -207,8 +209,10 @@ math refreshers.
 ## Stack 4: Project-driven / hands-on courses (where you actually ship something)
 
 The courses above teach the *what* and *why* of simulation. The
-courses below push you through building real systems end-to-end —
-the kind of artifacts that become portfolio pieces or paid projects.
+courses below push the team through building real systems
+end-to-end — the kind of artifacts that become reusable internal
+reference work, partner-program application material, or the
+backbone of paid customer projects.
 
 ### 10. The Construct — ROS2 Basics in 5 Days + URDF for Robot Modeling + Mastering Gazebo
 
@@ -234,7 +238,8 @@ the kind of artifacts that become portfolio pieces or paid projects.
   robot (mapping + localization + navigation), build a robotic
   arm pick-and-place, build a Map-My-World SLAM project, and a
   deep-learning capstone. Pricey, but the project list maps
-  exactly onto entry-level sim-engineering interview questions.
+  exactly onto the entry-level sim-engineering capabilities we
+  need the team to deliver on customer work.
 
 ### 12. Robotics Back-End (Edouard Renard) on Udemy — ROS2 For Beginners, Modern Robotics with ROS2
 
@@ -259,23 +264,27 @@ the kind of artifacts that become portfolio pieces or paid projects.
 - **Why this is 100% relevant.** NVIDIA's official hands-on labs
   build a complete sim scene, attach a robot, run a perception
   pipeline, and trigger an RL policy — all inside Isaac Sim. After
-  reading the docs, this is the fastest path to "I've made a robot
-  do something useful in Isaac Sim." DLI completion certificates
-  are recognized by NVIDIA recruiters directly.
+  reading the docs, this is the fastest path to "the team can make
+  a robot do something useful in Isaac Sim." DLI completion
+  certificates count as recognized credentials in NVIDIA Inception
+  applications, Omniverse partner status reviews, and customer
+  pitch decks.
 
 ### 14. Hugging Face Deep RL Course (project-driven side)
 
 - **Link:** https://huggingface.co/learn/deep-rl-course
 - **Length:** 8 units, ~30 hours.
 - **Cost:** Free.
-- **Why this is 100% relevant.** Each unit ends with you training
-  an agent in a real environment (Lunar Lander, Frozen Lake, Pong,
-  Unity ML-Agents Pyramid, etc.) and uploading it to the Hugging
-  Face Hub. By the end you have **8 trained policies on your
-  HF profile** — a tangible portfolio of "I can drive RL inside a
-  simulator." This dual-listing (also in Stack 1) is intentional:
-  it's both the gentlest RL intro and one of the most concretely
-  project-driven courses on this list.
+- **Why this is 100% relevant.** Each unit ends with the trainee
+  training an agent in a real environment (Lunar Lander, Frozen
+  Lake, Pong, Unity ML-Agents Pyramid, etc.) and uploading it to
+  the Hugging Face Hub. By the end the team has **8 trained
+  policies under the shop's HF org** — a tangible internal
+  reference set of "we can drive RL inside a simulator" that we
+  point customers and partner-program reviewers at. This dual-
+  listing (also in Stack 1) is intentional: it's both the gentlest
+  RL intro and one of the most concretely project-driven courses
+  on this list.
 
 ### 15. CARLA Autonomous Driving Tutorials and Hands-On Labs
 
@@ -300,8 +309,9 @@ the kind of artifacts that become portfolio pieces or paid projects.
 - **Why this is 100% relevant.** While not sim-specific, FSDL
   teaches *shipping* an ML system end-to-end — data, training
   infra, deployment, monitoring, testing. The exact production
-  muscle that sim-engineering customers (Applied Intuition, NVIDIA
-  Isaac team, humanoid startups) want from a Sim Software Engineer.
+  muscle our customers expect when we deliver a sim or twin: it
+  has to run, be monitored, and survive handoff, not just train
+  to a metric on someone's laptop.
 
 ### 17. Sentdex YouTube — Self-Driving Cars in CARLA + GTA V + AI Series
 
@@ -347,6 +357,7 @@ the kind of artifacts that become portfolio pieces or paid projects.
 - **Length:** ~4 months.
 - **Cost:** $399/month.
 - **Why this is relevant.** Project-heavy curriculum centered on
-  **Gazebo** and ROS — useful if you'd rather learn ROS2 + sim in a
-  structured, reviewed format. Pricier than the free alternatives
-  but the project portfolio at the end is hireable.
+  **Gazebo** and ROS — useful when a team member prefers structured,
+  reviewed ROS2 + sim training over the free alternatives. Pricier,
+  but the project portfolio at the end is shippable as customer-
+  facing reference work.

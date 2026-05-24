@@ -1,15 +1,17 @@
 # Courses for Robot Learning & Foundation Models (VLA)
 
-A curated list of online courses that map directly to the skills you
-need to ship a VLA project. Listed roughly in the order a junior web
-developer should take them. All links go to the official course page;
-many of them are free to audit or have free YouTube uploads.
+A curated list of online courses that map directly to the skills
+the team needs to deliver VLA client work. Listed roughly in the
+order someone ramping from a web / generalist eng background should
+take them. All links go to the official course page; many are free
+to audit or have free YouTube uploads.
 
-A note on choosing: VLA work demands five skill stacks — (0) absolute
-basics if you're brand new, (1) deep learning fundamentals, (2)
-reinforcement and imitation learning, (3) robotics-specific topics,
-and (4) project-driven courses where you actually build and ship
-something. Pick at least one from each stack you don't already know.
+A note on choosing: VLA delivery demands five skill stacks — (0)
+absolute basics for team members who are brand new, (1) deep
+learning fundamentals, (2) reinforcement and imitation learning,
+(3) robotics-specific topics, and (4) project-driven courses where
+the team actually builds and ships internal reference systems. The
+team picks at least one from each stack they don't already know.
 
 ---
 
@@ -138,9 +140,10 @@ math refreshers.
 - **Why this is 100% relevant.** A gentler on-ramp than CS285,
   taught by Adam White and Martha White (authors of *Reinforcement
   Learning: An Introduction* with Sutton and Barto — the canonical
-  textbook). Knowing RL adds **+33% to robotics salary** per the
-  2025 Robotics Salary Guide; this specialization is the lowest-
-  friction way to put "RL" credibly on your resume.
+  textbook). RL skills carry a **+33% premium** in the 2025
+  Robotics Salary Guide, which tracks with the higher rates VLA
+  client work commands; this specialization is the lowest-friction
+  credible path for the team to learn RL fundamentals.
 
 ### 6. Hugging Face Deep RL Course
 
@@ -199,9 +202,11 @@ math refreshers.
 
 ## Stack 4: Project-driven / hands-on courses (where you actually ship something)
 
-The courses above teach you the *what* and *why*. The courses below
-push you through building real systems end-to-end — the kind of thing
-that becomes a portfolio piece or a paid project.
+The courses above teach the *what* and *why*. The courses below
+push the team through building real systems end-to-end — the kind
+of work that becomes an internal reference build, a credibility-
+anchor demo for client pitches, or the scaffolding for a paid
+engagement.
 
 ### 12. Hugging Face LeRobot Tutorials and Community Course
 
@@ -212,9 +217,11 @@ that becomes a portfolio piece or a paid project.
 - **Why this is 100% relevant.** This is *the* hands-on course for
   VLA work specifically. You'll record your own teleoperation data
   on an SO-100 arm (or load BridgeData/DROID), fine-tune Diffusion
-  Policy / ACT / OpenVLA on it, and deploy. By the end you have a
-  real working policy, a Hugging Face model card, and a video. This
-  exact artifact is what gets you a Research Engineer interview.
+  Policy / ACT / OpenVLA on it, and deploy. By the end the team has
+  a real working policy, a Hugging Face model card, and a video.
+  This exact artifact is the credibility-anchor demo we show in
+  client pitches to prove the shop can deliver an end-to-end VLA
+  fine-tune.
 
 ### 13. Hugging Face Agents Course
 
@@ -236,8 +243,8 @@ that becomes a portfolio piece or a paid project.
   ex-students; the only course that covers *shipping* an ML model
   end-to-end — data labeling, training infra, deployment, monitoring,
   testing. The exact skills that turn a fine-tuned VLA into a
-  product you can sell. The capstone project is the headline
-  artifact.
+  client deliverable the shop can stand behind. The capstone
+  project becomes another internal reference build.
 
 ### 15. Made With ML — Goku Mohandas
 
@@ -246,9 +253,10 @@ that becomes a portfolio piece or a paid project.
 - **Cost:** Free.
 - **Why this is 100% relevant.** End-to-end MLOps course built
   around a single ongoing project. You'll write tests, set up CI,
-  containerize, deploy, monitor — the production muscle that VLA
-  startups want from a Research Engineer hire. Pairs perfectly with
-  your existing web-dev background.
+  containerize, deploy, monitor — the production muscle the team
+  needs to ship VLA work as a real customer deliverable rather
+  than a research artifact. Pairs perfectly with the team's
+  existing web / generalist eng background.
 
 ### 16. fast.ai Practical Deep Learning for Coders (Part 2: From Deep Learning Foundations to Stable Diffusion)
 
@@ -271,7 +279,9 @@ that becomes a portfolio piece or a paid project.
   agent to navigate a banana-collection environment (DQN), train
   a continuous-control robotic arm (DDPG), and train multi-agent
   tennis players (MADDPG). Reviewed projects + mentor feedback.
-  The price is steep but the deliverables are portfolio-grade.
+  The price is steep but the deliverables are demo-grade — usable
+  as internal reference builds and as material for client-facing
+  case studies.
 
 ### 18. NVIDIA DLI — "Getting Started with AI on Jetson Nano" / Jetson hands-on labs
 
