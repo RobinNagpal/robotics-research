@@ -56,61 +56,282 @@ constraints:
 
 ### Coordinate frames: the part nobody warned you about
 
-Every sensor, joint, and object has its own coordinate frame. The
-camera thinks "+Z forward, +X right, +Y down" (OpenCV); ROS thinks
+A *coordinate frame* is just an origin point plus three axes (X, Y, Z).
+The same physical point in space gets different numerical coordinates
+depending on which frame you describe it in. "The mug is at
+(1.2, 0.3, 0.8)" is meaningless unless you also say "in the robot's
+base frame" or "in the camera frame" or "in the world frame."
+
+Every sensor, joint, and object has its own frame. The camera thinks
+"+Z forward, +X right, +Y down" (OpenCV's convention); ROS thinks
 "+X forward, +Y left, +Z up"; the arm base has its own; the world
-has yet another. You will spend an embarrassing amount of your
-first year converting between them. The `tf2` transform tree lets
-you ask "give me the transform from `base_link` to
-`camera_color_optical_frame` as of timestamp T." Common bug-class:
-forgetting to wait for a transform to become available at startup.
+has yet another. A *transform* is the 4×4 matrix that converts a
+point from one frame to another.
+
+The `tf2` library tracks every frame on the robot in a tree
+(`world` → `base_link` → `arm_link_1` → ... → `camera_color_optical_frame`)
+and lets you ask "give me the transform from `base_link` to
+`camera_color_optical_frame` as of timestamp T." It does the matrix
+multiplications down the tree for you.
+
+You will spend an embarrassing amount of your first year converting
+between frames. Two common bug-classes: forgetting to wait for a
+transform to become available at startup (your first query returns
+garbage); and silently mixing two different conventions (a 90°
+rotation between OpenCV and ROS frames produces sideways detections
+that look almost right but are completely wrong).
 
 ### The four canonical perception sub-problems
 
 Almost every robotics perception task is one of these four, or a
-combination:
+combination of them. Here is each one in plain English, with what
+goes in and what comes out.
 
-1. **Detection / segmentation** — what objects are in this image,
-   and which pixels belong to each. (YOLO, DETR, SAM 2, Mask2Former.)
-   - *Example:* a warehouse robot looks at a shelf; the detector
-     returns `{bbox, mask, label, confidence}` per item. The mask
-     is a per-pixel boolean telling the grasp planner which pixels
-     are "this box" vs "shelf behind it."
-   - *Try locally:* `pip install ultralytics` then
-     `from ultralytics import YOLO; m = YOLO("yolov8n.pt"); m("img.jpg")`.
-   - *Hugging Face entry:* `facebook/sam2-hiera-large` via
-     `transformers.Sam2Model.from_pretrained(...)`.
-2. **6-DoF pose estimation** — where is this specific object in 3D
-   space, and how is it rotated. (FoundationPose, MegaPose.) Core
-   problem for grasping.
-   - *Example:* given an RGB-D crop of a power drill and its CAD
-     mesh, the model returns a 4x4 transform `T_camera_drill`. The
-     grasp planner transforms its pre-computed "how to grip a drill"
-     poses into the camera frame.
-   - *Try locally:* `git clone https://github.com/NVlabs/FoundationPose`
-     and follow the conda env. No `pip install` shortcut yet —
-     research code.
-3. **Depth and 3D reconstruction** — how far is each pixel, and what
-   does the 3D scene look like. (Depth-Anything, NeRF, Gaussian
-   Splatting, COLMAP.)
-   - *Example:* a drone flies over a vineyard taking 200 overlapping
-     photos; COLMAP estimates each camera pose and reconstructs a
-     dense point cloud used to count grape clusters.
-   - *Try locally:* `pip install transformers` then
-     `from transformers import pipeline; depth = pipeline(task="depth-estimation", model="depth-anything/Depth-Anything-V2-Small-hf")`.
-4. **SLAM (Simultaneous Localization and Mapping)** — given a moving
-   camera, where am I, and what does the map look like. (ORB-SLAM3,
-   VINS-Fusion, DROID-SLAM.) The GPS + cartographer for indoor robots.
-   - *Example:* a Roomba-like robot enters a new apartment;
-     visual-inertial SLAM builds an occupancy map as it drives while
-     estimating its own pose to a few centimeters, so it can return
-     to the dock.
-   - *Try locally:* SLAM is mostly C++. Clone
-     `https://github.com/UZ-SLAMLab/ORB_SLAM3`, build with CMake
-     against OpenCV + Pangolin + Eigen. Python-friendly option:
-     `git clone https://github.com/princeton-vl/DROID-SLAM`.
+---
 
-Most real pipelines use 2-3 of these together.
+#### 1. Detection and segmentation — "what is in the picture, and which pixels are it"
+
+**Plain-English definition.** Look at a 2D image and find every
+object of interest in it. *Detection* draws a rectangle (a "bounding
+box") around each object and labels it. *Segmentation* goes further
+and tells you exactly which pixels belong to which object.
+
+Two flavors of segmentation worth distinguishing:
+
+- **Semantic segmentation** labels every pixel by class ("road",
+  "pedestrian", "sky"). It does not separate one pedestrian from
+  another — they are all just "pedestrian pixels."
+- **Instance segmentation** separates two of the same thing. This
+  is *pedestrian #1*, that is *pedestrian #2*, each with its own
+  mask. This is what a robot usually needs (you grasp one specific
+  cup, not "the cup pixels in general").
+
+**Why a robot needs it.** Before a robot can pick up a cup it has
+to know which pixels in the camera image are "cup" and which are
+"table" or "background." Without that, the grasp planner has no
+surface to aim for.
+
+**Inputs and outputs.**
+
+- *Input:* one RGB image, shape `H × W × 3` (height × width × 3
+  color channels).
+- *Output:* a list of detections. Each detection has a class label
+  ("cup"), a confidence score from 0 to 1, a bounding box (4
+  numbers: x, y, width, height in pixels), and optionally a mask
+  (an `H × W` boolean array where `True` means "this pixel is part
+  of this object").
+
+**Concrete example.** A warehouse robot looks at a shelf. The
+detector returns something like
+`[{label: "box", conf: 0.98, bbox: [120, 80, 200, 150], mask: <H×W bool array>}, ...]`
+— one entry per item on the shelf. The mask tells the grasp planner
+exactly which pixels are "this box" vs. "the shelf behind it."
+
+**Models worth knowing.** YOLO v8 / v11 (fast, fine-tune on your own
+data), DETR (transformer-based detection), Mask2Former (segmentation),
+SAM 2 (Meta's universal "click a point, get a mask" model).
+
+**Try it locally.**
+
+```bash
+pip install ultralytics
+```
+```python
+from ultralytics import YOLO
+model = YOLO("yolov8n.pt")        # downloads ~6 MB the first time
+results = model("my_photo.jpg")
+results[0].show()                 # opens the image with boxes drawn
+```
+
+For SAM 2 via Hugging Face, load `facebook/sam2-hiera-large` with
+`transformers.Sam2Model.from_pretrained(...)`.
+
+---
+
+#### 2. 6-DoF pose estimation — "where in 3D is this object, and which way is it facing"
+
+**Plain-English definition.** Given an image of a known object (a
+power drill, a specific bracket, a SKU), figure out exactly where it
+sits in 3D space *and* how it is rotated.
+
+**What "6-DoF" means.** Six Degrees of Freedom — three numbers for
+position (x, y, z, in meters) and three for orientation (roll,
+pitch, yaw — the rotation around each axis). Together they fully
+describe "where the object is and how it is oriented" in 3D.
+
+**Why a robot needs it.** To grasp something, the gripper has to
+approach from the right angle. "The cup is somewhere in front of me"
+is not enough; you need "the cup's handle is 25 cm forward, 5 cm to
+the left, at table height, tilted 30° to the right." The inverse-
+kinematics solver that drives the arm wants exactly one target pose
+to plan toward.
+
+**Inputs and outputs.**
+
+- *Input:* an RGB or RGB-D image, plus (usually) a CAD mesh of the
+  object you are looking for.
+- *Output:* a single 4×4 transform matrix, written `T_camera_object`.
+  This matrix mathematically describes "to convert any point that
+  is expressed in the object's coordinate frame into the camera's
+  coordinate frame, multiply it by this matrix." The matrix packs
+  rotation (its top-left 3×3 block) and translation (its rightmost
+  3×1 column) into one tidy object.
+
+**Concrete example.** A robot arm needs to pick up a power drill.
+The camera sees the drill at frame K. FoundationPose returns
+`T_camera_drill`. The grasp planner already knows, in the drill's
+own local frame, that the handle is at point `(-0.05, 0, 0.10)`.
+Multiplying that point by `T_camera_drill` turns it into a 3D
+location in the camera's frame. The arm controller then drives the
+gripper there.
+
+**Models worth knowing.** FoundationPose (NVIDIA, 2024 — the current
+default; works on novel objects given only a CAD model), MegaPose
+(2022), GigaPose, FFB6D (older, learned per-object).
+
+**Try it locally.** FoundationPose has no `pip install` shortcut —
+it's research code. Clone and follow the conda environment:
+
+```bash
+git clone https://github.com/NVlabs/FoundationPose
+```
+
+---
+
+#### 3. Depth and 3D reconstruction — "how far is everything, and what does the room look like in 3D"
+
+This is really two related-but-distinct problems. Both produce 3D
+information from images, but at different time scales.
+
+##### 3a. Depth estimation (real-time, per-frame)
+
+**Plain-English definition.** Take a single image and predict the
+distance from the camera to whatever surface is visible at each
+pixel.
+
+**Inputs and outputs.**
+
+- *Input:* one RGB image, shape `H × W × 3`.
+- *Output:* one depth map, shape `H × W`, where each value is the
+  distance in meters. A pixel value of `5.2` means "the surface
+  visible at this pixel is 5.2 m from the camera."
+
+**Why a robot needs it.** Depth tells the robot what is reachable,
+what is an obstacle, and how to plan a collision-free path. Many
+depth-camera sensors (Intel RealSense, Orbbec, iPhone LiDAR) give
+this directly. When you only have a regular RGB camera, a neural
+net like Depth-Anything v2 predicts it.
+
+**Try it locally.**
+
+```python
+from transformers import pipeline
+depth = pipeline(
+    task="depth-estimation",
+    model="depth-anything/Depth-Anything-V2-Small-hf",
+)
+out = depth("my_photo.jpg")
+out["depth"].save("depth.png")     # grayscale: brighter = closer
+```
+
+##### 3b. 3D reconstruction (offline, from many images)
+
+**Plain-English definition.** Given a bunch of overlapping photos of
+the same scene from different angles, figure out (a) where each
+photo was taken from, and (b) build a 3D model of the scene (point
+cloud, mesh, NeRF, or Gaussian splat).
+
+**Inputs and outputs.**
+
+- *Input:* N overlapping RGB images, typically 20-200.
+- *Output:* N camera poses (one 4×4 transform per photo, saying
+  where the camera was when it took that photo) plus a 3D model of
+  the scene. The model is usually a point cloud — a list of
+  millions of 3D points with colors — or a Gaussian splat.
+
+**Why a robot needs it.** This is how you build a digital twin of a
+customer's warehouse for simulation training, how a drone team
+turns a vineyard flyover into a 3D crop-yield model, or how an AR
+app reconstructs your living room.
+
+**Concrete example.** A drone flies over a vineyard taking 200
+overlapping photos. COLMAP estimates each camera pose and
+reconstructs a dense point cloud, which is then used to count
+grape clusters and predict yield.
+
+**Tools worth knowing.** COLMAP and glomap (classical structure-
+from-motion, the workhorse tools), Nerfstudio (NeRF training),
+gsplat / Nerfstudio's `splatfacto` (Gaussian Splatting — the
+current default for photoreal output), VGGT (2025, feed-forward
+transformer that skips the optimization step).
+
+---
+
+#### 4. SLAM — "where am I, and what does the world look like, both at the same time"
+
+**Plain-English definition.** While a robot is moving, two questions
+need to be answered together: "where am I right now?" and "what
+does the world around me look like?" *SLAM* (Simultaneous
+Localization and Mapping) solves both at the same time, from a
+stream of camera (and usually IMU) data.
+
+**Why it is hard.** A robot indoors has no GPS. The only data is the
+moving camera. The catch is circular: knowing where you are needs a
+map, and building a map needs to know where you are. SLAM breaks
+this chicken-and-egg by keeping both estimates and continually
+refining them together with an optimization called *bundle
+adjustment*.
+
+**Why a robot needs it.** A Roomba maps your apartment. A delivery
+robot localizes on an existing map. A drone needs to know if it has
+drifted from its planned path. Vision Pro keeps your virtual
+monitors fixed in space while you walk around.
+
+**Inputs and outputs.**
+
+- *Input:* a continuous stream of camera images, usually plus IMU
+  data (200 Hz accelerometer + gyroscope readings).
+- *Output (updated every frame):* (a) the robot's current pose as a
+  4×4 transform from world frame to robot frame, and (b) a map —
+  usually a sparse 3D point cloud of "landmarks" the SLAM system
+  has recognized and can re-find later.
+
+**Related but lighter problems.**
+
+- *Visual Odometry (VO):* the "where am I" part only. No reusable
+  map.
+- *Visual-Inertial Odometry (VIO):* VO plus IMU fusion. The
+  workhorse for fast-moving robots like drones.
+- *Full SLAM:* VO + a map you can come back to and *re-localize*
+  against later.
+
+**Concrete example.** A Roomba-like robot enters a new apartment.
+Visual-inertial SLAM builds an occupancy map as it drives while
+estimating its own pose to a few centimeters, so it can return to
+the dock when the battery is low.
+
+**Tools worth knowing.** ORB-SLAM3 (the canonical C++ classical
+implementation), VINS-Fusion (visual-inertial), DROID-SLAM (modern
+learned), Spectacular AI (commercial, easy SDK).
+
+**Try it locally.** SLAM is mostly C++. Clone and build with CMake
+against OpenCV + Pangolin + Eigen:
+
+```bash
+git clone https://github.com/UZ-SLAMLab/ORB_SLAM3
+```
+
+Python-friendly option:
+
+```bash
+git clone https://github.com/princeton-vl/DROID-SLAM
+```
+
+---
+
+Most real pipelines combine 2-3 of these. A warehouse arm uses
+**detection + 6-DoF pose**. A drone uses **SLAM + depth**. An AV
+uses **all four**.
 
 ### Why this is one of the most reliable robotics specialties
 
