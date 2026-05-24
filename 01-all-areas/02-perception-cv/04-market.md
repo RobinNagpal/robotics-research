@@ -17,7 +17,7 @@ papers, half are from teams listed here. This is our shared map of
 the landscape.
 
 See also: `01-examples.md` (deployed products and papers),
-`05-projects.md` (what we sell), `06-courses.md` (where our team
+`05-projects/` (what we sell), `06-courses.md` (where our team
 learns from), `00-basics.md` (three concrete agency project
 patterns).
 

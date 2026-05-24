@@ -5,7 +5,7 @@ the names so the rest of the material has hooks to land on.
 
 Cross-references: `00-basics.md` for vocabulary, `02-learn.md` for the
 learning path, `03-start.md` for setup, `04-market.md` for the
-company list, `05-projects.md` for portfolio ideas, `06-courses.md`
+company list, `05-projects/` for portfolio ideas, `06-courses.md`
 for structured learning.
 
 ## Deployed products (real-world perception running today)

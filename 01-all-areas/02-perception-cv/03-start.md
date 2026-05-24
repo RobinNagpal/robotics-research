@@ -10,7 +10,7 @@ visualize every intermediate output — `rerun` and `rviz2` are your
 
 Background reading: `00-basics.md` (field map), `01-examples.md`
 (working demos), `02-learn.md` (textbooks and courses),
-`05-projects.md` (portfolio inspiration), `06-courses.md`
+`05-projects/` (portfolio inspiration), `06-courses.md`
 (structured-curriculum option).
 
 ## Prerequisites (1 week, can overlap with Week 1)
