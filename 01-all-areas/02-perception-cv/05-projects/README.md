@@ -6,7 +6,7 @@ teaches a layer of perception you'll reuse in the next.
 
 | # | Project | Timeline | Core idea | Difficulty |
 |---|---------|----------|-----------|------------|
-| [01](01-visual-inspection.md) | Visual defect inspection service | 3-4 weeks | 2D anomaly detection — image in, good/bad out | Simple |
+| [01](01-visual-inspection.md) | Rental unit condition & damage inspection | 3-4 weeks | 2D anomaly detection — photo in, damage/no-damage out | Simple |
 | [02](02-pose-estimation-api.md) | 6-DoF pose-estimation API | 4-5 weeks | 3D pose from RGB-D + a CAD model | Medium |
 | [03](03-phone-scan-digital-twin.md) | Phone-scan to robot-ready 3D twin | 5-6 weeks | Full 3D reconstruction pipeline → USD/URDF | Complex |
 
@@ -60,15 +60,17 @@ on discovery first is also what signals "consultancy" rather than
 3. **Line-item recurring revenue separately from setup.** Customers
    accept clearly named recurring fees ("re-training subscription,"
    "support retainer") but resent fees buried in setup.
-4. **Anchor against the incumbents** — Cognex, Keyence, Matterport,
-   Polycam. Hedge ("comparable industrial vision starts in the
-   $40-80k range") rather than quoting unpublished competitor numbers.
+4. **Anchor against the incumbents** — per-door inspection SaaS
+   (HappyCo, zInspector, RentCheck) for #1, Matterport/Polycam for #3.
+   Anchor on category pricing rather than quoting unpublished
+   competitor numbers.
 5. **Raise prices 25% every 3 paying customers.** Confidence lags
    reality; this corrects it.
 
-Rough pricing per project: #1 visual inspection $5-25k setup +
-$200-1000/mo; #2 pose API $2-10k per part + a flat monthly plan; #3
-digital twin $1-5k per scene or a $500/mo subscription.
+Rough pricing per project: #1 rental inspection — per-door monthly fee
+or per-inspection fee, plus a modest onboarding fee per firm; #2 pose
+API $2-10k per part + a flat monthly plan; #3 digital twin $1-5k per
+scene or a $500/mo subscription.
 
 ---
 
@@ -111,8 +113,9 @@ the perception-specific clauses a generic services contract misses:
 
 ## Which one to start with
 
-- **Fastest to revenue, lowest risk:** #1 (visual inspection). Pure
-  software, huge customer pool, short cycle, laptop demo.
+- **Fastest to revenue, lowest risk:** #1 (rental inspection). Pure
+  software, a huge pool of Ontario property managers, short cycle,
+  laptop-and-phone demo.
 - **Most defensible long-term:** #2 (pose API). Each customer's
   fine-tuned model and accuracy benchmarks become your moat.
 - **Highest ceiling:** #3 (digital twin). The kind of product an
