@@ -1,351 +1,471 @@
-# Major and New Employers
+# The Perception & Computer Vision Market
 
-Who pays perception engineers, and what to know about each. Salary
-bands are from levels.fyi, the 2025 Robotics Salary Guide, public
-funding rounds, and Glassdoor self-reports. Treat as bands, not
-guarantees.
+> Market intel for our team. The companies below are the landscape we
+> operate in as a perception services shop. Some are potential
+> customers, some are partners we can integrate with, some are
+> competitors, some are talent sources for our hires, and some are
+> reference points for stack and case studies. Comp bands are
+> included so we set our own salaries fairly against the market.
 
-The robotics labor market today resembles the JavaScript ecosystem
-in 2014-2015: a small set of blue-chip employers, a hot layer of
-Series-B/C scaleups, a long tail of vertical plays, and a defense
-slice with no real web analog except Palantir.
+## What this file is for
 
-See also: `00-basics.md` (recruiter-screen vocabulary),
-`01-examples.md` (demo ideas), `02-learn.md` (curriculum),
-`03-start.md` (30/60/90 plan), `05-projects.md` (portfolio),
-`06-courses.md` (paid / structured options).
+When we pitch a new client, we sometimes need to position against
+the big names ("we do what Plainsight does, smaller and more
+bespoke"). When we hire, we benchmark against NVIDIA / Waymo /
+Skydio comp so our offers don't read as low. When we read CVPR
+papers, half are from teams listed here. This is our shared map of
+the landscape.
+
+See also: `01-examples.md` (deployed products and papers),
+`05-projects.md` (what we sell), `06-courses.md` (where our team
+learns from), `00-basics.md` (three concrete agency project
+patterns).
+
+## How to read each entry
+
+For each company below: what they do, the tech stack they're known
+to use, the TC band our team competes with, the location, and
+**what they mean to us** — one of:
+
+- *Potential customer* — their internal teams sometimes hire
+  agencies for overflow or specialized work.
+- *Partner candidate* — they run a formal partner / reseller /
+  inception / agency program we could join.
+- *Competitor* — they sell into the same RFPs we do.
+- *Talent source / talent risk* — we hire from them; our team might
+  leave to them.
+- *Reference point* — published work, stack, or case studies we
+  study but don't directly compete with.
+
+---
 
 ## Big tech and established AV / AR labs
 
-Bigger teams, more process, strong mentorship, slower cadence.
+Bigger teams, more process, slower cadence. Mostly *reference
+points* for stack and case studies, and *talent risks* for senior
+ICs.
 
 - **Waymo (Alphabet)** — AV perception (camera + lidar + radar
-  fusion, segmentation, tracking, auto-labeling). C++ + PyTorch on
-  TPUs; low-hundreds engineers across perception. Five-round loop:
-  two coding (LeetCode-medium with vision twist like IoU), one
-  ML/CV depth, one system design, one behavioral. Median TC
-  **~$232k**; senior IC $300-450k. SF / Mountain View / Pittsburgh
-  / Phoenix. Switcher target: L3 SWE II via referral; cold-apply
-  is very hard.
-- **NVIDIA** — Isaac, GR00T, Cosmos, FoundationPose. Multiple
-  20-80-engineer teams (Isaac SDK, Isaac Sim, GR00T, DRIVE,
-  Research). C++ + PyTorch + CUDA + TensorRT. Expect a CUDA /
-  parallelism question. Median TC **~$270k**; senior staff $400k+.
-  Equity tailwind has been enormous. Switcher target: Solutions
-  Engineer or DevRel for Isaac converts into core perception in
-  18-24 months and is far more open to non-traditional CVs.
+  fusion, segmentation, tracking, auto-labeling). Stack: C++ +
+  PyTorch on TPUs; Bazel for build. Low-hundreds engineers across
+  perception. Median TC ~$232k; senior IC $300-450k. SF / Mountain
+  View / Pittsburgh / Phoenix.
+  *To us:* reference point for multi-sensor fusion architecture and
+  for the Waymo Open Dataset; talent risk for senior perception ICs.
+
+- **NVIDIA** — Isaac, GR00T, Cosmos, FoundationPose, FoundationStereo,
+  Replicator. Multiple 20-80-engineer teams (Isaac SDK, Isaac Sim,
+  GR00T, DRIVE, Research). Stack: C++ + PyTorch + CUDA + TensorRT.
+  Median TC ~$270k; senior staff $400k+.
+  *To us:* **partner candidate** via NVIDIA Inception (free DGX
+  cloud credits, sales co-marketing, NVIDIA Connect introductions);
+  reference point for Isaac stack; sometimes a customer for
+  outsourced Isaac-Sim integration and Replicator data pipelines.
+
 - **Tesla Autopilot / Optimus** — camera-only AV + humanoid.
-  Secretive, high-pressure. PyTorch + custom C++; Dojo training.
-  Interview emphasizes raw coding speed (two back-to-back LeetCode)
-  plus deep CV. Base lower than Waymo; equity-heavy. Switcher: tough
-  without a strong from-scratch project on a Tesla-relevant problem
-  (monocular depth, BEV segmentation).
+  Secretive. PyTorch + custom C++; Dojo training. Base lower than
+  Waymo, equity-heavy.
+  *To us:* reference point for vision-only architecture and BEV
+  occupancy nets; not a partner, not a customer.
+
 - **Mobileye** — vision-centric ADAS. Jerusalem + Detroit + San
-  Jose. C++ on custom EyeQ silicon, PyTorch for training. Interviews
-  lean classical CV (epipolar geometry, calibration, feature
-  matching). Senior IC $230-380k in US, less in Israel. US offices
-  more open to non-traditional CVs than HQ.
-- **Apple** — Vision Pro, ARKit, camera ISP perception, AV residue
-  in Vision Products Group. Metal + CoreML + custom C++. Five-to-
-  seven opaque, team-dependent rounds. Senior IC $300-500k. Switcher
-  angle: a published ARKit / RealityKit demo helps.
+  Jose. C++ on custom EyeQ silicon, PyTorch for training. Senior IC
+  $230-380k in US, less in Israel.
+  *To us:* reference point for ADAS perception at scale.
+
+- **Apple (Vision Products Group, ARKit, camera ISP)** — Vision Pro
+  perception, ARKit. Stack: Metal + CoreML + custom C++. Senior IC
+  $300-500k.
+  *To us:* reference point for on-device 3D perception. Their ARKit
+  scan + room mesh output is sometimes an input format for our AEC
+  digital-twin work.
+
 - **Meta Reality Labs** — Aria glasses, SAM, DINOv2. Two sub-orgs:
-  FAIR (research, mostly PhDs) and RL Product (ships glasses / Quest,
-  eng-heavy). PyTorch. RL Product is standard FAANG-with-CV loop;
-  FAIR is faculty-talk style. Switcher target: ML Engineer,
-  Perception at RL Product — not FAIR.
+  FAIR (research, mostly PhDs) and RL Product (ships glasses /
+  Quest, eng-heavy). PyTorch.
+  *To us:* **major reference point** — SAM 2, DINOv2, and
+  Depth-Anything (community) come out of this ecosystem. We use
+  their open-source models daily.
+
 - **Boston Dynamics (Hyundai)** — Spot, Atlas. Boston. Tens of
-  engineers, tightly coupled to controls. C++ first, internal state-
-  estimation frameworks. Interviews heavy on Kalman filters, factor
-  graphs, ICP. Senior IC $230-380k. Brand carries real premium on a
-  resume.
-- **Zoox (Amazon)** — full AV stack, Foster City CA. Amazon
-  acquisition pushed comp to Amazon L5/L6 bands but slowed shipping.
-  C++ + PyTorch.
+  engineers, tightly coupled to controls. C++ first, internal
+  state-estimation frameworks. Senior IC $230-380k.
+  *To us:* reference point for state estimation and legged-robot
+  perception; brand carries credibility on our team's resumes.
+
+- **Zoox (Amazon)** — full AV stack, Foster City CA. C++ + PyTorch;
+  Amazon L5/L6 bands.
+  *To us:* reference point.
+
 - **Cruise (GM)** — re-staffing through 2025 after the 2023 setback.
-  Comp competitive, morale historically bruised; watch late 2025 /
-  2026 signal.
+  Comp competitive, morale historically bruised.
+  *To us:* reference point; watch hiring signal late 2025 / 2026 for
+  market direction.
+
 - **Toyota Research Institute (TRI)** — Cambridge MA + Los Altos.
   Open publication culture, PyTorch + JAX. $230-330k.
+  *To us:* reference point; some published code is genuinely useful
+  (LfD, manipulation policies).
+
 - **Symbotic, Amazon Robotics** — warehouse perception at huge
   deployment volume. Java + C++, ROS-adjacent internal frameworks.
-  Hires generalists and trains them — excellent switcher target.
+  *To us:* **potential customer** for niche warehouse perception
+  consulting; reference point for at-scale industrial deployments.
+
 - **Skydio** — straddles this tier and defense; see below.
 
-## Defense / dual-use companies (massive growth 2022-2025)
+---
 
-Exploded post-2022 with US/EU defense budgets; comp here often beats
-commercial robotics. US citizenship required for almost all roles;
-a non-trivial subset needs SECRET clearance (employer-sponsored,
-6-12 months).
+## Defense / dual-use companies (growing fast since 2022)
 
-- **Anduril** (perception ramped 2021+) — Lattice, Ghost, Roadrunner,
-  maritime. Low-hundreds across perception. C++ + Rust + PyTorch
-  with in-house data/labeling platform. Interview emphasizes systems
-  thinking ("design the perception stack for a counter-drone turret
-  given these constraints"). Senior IC $350-500k+; equity real but
-  illiquid. Switcher target: "Mission Software Engineer" is closer
-  to product eng and the most open door.
-- **Shield AI** (Hivemind, scaled 2022+) — V-BAT drone + autonomy.
-  Tens of perception engineers. C++ + PyTorch + custom middleware.
-  Interview more classical (state estimation, SLAM). Median
-  **~$228k**, senior IC $300-450k. San Diego primarily.
-- **Saronic** (2022) — autonomous surface vessels. Series-B+ 2024
-  at $1B+ valuation. Single-digit to low-tens perception team,
-  Austin TX. Maritime perception (radar, AIS fusion, horizon
-  detection, wave-aware tracking) is its own subspecialty with
-  almost nobody experienced — a motivated switcher can ramp faster
-  than at an AV company. Must relocate.
-- **Helsing** (Germany, 2021) — defense AI, Munich + London + Paris.
-  More research-y culture; hires more openly in EU. Senior IC EUR
+Exploded post-2022 with US/EU defense budgets. Comp often beats
+commercial robotics. US citizenship required for most US roles; a
+subset needs SECRET clearance.
+
+- **Anduril** — Lattice, Ghost, Roadrunner, maritime. Low-hundreds
+  across perception. C++ + Rust + PyTorch with in-house data
+  platform. Senior IC $350-500k+.
+  *To us:* talent risk; not a realistic customer for an outside
+  agency (most work is classified or done in-house). Reference
+  point for systems-engineering culture.
+
+- **Shield AI** — Hivemind, V-BAT drone autonomy. Tens of perception
+  engineers. C++ + PyTorch + custom middleware. Median ~$228k, senior
+  IC $300-450k. San Diego.
+  *To us:* talent risk; reference point for VIO/SLAM at the edge.
+
+- **Saronic** — autonomous surface vessels. Series-B+ 2024 at $1B+.
+  Small team, Austin TX.
+  *To us:* reference point for maritime perception, which is a
+  potential niche vertical for us.
+
+- **Helsing** (Germany) — defense AI, Munich + London + Paris. EUR
   150-250k + equity.
+  *To us:* talent risk on the EU side; reference point.
+
 - **Skydio** — drones for consumer / defense / public safety.
-  Founded 2014, scaled post-2022 after pivoting from consumer.
-  Strong VIO/SLAM team, Redwood City CA. C++ + PyTorch with one of
-  the most polished on-device perception stacks. Classical CV / SLAM
-  heavy interviews. Senior IC $250-400k.
+  Redwood City CA. C++ + PyTorch; one of the most polished on-device
+  perception stacks. Senior IC $250-400k.
+  *To us:* **partner candidate** for drone-based inspection work
+  (Skydio's developer SDK is a real platform we can build on);
+  reference point for VIO at the edge.
+
 - **Saildrone, Vannevar Labs, HavocAI, Mach Industries** — younger
-  dual-use names. Mach (2023) reportedly raised a large Series B in
-  2025 for autonomous missiles / drones. Small teams, fast hiring.
-- **Palmer Luckey-adjacent and ex-SpaceX founder networks** — 2024-
-  2025 defense startups recruit heavily here on LinkedIn and X. A
-  credible defense-relevant demo (small-object detection on drone
-  video) attracts DMs.
+  dual-use names. Small teams, fast hiring.
+  *To us:* mostly reference points; check if any are large enough to
+  outsource niche perception (rare).
+
+---
 
 ## Perception-heavy startups founded or scaled 2020-2025
 
 Where the explosive growth and comp variance live. Most did not
 exist 4 years ago.
 
-- **Wayve** (UK, 2017, Series-C 2024 at **$1B+**) — end-to-end
-  driving foundation models. 100+ across perception/learning,
-  London + Mountain View. PyTorch + JAX. Research-y loop with a
-  paper-discussion round. London more open to non-PhD hires.
-  Switcher target: "Engineer, Data & Perception" is eng-heavy.
+- **Wayve** (UK, 2017, Series-C 2024 at $1B+) — end-to-end driving
+  foundation models. 100+ across perception/learning. London +
+  Mountain View. PyTorch + JAX.
+  *To us:* reference point for end-to-end driving; talent risk in
+  London.
+
 - **Physical Intelligence (Pi)** (2024) — VLA models with heavy
-  perception. $400M Nov 2024 at $2.4B. Under 100 total in 2025,
-  enormous talent density (ex-Brain, ex-DeepMind, ex-Tesla).
-  PyTorch + JAX. Most research-heavy loop on this list.
-  Switcher target: ML engineering / infra roles, not research.
+  perception. $400M Nov 2024 at $2.4B. Under 100 total, high talent
+  density. PyTorch + JAX.
+  *To us:* reference point for VLA + perception integration.
+
 - **Skild AI** (2023, ex-CMU) — robot-agnostic generalist policy.
-  $300M Series A July 2024 at ~$1.5B. Small, research-dense,
-  PyTorch. Pittsburgh + Bay Area. Easier via CMU robotics network
-  than the front door.
+  $300M Series A July 2024 at ~$1.5B. PyTorch. Pittsburgh + Bay
+  Area.
+  *To us:* reference point.
+
 - **Figure AI** (2022) — humanoid + Helix VLA. Cumulative >$1.5B
-  raised; Feb 2025 valuation talks at $39.5B. Perception grew from
-  single-digits to 30-50+ by mid-2025. PyTorch + C++ + NVIDIA Isaac.
-  On-site 5 days, Sunnyvale. "Ship in 48 hours" take-home plus
-  standard coding. Switcher target: "Robotics Software Engineer"
-  funnel is more open than the ML side.
+  raised; Feb 2025 talks at $39.5B. Perception 30-50+ by mid-2025.
+  PyTorch + C++ + NVIDIA Isaac. Sunnyvale.
+  *To us:* talent risk for our humanoid-curious senior ICs;
+  reference point for Isaac-Sim-based pipelines.
+
 - **1X Technologies** (rebranded from Halodi 2022) — NEO consumer
-  humanoid + world-model perception. Norway + SF. PyTorch + C++;
-  smaller than Figure. Open to strong generalists.
-- **Apptronik** (Apollo humanoid, commercial push 2023+) — Mercedes
-  pilots. Austin TX. More eng-than-research, more shipping-focused.
-  Hires generalists — very good switcher target.
+  humanoid + world-model perception. Norway + SF. PyTorch + C++.
+  *To us:* reference point.
+
+- **Apptronik** (Apollo humanoid, Mercedes pilots 2023+) — Austin
+  TX. More eng-than-research, more shipping-focused.
+  *To us:* potential customer for industrial integration work if
+  they expand into manufacturing partnerships beyond Mercedes.
+
 - **Cobot** (2022, ex-Amazon Robotics VP Brad Porter) — collaborative
-  mobile manipulator. Boston, low-tens, strong on manipulation-
+  mobile manipulator. Boston, low-tens. Strong manipulation-
   perception interface.
-- **Bedrock Robotics** (2023) — autonomous earth-moving. Construction
-  is perception-rich and GPS-friendly. Small team, SF.
+  *To us:* reference point.
+
+- **Bedrock Robotics** (2023) — autonomous earth-moving. SF.
+  *To us:* reference point for off-road / construction perception.
+
 - **Pickle Robot** (2018, scaled 2023+) — truck-unloading. Cambridge
-  MA. Occluded variable-shape boxes are surprisingly hard. Excellent
-  switcher target — email the CTO.
+  MA.
+  *To us:* reference point — their public material is one of the
+  better small-team case studies (see `00-basics.md` use case 1
+  references).
+
 - **Field AI** (2023) — outdoor / off-road foundation policies for
-  inspection, construction. Mission Viejo / Pasadena. Off-road
-  perception (no lane lines, no HD map) is a distinct skillset.
-- **Chef Robotics** (2019, scaled past 2023) — food assembly. SF.
+  inspection, construction. Mission Viejo / Pasadena.
+  *To us:* reference point for off-road perception, which lacks
+  lane lines / HD maps and is a distinct skillset.
+
+- **Chef Robotics** (2019, scaled 2023+) — food assembly. SF.
   Deformable, occluded, glossy, wet food is close to medical imaging
   in difficulty.
+  *To us:* reference point for hard segmentation problems.
+
 - **Rivr** (2023, Switzerland, ex-ETH) — last-mile delivery robots.
-  Lower comp than US; lower cost of living outside Zurich.
+  Lower comp than US.
+  *To us:* reference point; potential EU partner if we expand there.
+
 - **Polycam, Luma AI, Spline, Scaniverse (Niantic)** — consumer 3D-
-  from-photos. Pure software, fast hiring, DX-obsessed, remote-
-  friendly. PyTorch + iOS / web frontend, which is gold for an ex-
-  web dev. Luma and Polycam have hired from non-traditional backgrounds.
-- **Niantic** — recently spun out their geospatial / VPS team with
-  one of the world's largest AR map datasets; hiring perception
-  engineers as of 2025.
+  from-photos. Pure software, remote-friendly, DX-obsessed. PyTorch
+  + iOS / web frontend.
+  *To us:* **partner candidates / capture-layer platforms** —
+  Polycam Pro and Scaniverse are common capture layers for our AEC
+  and real-estate digital-twin clients (see `00-basics.md` use case
+  2 references). Sometimes a competitor when we pitch end-to-end
+  workflows.
+
+- **Niantic** — recently spun out their geospatial / VPS team.
+  *To us:* reference point for outdoor VPS / persistent AR.
+
 - **Veo Robotics, Roboflow, Voxel51, Encord, Scale AI** — perception
-  infrastructure. Roboflow is the most web-dev-friendly on this list
-  (TypeScript frontend, Python backend, fully remote). Your existing
-  web skills are a feature, not a bug.
+  infrastructure. Roboflow has TypeScript frontend, Python backend,
+  fully remote.
+  *To us:* **partner candidates** — Roboflow's partner program lets
+  agencies build on top of their labeling + training stack and refer
+  customers in. Voxel51 (fiftyone) and Encord are dataset / eval
+  tools we use directly.
+
 - **Standard Bots, Dexterity, Covariant (mostly absorbed into
   Amazon)** — warehouse / industrial manipulation. Smaller teams,
   more shipping pressure.
+  *To us:* potential customers for occasional perception consulting;
+  reference points.
+
 - **Path Robotics, Bright Machines, Machina Labs** — industrial
   perception for welding, electronics assembly, sheet-metal forming.
-  Less hyped, real customers, comp solid.
+  Real customers, comp solid.
+  *To us:* reference points; potential customers for niche
+  consulting.
 
-## How they hire
+---
 
-Three buckets. **Realistic target for a junior web dev with ~6
-months of ramp: bucket 2.**
+## Competing CV / perception services shops
 
-- **Research scientist / research perception** — PhD or 2+ first-
-  author top-venue papers. Hardest to break in cold.
-- **Perception software engineer** — strong eng + working ML chops.
-  Integrate models, write inference services, optimize C++ hot paths,
-  own the camera pipeline. The bread-and-butter role.
-- **Sensor / calibration engineer** — overlaps with EE; hands-on
-  calibration, time-sync, multi-sensor fusion. C++ heavy. Underrated
-  switcher path: less competition, real shortage, durable moat once
-  you've calibrated a multi-camera-lidar rig in anger.
+The agencies and consultancies we'll run into in sales processes.
+Most are larger than us; we win against them on responsiveness,
+verticalization, and per-customer fine-tuning depth.
 
-## How to actually apply to each tier
+- **Landing AI** (Andrew Ng) — ~100 people. Visual inspection
+  platform + custom delivery. Verticals: manufacturing, life
+  sciences. Published case studies with Foxconn, Bombardier,
+  AstraZeneca.
+  *Where we beat them:* fixed-cost engagements under $200k; bespoke
+  vertical pipelines they wouldn't take on.
 
-- **Big tech (Waymo, NVIDIA, Apple, Meta Reality Labs, Zoox)** —
-  referral path only; cold ATS submissions are discarded. Find five
-  L3/L4 perception ICs on LinkedIn and send a three-sentence intro
-  citing a specific project of theirs; conversion runs 5-15%.
-- **Defense (Anduril, Shield AI, Saronic, Helsing, Skydio)** — apply
-  directly Tuesday/Wednesday morning Pacific; mention willingness to
-  relocate up front. Recruiters move fast (screen within a week).
-- **Hot frontier startups (Figure, 1X, Skild, Pi, Wayve)** —
-  recruiters source from X and LinkedIn; post a 30-second working
-  demo loop (SLAM trajectory, arXiv mini-paper, hosted detection
-  model). They will find you.
-- **Smaller perception startups (Pickle, Chef, Rivr, Bedrock, Cobot,
-  Field AI)** — email the CTO directly with a two-line pitch and a
-  60-second demo; 20-40% reply rate if the demo is good.
-- **Perception SaaS / infra (Roboflow, Voxel51, Polycam, Luma)** —
-  apply directly and lead with TypeScript / React / Next.js. They
-  need engineers who ship a polished developer product.
-- **Research labs (FAIR, TRI, NVIDIA Research, DeepMind Robotics)** —
-  cold rarely works; coauthor a workshop paper with an insider or
-  enter via a research-engineer (non-PhD) role and convert. Not a
-  six-month plan.
+- **Plainsight** (formerly Sixgill) — ~50-100 people. CV platform +
+  services. Verticals: food processing, energy, agriculture.
+  Published with Tyson Foods.
+  *Where we beat them:* same as Landing AI — smaller deals, faster
+  turnaround, lighter platform lock-in.
 
-## Interview prep — what perception interviews actually ask
+- **Cogniac** — ~30-50 people. Industrial CV platform. Verticals:
+  steel, rail, manufacturing. Published with U.S. Steel.
+  *Where we beat them:* customers wary of platform lock-in.
 
-Listed roughly by frequency in a perception-engineer screen.
+- **MobiDev** (Ukrainian) — ~400 people across all dev work; CV is
+  one vertical. Published vineyard yield case study is widely cited.
+  *Where we beat them:* deeper perception specialization vs. their
+  generalist outsourcing positioning.
 
-- **"Explain a Kalman filter in your own words."** Read Probabilistic
-  Robotics ch. 1-3 and implement a 1D constant-velocity filter in
-  numpy; know when EKF vs UKF.
-- **"Implement RANSAC for line fitting."** Classical-CV FizzBuzz.
-  Implement for line, plane, homography on real images; discuss
-  inlier threshold and iteration count.
-- **"Derive the pinhole projection equation."** Work Hartley &
-  Zisserman ch. 6; go from world point through extrinsics,
-  intrinsics, distortion to pixel on a whiteboard.
-- **"Fuse a noisy IMU with camera poses."** Read VINS-Mono and run
-  it on EuRoC; discuss bias estimation, gravity alignment, time-sync.
-- **"Debug a drifting SLAM trajectory."** Break ORB-SLAM3 in known
-  ways (bad calibration, missing loop closure, sensor desync) and
-  learn each failure signature.
-- **"Describe a recent vision paper."** Pick two or three (DINOv2,
-  SAM 2, FoundationPose, Co-Tracker, recent CVPR) and explain the
-  problem, contribution, one limitation. Don't fake reading.
-- **"Implement non-maximum suppression."** Cold in 15 minutes with
-  IoU helper; know Soft-NMS and DIoU-NMS.
+- **InData Labs** (Belarus / EU), **MindTitan** (Estonia), **N-iX**
+  (Ukraine / Poland), **Apriorit**, **Sciencesoft**, **Lampa
+  Software**, **Innowise**, **Konverge.ai**, **Maruti Techlabs** —
+  larger ML consultancies with published CV case studies. Compete
+  on price for staff-augmentation work.
+  *Where we beat them:* productized verticals, fixed-cost outcomes,
+  IP we own rather than billed hourly.
 
-## Red flags when evaluating a perception job
+- **Visual Layer**, **Voxel51 services**, **Datature**, **Encord
+  Pro Services** — dataset-tool companies that also do paid
+  engagements.
+  *Where we beat them:* perception delivery beyond dataset curation
+  (deployment, edge inference, customer integration).
 
-- **No engineer-on-site at the customer.** Ask "when a customer
-  reports a perception bug, what's the loop?"
-- **No time-sync infrastructure.** Ask how sensors are time-synced;
-  if the answer is "system clocks, mostly fine," run. PTP / hardware
-  triggers / a sync board is the right answer.
-- **One person can debug the camera pipeline.** Ask who could debug
-  a calibration drift in production if the perception lead vanished.
-- **Data collection requires a tribal-knowledge spreadsheet.**
-  Healthy orgs use Roboflow, Voxel51, Encord, Scale, or in-house.
-- **No evaluation harness.** Ask for the eval set, run frequency,
-  and metrics that gate a release.
-- **Equity mentioned but cap table hidden.** At small companies,
-  ask for fully-diluted percentage, preference stack, last 409A.
-- **Title and actual work don't match.** Ask what the last person
-  in this role shipped in the past six months.
+- **Roboflow Partner Network** (when joined) — fellow Roboflow
+  agency partners are *coopetitive*: same partner directory, but
+  Roboflow itself routes leads based on vertical fit.
+  *Where we beat them:* by being explicit about a vertical (e.g.,
+  "we do solar-panel inspection," not "general CV").
 
-## Where perception engineers earn the most
+- **Smaller regional shops** — too many to name individually
+  (Decode UK, Ardas Ukraine, etc.). Most aren't directly
+  competitive because their lead pipelines are local.
+
+---
+
+## Partnership and reseller programs worth joining
+
+Concrete programs where applying as an agency unlocks credits,
+sales co-marketing, or a customer pipeline.
+
+- **NVIDIA Inception** — free DGX cloud credits, NVIDIA Connect
+  intros to enterprise customers, GTC speaking opportunities. Open
+  to AI / robotics shops under ~$50M revenue. Apply at
+  nvidia.com/en-us/startups.
+- **Roboflow Partner Program** — listed in their agency directory,
+  shared revenue on referred customers, free Pro accounts for
+  agency staff. Apply at roboflow.com/partners.
+- **Hugging Face Enterprise Hub / Expert Acceleration Program** —
+  partner-tier discounts for our customers; co-marketing on
+  customer stories.
+- **Matterport Capture Services / Partner Network** — listed as a
+  capture-services partner for AEC and real-estate clients;
+  referral pipeline for digital-twin work. Especially relevant for
+  use case 2 in `00-basics.md`.
+- **NavVis Partner Network** — similar to Matterport but for
+  industrial AEC (large-site mapping).
+- **Pix4D Partner Program** — co-marketing and referral for
+  drone-based mapping work; relevant to use case 3.
+- **DroneDeploy Partner Network** — same pattern for ag and
+  construction drone deployments.
+- **OpenSpace, Reconstruct, HoloBuilder partner programs** — for
+  construction progress documentation.
+- **AWS Activate / Google Cloud for Startups / Microsoft for
+  Startups** — $25k-$200k of cloud credits available; useful for
+  GPU-heavy photogrammetry and splat training during initial
+  customer engagements.
+- **DJI Enterprise Software Partner** — for drone-data workflows;
+  niche but real.
+- **Polycam Pro Custom Integrations** — limited program for
+  agencies building on Polycam's capture SDK.
+
+Most of these are free to apply to. The realistic high-value ones
+for a CV services shop are: NVIDIA Inception, Roboflow Partner,
+Matterport / NavVis, and Pix4D / DroneDeploy.
+
+---
+
+## Comp bands (for setting our own salaries)
 
 Approximate TC bands for senior IC (3-7 years), 2025 Bay Area / NYC.
 Sources: levels.fyi, 2025 Robotics Salary Guide, Glassdoor self-
-reports, public funding announcements, Blind / HN compensation
-threads. Startup TC is noisy because it includes illiquid common
-shares valued at the last preferred-round price.
+reports, public funding announcements. Startup TC is noisy because
+it includes illiquid common shares.
 
-- NVIDIA, Waymo: $300-450k (Waymo median $232k across levels)
-- Apple, Meta Reality Labs, Tesla: $300-500k+
-- Anduril, Shield AI: $300-500k (heavy equity)
-- Physical Intelligence, Wayve, Skild, Figure, 1X: $350-600k+
+- **NVIDIA, Waymo:** $300-450k (Waymo median $232k across levels)
+- **Apple, Meta Reality Labs, Tesla:** $300-500k+
+- **Anduril, Shield AI:** $300-500k (heavy equity)
+- **Physical Intelligence, Wayve, Skild, Figure, 1X:** $350-600k+
   (equity is the lottery ticket)
-- Boston Dynamics, TRI, Mobileye: $230-380k
-- Smaller startups (Pickle, Chef, Bedrock, Rivr): $200-350k
-- Perception SaaS (Roboflow, Voxel51, Polycam, Luma): $200-330k
+- **Boston Dynamics, TRI, Mobileye:** $230-380k
+- **Smaller startups (Pickle, Chef, Bedrock, Rivr):** $200-350k
+- **Perception SaaS (Roboflow, Voxel51, Polycam, Luma):** $200-330k
   with full-remote optionality
+- **CV consultancies (Landing AI, Plainsight, Cogniac):** $180-280k
+  + variable bonus; closer to our market
 
-Numbers assume Bay Area / NYC / Seattle. Remote / EU usually 20-40%
-lower; London Wayve / Helsing close the gap.
+Remote / EU usually 20-40% lower; London / Munich close the gap on
+the high end.
 
-**Equity vs cash.** Discount frontier-startup equity 70-90% when
-comparing offers; Series-B/C equity 40-60%; public-company RSUs at
-face value. Cash is cash. With tight personal runway, bias toward
-base at a large company; with 12+ months of runway and high risk
-tolerance, frontier startups have meaningfully better expected value
-over five years.
+**For our hires:** band our base salaries at the perception-SaaS
+range or above. Below that and our offers read as low against the
+market our team is comparing against. Equity-heavy frontier startups
+are not direct comp competitors for our headcount; their candidates
+are taking lottery-ticket risk we can't match.
 
-## Remote / hybrid posture by employer type
-
-- **AV labs (Waymo, Cruise, Zoox)** — hybrid 3-5 days on-site; some
-  offline / data / training roles flex.
-- **Foundation-model perception (FAIR, NVIDIA Research, DeepMind
-  Robotics)** — remote-friendly for research and ML infra; less so
-  for product perception.
-- **Humanoid startups (Figure, 1X, Apptronik, Cobot)** — strictly
-  on-site; plan to relocate.
-- **Defense (Anduril, Shield AI, Saronic, Helsing)** — mostly on-
-  site (classified work + hardware); some non-classified hybrid.
-- **AR / glasses (Apple Vision Products, Meta Reality Labs)** —
-  on-site for hardware-integrated, hybrid for app-layer.
-- **Perception SaaS (Polycam, Luma, Roboflow, Voxel51, Veo, Encord)**
-  — fully remote, often globally distributed.
-- **Industrial / vertical (Pickle, Chef, Bedrock, Path, Symbotic)**
-  — on-site in non-major-tech cities; comp adjusts.
-
-## Title decoder ring
-
-Same job carries five names; search job boards under all of these.
-
-- **Perception Engineer** — umbrella title (Waymo, Zoox, Cruise,
-  Skydio, Pickle, Cobot). Own one pipeline slice; ship on-robot.
-- **Computer Vision Engineer** — more ML / image-focused (Apple,
-  Meta RL, Snap, Polycam, Luma, Roboflow, Voxel51). Train and deploy
-  CV models, often with a product surface.
-- **Robotics Software Engineer (Perception)** — generalist with ROS
-  / C++ comfort (Figure, 1X, Apptronik, Boston Dynamics, Saronic).
-  More systems integration than pure ML.
-- **ML Engineer, Perception** — training, infra, scaling (Wayve,
-  Tesla, Pi, Skild, Meta FAIR). PyTorch / JAX, distributed training.
-- **Sensor Fusion Engineer** — multi-modal (Mobileye, Shield AI, some
-  Anduril Lattice, Bosch, ZF). Kalman / factor graphs, C++ heavy.
-- **SLAM Engineer** — narrow specialty (Skydio, Niantic, Magic Leap,
-  Apple ARKit, some AV). Pose, loop closure, VIO.
-- **3D Vision Engineer** — geometric reconstruction, NeRF, Gaussian
-  splatting (Polycam, Luma, Spline, Scaniverse, Niantic). Graphics-
-  adjacent.
-- **Spatial Computing Engineer** — Apple / Meta marketing variant of
-  3D vision, mostly AR.
-- **Autonomy Engineer (Perception)** — defense / drone generalist
-  with a perception slant (Anduril, Shield AI, Saronic).
+---
 
 ## Hiring market signal
 
 From the 2025 Robotics Salary Guide (907 jobs analyzed Nov-Dec 2025):
 
 - Robotics Software Engineer median: **$189k**.
-- ML in perception roles commands a similar +30% premium to RL /
+- ML / perception roles command a similar +30% premium to RL /
   diffusion in VLA roles.
-- "Computer Vision Engineer" is a named trending title in 2025.
+- "Computer Vision Engineer" is a named trending title in 2025
+  hiring reports.
 - Global CV market: **$19.82B in 2024**, **~19.8% CAGR through 2030**
   (Grand View Research, MarketsandMarkets).
 
-Translation: most broadly-applicable robotics specialty. Less
-explosive than VLA, but with a wider customer base and dozens of
-viable employers in every major US/EU city.
+Translation: the broadest-applicable robotics specialty. Less
+explosive than VLA, much wider customer base. Good market for our
+shop's positioning.
 
-Next: `05-projects.md` for portfolio projects mapped to the interview
-patterns (from-scratch RANSAC, VINS-Mono run, small detection
-pipeline on a Roboflow dataset); `03-start.md` for the 30/60/90 plan
-that gets you to credibly applying to tier-2 startups on this list.
+---
+
+## Remote / hybrid posture by employer type
+
+Useful for understanding which talent pools are accessible to us
+(remote-friendly = larger candidate pool for our remote hires).
+
+- **AV labs (Waymo, Cruise, Zoox):** hybrid 3-5 days on-site; some
+  offline / data / training roles flex.
+- **Foundation-model perception (FAIR, NVIDIA Research, DeepMind
+  Robotics):** remote-friendly for research and ML infra; less for
+  product perception.
+- **Humanoid startups (Figure, 1X, Apptronik, Cobot):** strictly
+  on-site.
+- **Defense (Anduril, Shield AI, Saronic, Helsing):** mostly on-
+  site; some non-classified hybrid.
+- **AR / glasses (Apple, Meta Reality Labs):** on-site for hardware
+  work, hybrid for app-layer.
+- **Perception SaaS (Polycam, Luma, Roboflow, Voxel51, Veo,
+  Encord):** fully remote, globally distributed. Our biggest direct
+  competitors for distributed-team talent.
+- **Industrial / vertical (Pickle, Chef, Bedrock, Path, Symbotic):**
+  on-site in non-major-tech cities.
+
+---
+
+## Title decoder
+
+The same role carries five different names across companies. Use
+this when reading job ads (competitor signaling) or when writing
+our own postings.
+
+- **Perception Engineer** — umbrella title (Waymo, Zoox, Cruise,
+  Skydio, Pickle, Cobot). Owns one pipeline slice end-to-end on-
+  robot.
+- **Computer Vision Engineer** — more ML / image-focused (Apple,
+  Meta RL, Snap, Polycam, Luma, Roboflow, Voxel51). Trains and
+  deploys CV models with a product surface.
+- **Robotics Software Engineer (Perception)** — generalist with
+  ROS / C++ comfort (Figure, 1X, Apptronik, Boston Dynamics,
+  Saronic). More systems integration than pure ML.
+- **ML Engineer, Perception** — training, infra, scaling (Wayve,
+  Tesla, Pi, Skild, FAIR). PyTorch / JAX, distributed training.
+- **Sensor Fusion Engineer** — multi-modal (Mobileye, Shield AI,
+  some Anduril Lattice, Bosch, ZF). Kalman / factor graphs, C++
+  heavy.
+- **SLAM Engineer** — narrow specialty (Skydio, Niantic, Magic
+  Leap, Apple ARKit, some AV). Pose, loop closure, VIO.
+- **3D Vision Engineer** — geometric reconstruction, NeRF, Gaussian
+  splatting (Polycam, Luma, Spline, Scaniverse, Niantic). Graphics-
+  adjacent.
+- **Spatial Computing Engineer** — Apple / Meta marketing variant
+  of 3D vision, mostly AR.
+- **Autonomy Engineer (Perception)** — defense / drone generalist
+  with a perception slant (Anduril, Shield AI, Saronic).
+
+---
+
+## What this means for our positioning
+
+Three short takeaways for the team:
+
+1. **The hyperscalers are reference points, not competitors.** They
+   serve different price points (internal headcount, custom silicon)
+   than we sell. Mention them only when a customer asks "who else
+   does this?"
+2. **The CV consultancies are our direct competitors.** Landing AI,
+   Plainsight, Cogniac, MobiDev. Win on responsiveness, vertical
+   depth, and outcome-based pricing.
+3. **The platforms (NVIDIA, Roboflow, Matterport, Pix4D,
+   DroneDeploy, Polycam) are where the leverage is.** Joining their
+   partner programs early matters more than a marketing budget.
