@@ -20,6 +20,12 @@
 | Grasping | Where/how to grab the SKU | **AnyGrasp / Contact-GraspNet** | analytical antipodal (rigid SKU) |
 | Orchestration | Sequence the task, handle failures | **Behavior Trees** (BehaviorTree.CPP / Nav2 BT) | state machine (SMACH/YASMIN) |
 
+Each row has a dedicated deep-dive in `03-stack/` — a side-by-side
+comparison of the candidate frameworks on 5-7 parameters with a top
+pick: `01-simulator.md`, `02-middleware.md`,
+`03-mobile-base-navigation.md`, `04-arm-motion-planning.md`,
+`05-perception.md`, `06-grasping.md`, `07-orchestration.md`.
+
 ---
 
 ## 1. Simulating the store
