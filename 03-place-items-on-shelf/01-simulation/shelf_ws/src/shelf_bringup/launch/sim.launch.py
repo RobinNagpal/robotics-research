@@ -7,6 +7,7 @@ autonomous mission on top of this, so `./run.sh` stays a single command.
 import os
 
 import xacro
+from moveit_configs_utils import MoveItConfigsBuilder
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import (DeclareLaunchArgument, EmitEvent, ExecuteProcess,
@@ -24,6 +25,7 @@ def launch_setup(context, *args, **kwargs):
     headless = LaunchConfiguration('headless').perform(context)
     world = LaunchConfiguration('world').perform(context)
     run_mission = LaunchConfiguration('mission').perform(context)
+    arm_backend = LaunchConfiguration('arm_backend').perform(context)
 
     candidate = os.path.join(bringup, 'worlds', world)
     world_path = candidate if os.path.exists(candidate) else world
@@ -80,9 +82,31 @@ def launch_setup(context, *args, **kwargs):
     # Start the autonomous mission once the controllers are up, and shut the
     # whole launch down cleanly when the mission node exits.
     if run_mission == 'true':
+        # MoveIt 2 config (planning pipeline + SRDF + controllers) passed to
+        # the mission node so MoveItPy can plan collision-free arm motions.
+        moveit_params = []
+        if arm_backend == 'moveit':
+            description = get_package_share_directory('shelf_description')
+            moveit_config = (
+                MoveItConfigsBuilder('shelf_bot', package_name='shelf_moveit_config')
+                .robot_description(
+                    file_path=os.path.join(description, 'urdf', 'robot.urdf.xacro'))
+                .robot_description_semantic(file_path='config/shelf_bot.srdf')
+                .robot_description_kinematics(file_path='config/kinematics.yaml')
+                .joint_limits(file_path='config/joint_limits.yaml')
+                .trajectory_execution(file_path='config/moveit_controllers.yaml')
+                .planning_pipelines(pipelines=['ompl'], default_planning_pipeline='ompl')
+                .to_moveit_configs()
+            )
+            moveit_params = [moveit_config.to_dict()]
+
+        # Node is named 'moveit_py' so the MoveIt params scope to the node
+        # MoveItPy creates; the backend choice is passed via env.
         orchestrator = Node(
-            package='shelf_bringup', executable='orchestrator.py',
-            output='screen', parameters=[{'use_sim_time': True}])
+            package='shelf_bringup', executable='orchestrator.py', name='moveit_py',
+            output='screen',
+            parameters=moveit_params + [{'use_sim_time': True}],
+            additional_env={'SHELF_ARM_BACKEND': arm_backend})
         after_controllers = RegisterEventHandler(
             OnProcessExit(target_action=grip, on_exit=[orchestrator]))
         on_mission_done = RegisterEventHandler(
@@ -102,5 +126,8 @@ def generate_launch_description():
                         'Gazebo built-in name.'),
         DeclareLaunchArgument('mission', default_value='true',
             description='Start the autonomous stocking mission automatically.'),
+        DeclareLaunchArgument('arm_backend', default_value='moveit',
+            description="Arm motion: 'moveit' (collision-aware planning) or "
+                        "'direct' (ikpy joint-trajectory, no planning)."),
         OpaqueFunction(function=launch_setup),
     ])

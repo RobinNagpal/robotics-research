@@ -21,6 +21,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
       ros-jazzy-ros2-control \
       ros-jazzy-ros2-controllers \
       ros-jazzy-gz-ros2-control \
+      ros-jazzy-moveit \
+      ros-jazzy-moveit-py \
       ros-jazzy-xacro \
       ros-jazzy-robot-state-publisher \
       ros-jazzy-joint-state-publisher \

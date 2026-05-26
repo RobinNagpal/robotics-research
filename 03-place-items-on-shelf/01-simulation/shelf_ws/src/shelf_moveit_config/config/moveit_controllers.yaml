@@ -1,0 +1,27 @@
+# Maps MoveIt's planned trajectories onto the ros2_control FollowJointTrajectory
+# controllers brought up by shelf_bringup (controllers.yaml).
+moveit_controller_manager: moveit_simple_controller_manager/MoveItSimpleControllerManager
+
+moveit_simple_controller_manager:
+  controller_names:
+    - arm_controller
+    - gripper_controller
+
+  arm_controller:
+    type: FollowJointTrajectory
+    action_ns: follow_joint_trajectory
+    default: true
+    joints:
+      - joint_pan
+      - joint_lift
+      - joint_elbow
+      - joint_wrist_pitch
+      - joint_wrist_roll
+
+  gripper_controller:
+    type: FollowJointTrajectory
+    action_ns: follow_joint_trajectory
+    default: true
+    joints:
+      - left_finger_joint
+      - right_finger_joint

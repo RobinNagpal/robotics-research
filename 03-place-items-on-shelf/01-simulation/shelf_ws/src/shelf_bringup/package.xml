@@ -31,6 +31,11 @@
   <exec_depend>control_msgs</exec_depend>
   <exec_depend>tf2_ros</exec_depend>
   <exec_depend>ros_gz_interfaces</exec_depend>
+  <exec_depend>moveit_py</exec_depend>
+  <exec_depend>moveit_configs_utils</exec_depend>
+  <exec_depend>moveit_msgs</exec_depend>
+  <exec_depend>shape_msgs</exec_depend>
+  <exec_depend>shelf_moveit_config</exec_depend>
 
   <export>
     <build_type>ament_cmake</build_type>

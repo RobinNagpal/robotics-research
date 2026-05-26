@@ -1,0 +1,63 @@
+<?xml version="1.0"?>
+<!-- Semantic description for MoveIt 2. Arm is the 5-DoF chain arm_base->tool;
+     gripper is the two fingers. Adjacent links (and tray-vs-arm, so the tray
+     doesn't block reaching into its own cells) have collision checks off. -->
+<robot name="shelf_bot">
+  <group name="arm">
+    <chain base_link="arm_base" tip_link="tool"/>
+  </group>
+  <group name="gripper">
+    <joint name="left_finger_joint"/>
+    <joint name="right_finger_joint"/>
+  </group>
+
+  <group_state name="home" group="arm">
+    <joint name="joint_pan" value="0"/>
+    <joint name="joint_lift" value="0"/>
+    <joint name="joint_elbow" value="0"/>
+    <joint name="joint_wrist_pitch" value="0"/>
+    <joint name="joint_wrist_roll" value="0"/>
+  </group_state>
+  <group_state name="open" group="gripper">
+    <joint name="left_finger_joint" value="0.049"/>
+    <joint name="right_finger_joint" value="0.049"/>
+  </group_state>
+  <group_state name="closed" group="gripper">
+    <joint name="left_finger_joint" value="0.040"/>
+    <joint name="right_finger_joint" value="0.040"/>
+  </group_state>
+
+  <end_effector name="gripper_ee" parent_link="gripper_base" group="gripper"/>
+
+  <disable_collisions link1="base_link" link2="left_wheel" reason="Adjacent"/>
+  <disable_collisions link1="base_link" link2="right_wheel" reason="Adjacent"/>
+  <disable_collisions link1="base_link" link2="caster" reason="Adjacent"/>
+  <disable_collisions link1="base_link" link2="column" reason="Adjacent"/>
+  <disable_collisions link1="base_link" link2="tray" reason="Adjacent"/>
+  <disable_collisions link1="base_link" link2="lidar" reason="Adjacent"/>
+  <disable_collisions link1="base_link" link2="arm_base" reason="Never"/>
+  <disable_collisions link1="column" link2="arm_base" reason="Adjacent"/>
+  <disable_collisions link1="column" link2="tray" reason="Adjacent"/>
+  <disable_collisions link1="column" link2="shoulder" reason="Never"/>
+  <disable_collisions link1="arm_base" link2="shoulder" reason="Adjacent"/>
+  <disable_collisions link1="arm_base" link2="tray" reason="Never"/>
+  <disable_collisions link1="shoulder" link2="upper_arm" reason="Adjacent"/>
+  <disable_collisions link1="upper_arm" link2="forearm" reason="Adjacent"/>
+  <disable_collisions link1="forearm" link2="wrist" reason="Adjacent"/>
+  <disable_collisions link1="wrist" link2="gripper_base" reason="Adjacent"/>
+  <disable_collisions link1="gripper_base" link2="left_finger" reason="Adjacent"/>
+  <disable_collisions link1="gripper_base" link2="right_finger" reason="Adjacent"/>
+  <disable_collisions link1="gripper_base" link2="camera" reason="Adjacent"/>
+  <disable_collisions link1="left_finger" link2="right_finger" reason="Adjacent"/>
+  <disable_collisions link1="wrist" link2="camera" reason="Never"/>
+  <disable_collisions link1="wrist" link2="left_finger" reason="Never"/>
+  <disable_collisions link1="wrist" link2="right_finger" reason="Never"/>
+
+  <!-- let the arm reach into the tray without the tray blocking it -->
+  <disable_collisions link1="tray" link2="forearm" reason="User"/>
+  <disable_collisions link1="tray" link2="wrist" reason="User"/>
+  <disable_collisions link1="tray" link2="gripper_base" reason="User"/>
+  <disable_collisions link1="tray" link2="left_finger" reason="User"/>
+  <disable_collisions link1="tray" link2="right_finger" reason="User"/>
+  <disable_collisions link1="tray" link2="camera" reason="User"/>
+</robot>
