@@ -55,3 +55,19 @@ swap rather than a rewrite. ROS 1 is end-of-life; everything else
 sacrifices the ecosystem this project is built on. Add **microROS** only
 if a microcontroller (e.g. a gripper or sensor MCU) needs to join the
 graph.
+
+## Cost, hardware & where it runs
+
+This layer is effectively a single choice — ROS 2 — so the three tiers
+differ only by **which distro** and **which box you host it on**, not by
+which framework. ROS 2 itself is always free and open.
+
+| Tier | Pick | Where it runs | Machine requirements | Cost |
+|------|------|---------------|----------------------|------|
+| **Best in class** | ROS 2 Jazzy (Ubuntu 24.04) | Robot's onboard computer + dev/sim machines, same nodes | Any x86-64 or ARM64 Linux box; 4 GB RAM works, 8+ comfortable; no GPU for ROS itself | Free / open source |
+| **Good enough & cheapest** | ROS 2 Humble (Ubuntu 22.04) | Same; will even run on a Raspberry Pi 4/5 | ARM SBC (Pi 4, 4 GB) up to a NUC | Free / open source |
+| **Best cost-for-performance** | ROS 2 Humble (LTS, supported to 2027) | Onboard Jetson/NUC plus a workstation, the *identical* graph in sim and on hardware | Size the machine to the heaviest co-located node (perception/planning), not to ROS | Free; the only spend is the compute the *other* layers need |
+
+ROS 2 adds essentially no hardware cost of its own — it is the wiring. The
+real bill for "the computer on the robot" is driven by perception and
+motion planning, covered in those layers' files.

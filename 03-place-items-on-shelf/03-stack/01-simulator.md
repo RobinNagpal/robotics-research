@@ -58,3 +58,17 @@ requirements (`../01-requirements.md`) before risking real hardware.
 Keep **MuJoCo** in your back pocket as a focused rig if the contact
 dynamics of the set-down need careful tuning. Skip Genesis/PyBullet for
 delivery work — prototyping only.
+
+## Cost, hardware & where it runs
+
+| Tier | Pick | Where it runs | Machine requirements | Cost |
+|------|------|---------------|----------------------|------|
+| **Best in class** | NVIDIA Isaac Sim | Local RTX workstation, or a cloud GPU VM | RTX GPU (RTX 4080/4090, or A6000/L40), ≥16 GB VRAM, 32–64 GB RAM, Ubuntu or Windows | Software free (proprietary EULA); needs a ~$3–6k RTX workstation, or rent a cloud GPU (AWS g5/g6, ~$1–2/hr) |
+| **Good enough & cheapest** | Gazebo Harmonic | Any modern CPU laptop or desktop | 4+ core CPU, 16 GB RAM, integrated GPU is fine; Ubuntu 24.04 | Free / open source — runs on hardware you already own |
+| **Best cost-for-performance** | Gazebo for the mechanics + Isaac Sim rented by the hour for the perception/DR phase | Gazebo local; Isaac on a cloud RTX VM only during photoreal + domain-randomization sessions | As above for each stage | Free for the bulk of the work; cloud GPU billed only in bursts (~$1–2/hr) when you actually need realism |
+
+Isaac Sim is the only layer that genuinely *demands* an RTX GPU — the
+RTX path tracer and Replicator are the whole reason to pay for it. Gazebo
+asks for nothing you don't already have, which is why the recommended
+path proves mechanics there first and only buys GPU time once perception
+needs photorealism.

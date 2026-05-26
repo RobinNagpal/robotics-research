@@ -58,3 +58,16 @@ share one paradigm and one tool — **Groot2** — for authoring and live
 monitoring. Pick **py_trees_ros** instead only to stay in Python; reach
 for **FlexBE** only if a human operator needs to supervise the sequence
 step by step. Avoid SMACH (ROS 1).
+
+## Cost, hardware & where it runs
+
+| Tier | Pick | Where it runs | Machine requirements | Cost |
+|------|------|---------------|----------------------|------|
+| **Best in class** | BehaviorTree.CPP + Groot2 | Onboard CPU, alongside the other nodes | Negligible — a thread on any CPU; **no GPU** | BehaviorTree.CPP free (MIT); Groot2 has a free tier + a paid Pro license for advanced monitoring |
+| **Good enough & cheapest** | py_trees / py_trees_ros (Python) | Onboard CPU | Negligible CPU; no GPU | Free / open source |
+| **Best cost-for-performance** | BehaviorTree.CPP + Groot2 (free tier) | Onboard CPU | Negligible | Free — the free Groot2 tier covers authoring/monitoring for this project |
+
+Orchestration adds essentially **no hardware cost**: it's a lightweight
+decision tree that ticks alongside everything else on the same onboard
+CPU. The only money question is Groot2's optional Pro tier, and the free
+tier is plenty for a v1 build.

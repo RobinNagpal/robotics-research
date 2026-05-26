@@ -56,3 +56,16 @@ dominated by planning latency, add **cuRobo / cuMotion** as a MoveIt
 planning plugin for millisecond GPU planning without leaving the
 ecosystem. Use **Drake** only if you need rigorous contact-aware
 trajectory optimization; reach for **OMPL** only *through* MoveIt.
+
+## Cost, hardware & where it runs
+
+| Tier | Pick | Where it runs | Machine requirements | Cost |
+|------|------|---------------|----------------------|------|
+| **Best in class** | MoveIt 2 + cuRobo / cuMotion (GPU, ~millisecond planning) | Onboard GPU computer, or an RTX workstation | RTX GPU or Jetson Orin; CUDA | Free software; GPU cost (Jetson Orin ~$0.6–2k, or an RTX workstation) |
+| **Good enough & cheapest** | MoveIt 2 with OMPL (CPU) | Onboard CPU computer, or a dev laptop in sim | 4-core CPU, 8 GB RAM, **no GPU**; plans in seconds | Free / open source |
+| **Best cost-for-performance** | MoveIt 2 on CPU now, add cuRobo only if cycle time demands it | Onboard CPU; GPU added later only if planning latency dominates | Start CPU-only (NUC/Jetson); upgrade to Orin if measured planning time blows the per-unit budget | Free software; CPU today, GPU spend deferred until justified by data |
+
+v1 explicitly de-prioritizes speed (20–40 s/unit is fine), so
+second-scale CPU planning with MoveIt 2 is the honest starting point.
+cuRobo's millisecond planning is a real upgrade, but it only pays for its
+GPU once cycle time — not correctness — becomes the bottleneck.

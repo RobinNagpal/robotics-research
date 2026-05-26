@@ -60,3 +60,16 @@ license/availability) or **Contact-GraspNet** (open, robust) — for the
 later milestone where the tray holds varied or unknown SKUs. Don't pay
 the data/compute cost of a learned grasp model to solve a problem a
 geometric grasp already solves.
+
+## Cost, hardware & where it runs
+
+| Tier | Pick | Where it runs | Machine requirements | Cost |
+|------|------|---------------|----------------------|------|
+| **Best in class** | AnyGrasp (strongest novel-object generalization) | Onboard / edge GPU computer | RTX GPU or Jetson Orin, CUDA | Free for research/eval but a **commercial license fee** to ship; plus GPU cost |
+| **Good enough & cheapest** | Analytical / antipodal (geometric) | Onboard CPU | Any CPU — it's pure geometry | **Free** — no model, no GPU, no training data |
+| **Best cost-for-performance** | Analytical for v1's known SKU; Contact-GraspNet (open) when SKUs vary | CPU now; add a GPU only at the generalization milestone | CPU-only for v1; GPU later | Free now; Contact-GraspNet is open (no license fee), so the only later cost is the GPU |
+
+This is the cheapest layer in the stack for v1: a known rigid SKU with a
+preferred grasp needs zero hardware beyond the CPU already running ROS 2.
+Spend nothing here until the tray genuinely holds varied SKUs — and even
+then, open Contact-GraspNet avoids AnyGrasp's license fee.

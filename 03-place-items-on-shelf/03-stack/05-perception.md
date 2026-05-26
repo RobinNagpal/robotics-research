@@ -69,3 +69,17 @@ the wider repo.
 
 Validate all of it against **Isaac Sim Replicator** domain randomization
 so it survives the sim-to-real gap (see `03-stack/01-simulator.md`).
+
+## Cost, hardware & where it runs
+
+| Tier | Pick | Where it runs | Machine requirements | Cost |
+|------|------|---------------|----------------------|------|
+| **Best in class** | FoundationPose (pose) + Grounding DINO + SAM 2 (detect/seg) | Onboard GPU computer, or a GPU workstation | RTX GPU or Jetson Orin, ≥8 GB VRAM | Models free/open; GPU cost (Jetson Orin ~$0.6–2k, or an RTX card) |
+| **Good enough & cheapest** | Open3D geometric pose (CPU) + a fine-tuned plain YOLO | Pose on CPU; YOLO on a small GPU or even CPU | 4-core CPU; a tiny GPU optional for real-time YOLO | Free; just ~hundreds of labels (Roboflow free tier) for the YOLO fine-tune |
+| **Best cost-for-performance** | Open3D pose for the known v1 SKU + YOLO-World / SAM 2 on a modest GPU | CPU for the geometric pose, one mid GPU for detection/segmentation | NUC + an entry RTX card, or a single Jetson Orin | Free software; one mid-range GPU |
+
+Perception is where GPU spend is most justified — but only on the half
+you actually need it for. v1's known SKU from a known tray pose is
+geometry (CPU, free); the GPU bill starts when tray position gets
+uncertain (FoundationPose) or you want open-vocab detection without
+per-SKU labeling.

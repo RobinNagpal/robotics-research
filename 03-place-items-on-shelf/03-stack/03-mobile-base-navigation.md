@@ -63,3 +63,16 @@ the map is stable, switch to AMCL localization against it for repeatable
 runs. Reserve **Isaac ROS / nvblox** as a GPU upgrade for 3D-aware
 costmaps if the flat-floor 2D assumption later breaks. Avoid Autoware
 (AV-scale overkill) and vendor SDKs (lock-in, poor sim-first fit).
+
+## Cost, hardware & where it runs
+
+| Tier | Pick | Where it runs | Machine requirements | Cost |
+|------|------|---------------|----------------------|------|
+| **Best in class** | Nav2 + Isaac ROS nvblox (GPU 3D costmaps) | The robot's onboard GPU computer | NVIDIA Jetson Orin (AGX or NX), or an onboard RTX GPU; CUDA | Free software; Jetson Orin NX ~$600, AGX Orin ~$2k |
+| **Good enough & cheapest** | Nav2 + slam_toolbox (2D, CPU only) | Onboard CPU computer, or a dev laptop in simulation | 4-core x86/ARM, 8 GB RAM, a 2D lidar + wheel odometry; **no GPU** | Free / open source |
+| **Best cost-for-performance** | Nav2 + slam_toolbox to build the map → AMCL on the saved map for runs | A modest onboard computer (Intel NUC or Jetson Orin Nano) | 4-core CPU, 8 GB RAM, 2D lidar + wheel odometry | Free software; ~$300–600 onboard PC |
+
+For the v1 flat-floor, 2D-lidar aisle the CPU path is genuinely
+sufficient — Nav2 + slam_toolbox is what most indoor AMRs ship. The GPU
+(nvblox) tier only earns its cost once you need true 3D obstacle
+reasoning, which the v1 safe-stop assumption explicitly defers.
