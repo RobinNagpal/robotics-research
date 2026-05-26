@@ -90,8 +90,12 @@ class Mission:
         self.base_x = p['x']                       # base_link world x when parked
         self.arm_base = np.array([p['x'] - 0.05, p['y'], 0.5])
 
+        # diff_drive_controller publishes odometry under its own name.
         self.odom_x = None
-        self.node.create_subscription(Odometry, '/odom', self._odom, 10)
+        self.odom_y = 0.0
+        self.odom_yaw = 0.0
+        self.node.create_subscription(
+            Odometry, '/diff_drive_controller/odom', self._odom, 10)
         self.cmd_pub = self.node.create_publisher(
             TwistStamped, '/diff_drive_controller/cmd_vel', 10)
         self.arm_ac = ActionClient(self.node, FollowJointTrajectory,
@@ -182,7 +186,7 @@ class Mission:
             self.arm_group.set_start_state_to_current_state()
             self.arm_group.set_goal_state(robot_state=rs)
             result = self.arm_group.plan()
-            traj = getattr(result, 'trajectory', None)
+            traj = getattr(result, 'trajectory', None) if result else None
             if traj is not None:
                 self.moveit.execute(traj, controllers=[])
                 self._spin(0.3)
@@ -194,7 +198,12 @@ class Mission:
 
     # ---------- low-level helpers ----------
     def _odom(self, msg):
-        self.odom_x = msg.pose.pose.position.x
+        p = msg.pose.pose.position
+        q = msg.pose.pose.orientation
+        self.odom_x = p.x
+        self.odom_y = p.y
+        self.odom_yaw = math.atan2(2.0 * (q.w * q.z + q.x * q.y),
+                                   1.0 - 2.0 * (q.y * q.y + q.z * q.z))
 
     def _spin(self, secs):
         end = time.time() + secs
@@ -212,10 +221,12 @@ class Mission:
     def drive(self):
         p = self.plan['picking_pose']
         if self.drive_backend == 'nav2' and self._nav2_drive(p['x'], p['y'], p['yaw']):
-            return
-        if self.drive_backend == 'nav2':
+            pass  # Nav2 got us close; fine-align below for manipulation precision.
+        elif self.drive_backend == 'nav2':
             self.log.warn('Nav2 drive failed; falling back to odometry drive.')
-        self.drive_to(p['x'])
+        # Precise final pose (both backends) so the fixed arm/collision geometry
+        # holds: rotate to the target heading, then drive to the target x.
+        self.align_to(p['x'], p['yaw'])
 
     def _nav2_drive(self, x, y, yaw):
         if not self.nav_ac.wait_for_server(timeout_sec=30.0):
@@ -243,24 +254,39 @@ class Mission:
         self.log.info('Nav2 reached the picking pose.')
         return True
 
-    def drive_to(self, target_x):
-        self.log.info(f'Driving to picking pose x={target_x:.2f}...')
-        while rclpy.ok():
+    def _publish_twist(self, vx=0.0, wz=0.0):
+        cmd = TwistStamped()
+        cmd.header.stamp = self.node.get_clock().now().to_msg()
+        cmd.header.frame_id = 'base_link'
+        cmd.twist.linear.x = float(vx)
+        cmd.twist.angular.z = float(wz)
+        self.cmd_pub.publish(cmd)
+
+    def align_to(self, target_x, target_yaw=0.0, timeout=40.0):
+        self.log.info(f'Aligning to picking pose x={target_x:.2f}, yaw={target_yaw:.2f}...')
+        # Phase 1: rotate to the target heading.
+        t0 = time.time()
+        while rclpy.ok() and time.time() - t0 < timeout:
             rclpy.spin_once(self.node, timeout_sec=0.05)
             if self.odom_x is None:
                 continue
-            err = target_x - self.odom_x
-            if err < 0.02:
+            yaw_err = math.atan2(math.sin(target_yaw - self.odom_yaw),
+                                 math.cos(target_yaw - self.odom_yaw))
+            if abs(yaw_err) < 0.02:
                 break
-            cmd = TwistStamped()
-            cmd.header.stamp = self.node.get_clock().now().to_msg()
-            cmd.header.frame_id = 'base_link'
-            cmd.twist.linear.x = float(max(0.05, min(0.4, 0.6 * err)))
-            self.cmd_pub.publish(cmd)
+            self._publish_twist(wz=max(-0.8, min(0.8, 1.5 * yaw_err)))
+        # Phase 2: drive forward/back to the target x (bidirectional).
+        t0 = time.time()
+        while rclpy.ok() and time.time() - t0 < timeout:
+            rclpy.spin_once(self.node, timeout_sec=0.05)
+            err = target_x - self.odom_x
+            if abs(err) < 0.02:
+                break
+            v = 0.6 * err
+            v = max(0.05, min(0.4, v)) if v > 0 else max(-0.4, min(-0.05, v))
+            self._publish_twist(vx=v)
         for _ in range(5):
-            cmd = TwistStamped()
-            cmd.header.stamp = self.node.get_clock().now().to_msg()
-            self.cmd_pub.publish(cmd)
+            self._publish_twist()
             self._spin(0.05)
         self.log.info('Parked at the shelf.')
 

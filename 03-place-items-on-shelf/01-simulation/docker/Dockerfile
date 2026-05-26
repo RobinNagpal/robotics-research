@@ -25,13 +25,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
       ros-jazzy-moveit-py \
       ros-jazzy-navigation2 \
       ros-jazzy-nav2-bringup \
-      ros-jazzy-topic-tools \
       ros-jazzy-xacro \
       ros-jazzy-robot-state-publisher \
       ros-jazzy-joint-state-publisher \
       ros-jazzy-controller-manager \
       ros-jazzy-teleop-twist-keyboard \
       ros-jazzy-rviz2 \
+      libgl1-mesa-dri libegl1 \
       python3-pip python3-colcon-common-extensions \
  && rm -rf /var/lib/apt/lists/*
 

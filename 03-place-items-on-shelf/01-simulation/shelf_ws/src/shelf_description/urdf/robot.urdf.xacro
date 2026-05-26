@@ -188,16 +188,18 @@
     <origin xyz="0 0 0.11"/>
   </joint>
 
-  <!-- parallel fingers (prismatic, along y, extending down in -z) -->
+  <!-- parallel fingers (prismatic, along y). They extend in +z — the same
+       distal direction as the tool frame — so when the wrist points the tool
+       down at a can, the fingers straddle it (tool tip sits between them). -->
   <xacro:macro name="finger" params="name sign">
     <link name="${name}">
       <visual>
-        <origin xyz="0 0 -0.05"/>
+        <origin xyz="0 0 0.05"/>
         <geometry><box size="0.02 0.02 0.10"/></geometry>
         <material name="metal"/>
       </visual>
       <collision>
-        <origin xyz="0 0 -0.05"/>
+        <origin xyz="0 0 0.05"/>
         <geometry><box size="0.02 0.02 0.10"/></geometry>
       </collision>
       <xacro:box_inertia m="0.05" x="0.02" y="0.02" z="0.10"/>

@@ -11,11 +11,9 @@ from moveit_configs_utils import MoveItConfigsBuilder
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import (DeclareLaunchArgument, EmitEvent, ExecuteProcess,
-                            IncludeLaunchDescription, OpaqueFunction,
-                            RegisterEventHandler)
+                            OpaqueFunction, RegisterEventHandler)
 from launch.event_handlers import OnProcessExit
 from launch.events import Shutdown
-from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 
@@ -82,49 +80,64 @@ def launch_setup(context, *args, **kwargs):
 
     actions = [gz, bridge, rsp, spawn, after_spawn, after_jsb]
 
-    # Nav2 for the base drive: static map->odom transform, a cmd_vel relay onto
-    # the diff-drive controller, and the standard navigation servers.
+    # Nav2 for the base drive. No map_server/AMCL: a static map->odom identity
+    # transform localizes the robot (known start pose, good odometry over this
+    # distance). The controller's cmd_vel is remapped straight onto the
+    # diff-drive controller, so there is no ambiguity about the output topic.
     if drive_backend == 'nav2':
         nav_params = os.path.join(
             get_package_share_directory('shelf_navigation'), 'config', 'nav2_params.yaml')
+        cmd_remap = [('cmd_vel', '/diff_drive_controller/cmd_vel')]
         static_tf = Node(
             package='tf2_ros', executable='static_transform_publisher',
             name='map_to_odom',
             arguments=['--frame-id', 'map', '--child-frame-id', 'odom'],
             output='screen')
-        cmd_relay = Node(
-            package='topic_tools', executable='relay', name='cmd_vel_relay',
-            parameters=[{'input_topic': '/cmd_vel',
-                         'output_topic': '/diff_drive_controller/cmd_vel'}],
-            output='screen')
-        nav2 = IncludeLaunchDescription(
-            PythonLaunchDescriptionSource(os.path.join(
-                get_package_share_directory('nav2_bringup'), 'launch',
-                'navigation_launch.py')),
-            launch_arguments={'use_sim_time': 'true', 'params_file': nav_params,
-                              'autostart': 'true'}.items())
-        actions += [static_tf, cmd_relay, nav2]
+        nav_nodes = [
+            Node(package='nav2_controller', executable='controller_server',
+                 parameters=[nav_params], remappings=cmd_remap, output='screen'),
+            Node(package='nav2_planner', executable='planner_server',
+                 parameters=[nav_params], output='screen'),
+            Node(package='nav2_behaviors', executable='behavior_server',
+                 parameters=[nav_params], remappings=cmd_remap, output='screen'),
+            Node(package='nav2_bt_navigator', executable='bt_navigator',
+                 parameters=[nav_params], output='screen'),
+            Node(package='nav2_lifecycle_manager', executable='lifecycle_manager',
+                 name='lifecycle_manager_navigation',
+                 parameters=[{'autostart': True, 'use_sim_time': True,
+                              'node_names': ['controller_server', 'planner_server',
+                                             'behavior_server', 'bt_navigator']}],
+                 output='screen'),
+        ]
+        actions += [static_tf] + nav_nodes
 
     # Start the autonomous mission once the controllers are up, and shut the
     # whole launch down cleanly when the mission node exits.
     if run_mission == 'true':
         # MoveIt 2 config (planning pipeline + SRDF + controllers) passed to
         # the mission node so MoveItPy can plan collision-free arm motions.
+        # If the config build fails, degrade to the direct backend rather than
+        # killing the whole launch.
         moveit_params = []
+        effective_arm_backend = arm_backend
         if arm_backend == 'moveit':
-            description = get_package_share_directory('shelf_description')
-            moveit_config = (
-                MoveItConfigsBuilder('shelf_bot', package_name='shelf_moveit_config')
-                .robot_description(
-                    file_path=os.path.join(description, 'urdf', 'robot.urdf.xacro'))
-                .robot_description_semantic(file_path='config/shelf_bot.srdf')
-                .robot_description_kinematics(file_path='config/kinematics.yaml')
-                .joint_limits(file_path='config/joint_limits.yaml')
-                .trajectory_execution(file_path='config/moveit_controllers.yaml')
-                .planning_pipelines(pipelines=['ompl'], default_planning_pipeline='ompl')
-                .to_moveit_configs()
-            )
-            moveit_params = [moveit_config.to_dict()]
+            try:
+                moveit_config = (
+                    MoveItConfigsBuilder('shelf_bot', package_name='shelf_moveit_config')
+                    .robot_description(
+                        file_path=os.path.join(description, 'urdf', 'robot.urdf.xacro'))
+                    .robot_description_semantic(file_path='config/shelf_bot.srdf')
+                    .robot_description_kinematics(file_path='config/kinematics.yaml')
+                    .joint_limits(file_path='config/joint_limits.yaml')
+                    .trajectory_execution(file_path='config/moveit_controllers.yaml')
+                    .planning_pipelines(pipelines=['ompl'], default_planning_pipeline='ompl')
+                    .to_moveit_configs()
+                )
+                moveit_params = [moveit_config.to_dict()]
+            except Exception as exc:  # noqa: BLE001
+                print(f'[sim.launch] MoveIt config build failed ({exc}); '
+                      f'falling back to direct arm backend.')
+                effective_arm_backend = 'direct'
 
         # Node is named 'moveit_py' so the MoveIt params scope to the node
         # MoveItPy creates; the backend choice is passed via env.
@@ -132,7 +145,7 @@ def launch_setup(context, *args, **kwargs):
             package='shelf_bringup', executable='orchestrator.py', name='moveit_py',
             output='screen',
             parameters=moveit_params + [{'use_sim_time': True}],
-            additional_env={'SHELF_ARM_BACKEND': arm_backend,
+            additional_env={'SHELF_ARM_BACKEND': effective_arm_backend,
                             'SHELF_DRIVE_BACKEND': drive_backend})
         after_controllers = RegisterEventHandler(
             OnProcessExit(target_action=grip, on_exit=[orchestrator]))
