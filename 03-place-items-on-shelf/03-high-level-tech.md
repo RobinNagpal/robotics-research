@@ -5,6 +5,10 @@
 > the store and the mobile manipulator in a simulator, prove the
 > pick-drive-place loop there, then transfer. Everything below is glued
 > together with **ROS 2** so the same nodes run in sim and on hardware.
+>
+> **New to the jargon?** Every technical term used below (ROS, USD,
+> URDF, RGB-D, SLAM, AMCL, and the rest) is explained in one or two
+> plain sentences in `02-glossary.md` — read that first.
 
 ---
 

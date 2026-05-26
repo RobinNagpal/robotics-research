@@ -21,7 +21,7 @@ Building `../../03-place-items-on-shelf` (a mobile base + arm that stocks a groc
 
 Book to keep on the desk: **Peter Corke, *Robotics, Vision and Control*** (Stack 5) — the one reference that covers manipulator kinematics *and* vision together, which is precisely the arm-plus-camera combination this project needs.
 
-**What this perception list deliberately does not cover.** The shelf robot also needs **arm motion planning (MoveIt 2)**, **grasp synthesis (AnyGrasp / Contact-GraspNet, Dex-Net)**, and the **simulators (Isaac Sim / Isaac Lab, Gazebo, MuJoCo)** described in `../../03-place-items-on-shelf/02-high-level-tech.md`. Those are manipulation and simulation skills, not perception — find their learning resources in the manipulation area (`../05-manipulation/02-learn.md`) rather than duplicated here.
+**What this perception list deliberately does not cover.** The shelf robot also needs **arm motion planning (MoveIt 2)**, **grasp synthesis (AnyGrasp / Contact-GraspNet, Dex-Net)**, and the **simulators (Isaac Sim / Isaac Lab, Gazebo, MuJoCo)** described in `../../03-place-items-on-shelf/03-high-level-tech.md`. Those are manipulation and simulation skills, not perception — find their learning resources in the manipulation area (`../05-manipulation/02-learn.md`) rather than duplicated here.
 
 ---
 

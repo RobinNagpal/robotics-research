@@ -5,7 +5,7 @@
 > viable version** — the smallest robot and the tightest set of
 > assumptions that still produce a demo a grocery chain would recognize
 > as "it stocked the shelf." Everything here is scoped to be built and
-> proven **in simulation first** (see `02-high-level-tech.md`), then
+> proven **in simulation first** (see `03-high-level-tech.md`), then
 > transferred.
 
 The guiding rule: **cut every variable you can until exactly one hard
