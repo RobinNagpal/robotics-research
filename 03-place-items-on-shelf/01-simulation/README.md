@@ -12,6 +12,26 @@
 
 ---
 
+## Quick start (the code)
+
+The simulation runs entirely inside Docker — no local ROS 2 or Gazebo
+install needed. Works on Linux, macOS (incl. Apple Silicon), and Windows
+(WSL2). CPU-only.
+
+```bash
+cd 03-place-items-on-shelf/01-simulation
+./setup.sh      # one-time: build the image + the ROS 2 workspace
+./run.sh        # run the full autonomous mission, headless (prints the log)
+./run.sh --gui  # optional: watch it in the Gazebo GUI (Linux + X11)
+```
+
+`./run.sh` drives the robot to the shelf, picks each can from the tray,
+places it in the slot, verifies, and writes a per-unit success log to
+`logs/`. The code lives in `shelf_ws/` (ROS 2 packages) with Docker glue
+in `docker/`. The phase files below are the design rationale behind it.
+
+---
+
 ## Why Gazebo Harmonic for stage 1
 
 Gazebo Harmonic (the `gz-sim` line, LTS, pairs with ROS 2 Jazzy on
