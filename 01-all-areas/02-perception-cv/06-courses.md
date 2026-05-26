@@ -10,7 +10,7 @@ A note on auditing vs. building: treat every course as a scaffold. If you don't 
 
 ## Fast track for the shelf-stocking project
 
-Building `05-projects/01-place-items-on-shelf` (a mobile base + arm that stocks a grocery shelf)? These are the courses from the full list below that map most directly to that project's **perception** half. Take them in this order, then return for the rest.
+Building `../../03-place-items-on-shelf` (a mobile base + arm that stocks a grocery shelf)? These are the courses from the full list below that map most directly to that project's **perception** half. Take them in this order, then return for the rest.
 
 1. **ROS2 in 5 Days - The Construct** (Stack 3, #9b). The middleware everything else plugs into; the perception sub-track (camera drivers, point-cloud nodes, tf2) is exactly the glue between your CV model and the robot.
 2. **Robotics: Perception - UPenn** (Stack 1, #3). Camera model, calibration, and PnP/pose estimation in robotics framing (body/world frames) — the foundation for localizing the product and the shelf slot.
@@ -21,7 +21,7 @@ Building `05-projects/01-place-items-on-shelf` (a mobile base + arm that stocks 
 
 Book to keep on the desk: **Peter Corke, *Robotics, Vision and Control*** (Stack 5) — the one reference that covers manipulator kinematics *and* vision together, which is precisely the arm-plus-camera combination this project needs.
 
-**What this perception list deliberately does not cover.** The shelf robot also needs **arm motion planning (MoveIt 2)**, **grasp synthesis (AnyGrasp / Contact-GraspNet, Dex-Net)**, and the **simulators (Isaac Sim / Isaac Lab, Gazebo, MuJoCo)** described in `05-projects/01-place-items-on-shelf/02-high-level-tech.md`. Those are manipulation and simulation skills, not perception — find their learning resources in the manipulation area (`../05-manipulation/02-learn.md`) rather than duplicated here.
+**What this perception list deliberately does not cover.** The shelf robot also needs **arm motion planning (MoveIt 2)**, **grasp synthesis (AnyGrasp / Contact-GraspNet, Dex-Net)**, and the **simulators (Isaac Sim / Isaac Lab, Gazebo, MuJoCo)** described in `../../03-place-items-on-shelf/02-high-level-tech.md`. Those are manipulation and simulation skills, not perception — find their learning resources in the manipulation area (`../05-manipulation/02-learn.md`) rather than duplicated here.
 
 ---
 
