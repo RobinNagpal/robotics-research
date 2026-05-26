@@ -7,6 +7,31 @@
 > over a neighbor or clipping the shelf is a defined failure, so
 > **collision checking** and a **clean ROS 2 integration** matter most.
 
+## How this layer fits into the architecture
+
+Arm motion planning is the robot's **muscle control for the arm** — the
+layer that actually moves the gripper from one place to another without
+crashing into anything.
+
+It runs *late* in each cycle, after the perception and grasping layers
+have done their thinking. The chain is: perception (`05-perception.md`)
+says **where** the can is; grasping (`06-grasping.md`) says **how** to
+hold it (a target gripper pose); then this layer answers the hard
+question — "what sequence of joint movements gets the gripper from where
+it is now to that target pose, without hitting the shelf, the neighbors,
+or the robot's own body?" It produces a smooth, collision-checked
+trajectory and executes it, then does the same again for the place,
+including the gentle, guarded set-down onto the shelf.
+
+To stay safe it keeps a live **collision world** — a model of the shelf
+and the already-placed products that perception feeds it — so it can
+plan a path *around* those obstacles. It takes simple commands from the
+orchestration layer ("execute the pick," "execute the place") and
+reports success or failure back. It does *not* decide whether to pick or
+what to pick; it only carries out the move. As with every layer, the
+commands and trajectories travel over ROS 2 (`02-middleware.md`) and are
+rehearsed first in the simulator (`01-simulator.md`).
+
 ## Comparison
 
 | Framework | ROS 2 integration | Algorithm breadth (sampling / opt) | Collision checking | Speed (GPU?) | Trajectory optimization | Maturity / community | Bottom line |

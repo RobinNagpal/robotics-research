@@ -7,6 +7,31 @@
 > is "reliable point-to-point navigation with good localization," not
 > "crowd-navigating AV."
 
+## How this layer fits into the architecture
+
+Navigation is the robot's **legs and sense of place**. Its single job in
+the architecture is to get the whole robot body to a precise standing
+spot in front of the correct shelf, and hold it steady there, so the arm
+can reach the slot.
+
+Where it sits in the flow: the orchestration layer (the "supervisor,"
+see `07-orchestration.md`) hands navigation a goal — "go to the picking
+pose in front of shelf #4." Navigation then takes over the **mobile
+base**. It reads the lidar and wheel odometry, compares them against the
+stored map of the aisle to work out where it currently is
+(localization), plans a path, and drives the wheels there, stopping at
+the goal. A short vision-based nudge lines it up exactly with the shelf
+face. Only once navigation reports "arrived" does the supervisor move on
+to picking.
+
+It deliberately owns *only base movement*. It never touches the arm, the
+product camera, or the grasp — those are other layers. If a person steps
+into the aisle, navigation is the layer that notices (through its
+costmap) and triggers the **safe-stop** the requirements call for.
+Everything it does flows over ROS 2 (`02-middleware.md`), and during
+development the "world" it drives through is the simulator
+(`01-simulator.md`).
+
 ## Navigation stacks
 
 | Framework | ROS 2 native | Completeness (plan + control + recovery) | SLAM / localization included | Dynamic-obstacle handling | Maturity / community | Customizability | Bottom line |

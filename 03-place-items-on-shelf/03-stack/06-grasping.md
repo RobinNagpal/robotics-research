@@ -6,6 +6,34 @@
 > (analytical) and only needs the learned methods once the SKU set
 > grows. The honest v1 answer is "don't over-engineer this."
 
+## How this layer fits into the architecture
+
+Grasping is a small but pivotal **decision** layer. Given that the
+perception layer has already found the product, grasping decides exactly
+*how the gripper should grab it* — the precise position and orientation
+to approach from, and (for a parallel gripper) how wide to open, or which
+suction point to use on a flat-topped box.
+
+It sits **between perception and arm motion**, and because those three
+are easy to confuse, the boundary is worth stating plainly:
+
+- Perception (`05-perception.md`) says **where the object is**.
+- Grasping says **where to put the gripper to hold it**.
+- Arm motion (`04-arm-motion-planning.md`) says **how to move the arm to
+  get the gripper there**.
+
+In the cycle: the orchestration layer, holding the product pose from
+perception, asks the grasping layer for a grasp. Grasping returns a
+single target gripper pose (plus a width or suction choice). That pose
+becomes the goal the arm-motion layer plans toward; after the move, the
+gripper closes and a grasp check confirms it worked.
+
+For v1 with one known rigid SKU this layer is deliberately tiny — a
+fixed, hand-defined grasp. Keeping it as its own clean box is what lets
+you later swap in a learned grasp model (AnyGrasp / Contact-GraspNet)
+when SKUs vary, **without touching any other layer**. Its inputs and
+outputs travel over ROS 2 (`02-middleware.md`) like everything else.
+
 ## Comparison
 
 | Method | Input | Grasp types | Novel-object generalization | Training / data needs | Speed | Bottom line |

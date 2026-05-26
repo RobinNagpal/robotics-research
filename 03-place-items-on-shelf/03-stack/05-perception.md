@@ -7,6 +7,34 @@
 > framing lets you start almost geometry-only and add learned perception
 > as you relax the "known tray layout" assumption.
 
+## How this layer fits into the architecture
+
+Perception is the robot's **eyes, plus the part of the brain that
+interprets what the eyes see**. Everything the robot does physically
+depends on first knowing two facts, and producing those two answers is
+perception's entire job in the architecture:
+
+1. **Where exactly is the next product** in the tray (its 6-DoF pose) —
+   so the arm can pick it.
+2. **Where on the shelf is the empty slot, and is it actually empty** —
+   so the arm knows where to place.
+
+In one cycle, perception runs twice (sometimes three times). First,
+before the pick: the orchestration layer (`07-orchestration.md`) asks
+"where's the product?"; perception reads the wrist RGB-D camera and
+returns a pose, which feeds the grasping layer (`06-grasping.md`).
+Second, before the place: "where's the slot?"; perception segments the
+shelf and returns the target location to the arm-motion layer
+(`04-arm-motion-planning.md`). After the place it can run once more to
+**verify** the product landed upright.
+
+It produces *information, not motion* — it never drives a motor. It
+consumes camera images (from the real camera, or in development from the
+simulator, `01-simulator.md`) and publishes poses and detections over
+ROS 2 (`02-middleware.md`) for the grasping and arm-motion layers to act
+on. This is the layer most directly tied to the perception-cv area of
+the wider repo.
+
 ## A. Product 6-DoF pose estimation (the pick)
 
 | Method | Needs CAD/mesh? | Novel-object generalization | Accuracy | Speed | Training data needed | Bottom line |

@@ -7,6 +7,31 @@
 > reality?) and **rendering realism + domain randomization** (will the
 > perception model survive the sim-to-real gap?).
 
+## How this layer fits into the architecture
+
+The simulator is not a part of the robot — it is the **practice world**
+the robot lives in before (and alongside) the real store. Picture a
+video-game copy of the grocery aisle, the shelves, the products, and the
+robot itself, all obeying real physics: gravity, friction, and
+collisions.
+
+It sits at the **bottom of the stack** because every other layer needs
+something to act on. Before a real store, a real robot, and real cans
+exist, the simulator supplies all three. It feeds fake-but-realistic
+sensor data *into* the system — camera images to the perception layer,
+lidar scans to the navigation layer — and it receives the motor commands
+the system sends *back*, then moves the simulated robot accordingly.
+Because it exchanges those messages through the same ROS 2 interface the
+real hardware will use (see `02-middleware.md`), the code you write
+against the simulator is the same code that later runs on real metal.
+
+Concretely, during one rehearsal of the pick-place cycle: the simulator
+renders what the wrist camera "sees" of the tray → the perception layer
+reads it; the arm-motion layer sends joint commands → the simulator
+moves the simulated arm and reports back whether the gripper actually
+touched the can. This is where you measure the success rate from the
+requirements (`../01-requirements.md`) before risking real hardware.
+
 ## Comparison
 
 | Framework | Rendering realism | Contact / physics fidelity | Sensor + ROS 2 integration | Synthetic-data / domain randomization | Compute need | License | Bottom line |

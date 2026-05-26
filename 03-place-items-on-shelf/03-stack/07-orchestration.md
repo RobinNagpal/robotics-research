@@ -7,6 +7,32 @@
 > **Behavior Tree vs finite-state machine**: BTs are more reactive and
 > reusable for exactly this kind of long, branchy, recoverable sequence.
 
+## How this layer fits into the architecture
+
+Orchestration is the **shift supervisor** of the whole system — the
+brain that decides what happens next, in what order, and what to do when
+something goes wrong. Unlike every other layer, it does no sensing and
+no moving itself; it only **directs**.
+
+It sits at the **top** and drives every other layer. Holding the job
+("stock shelf #4 with N cans"), it works down its checklist and calls
+each layer in turn: tell navigation (`03-mobile-base-navigation.md`) to
+drive to the shelf and wait for "arrived"; ask perception
+(`05-perception.md`) for the product pose; ask grasping
+(`06-grasping.md`) for a grasp; tell arm motion
+(`04-arm-motion-planning.md`) to execute the pick; ask perception for
+the slot; tell arm motion to place; ask perception to verify; then loop
+for the next unit until the tray is empty or the row is full.
+
+Crucially, it owns all the **decisions around failure**: if a pick
+fails, it decides whether to retry or skip-and-log; if a person enters
+the aisle, it triggers the safe-stop; if something is unrecoverable, it
+halts and flags a human. Each step it calls is a ROS 2 action exposed by
+another layer (`02-middleware.md`), so the supervisor stays a thin,
+readable tree of "do this, then that, and on failure do this" — and the
+exact same tree runs in the simulator (`01-simulator.md`) and on the
+real robot.
+
 ## Comparison
 
 | Framework | Paradigm | ROS 2 support | Reactivity | Visualization / tooling | Reusability / scalability | Language | Bottom line |

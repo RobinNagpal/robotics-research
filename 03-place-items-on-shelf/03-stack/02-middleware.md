@@ -6,6 +6,32 @@
 > near-foregone choice in modern robotics, but it is worth seeing why,
 > and what the alternatives give up.
 
+## How this layer fits into the architecture
+
+ROS 2 is the **nervous system** of the robot — the wiring and phone
+network that every other layer plugs into. It is the one layer that
+touches all the others. By itself it does no navigation, no vision, and
+no planning; its whole job is to let those parts talk to each other in a
+common language.
+
+Each capability runs as a separate small program called a **node**: a
+navigation node, a perception node, a grasping node, an arm-motion node,
+an orchestration node. They never call each other directly. Instead they
+**publish** and **subscribe** to named "topics," and request work
+through "actions," all carried by ROS 2. For example, the camera driver
+publishes pictures on a `/wrist_camera` topic; the perception node
+subscribes to that topic, works out a product pose, and publishes it; the
+orchestration node reads that pose and triggers the arm. Swap any node
+and the rest don't notice, as long as the messages stay the same.
+
+It also carries the robot's shared **sense of geometry** through `tf2`,
+which constantly tracks where every frame (base, arm, camera, shelf)
+sits relative to every other. That is what lets "the can is 12 cm in
+front of the camera" be converted into "the can is *here* in the arm's
+coordinates" — the translation every other layer relies on. And because
+both the simulator (`01-simulator.md`) and the real robot speak ROS 2,
+moving from one to the other changes nothing else in the stack.
+
 ## Comparison
 
 | Framework | Maintenance / longevity | Real-time / QoS (DDS) | Nav2 + MoveIt 2 ecosystem | Tooling (rviz, tf2, bags) | Multi-language | Learning resources | Bottom line |
