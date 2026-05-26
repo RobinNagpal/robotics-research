@@ -18,6 +18,7 @@ part — tune planogram gripper.grip / can friction; see ../../05-manipulation.m
 import os
 import re
 import csv
+import math
 import time
 import subprocess
 from datetime import datetime
@@ -30,8 +31,9 @@ from rclpy.action import ActionClient
 from rclpy.parameter import Parameter
 
 from ament_index_python.packages import get_package_share_directory
-from geometry_msgs.msg import TwistStamped
+from geometry_msgs.msg import TwistStamped, PoseStamped
 from nav_msgs.msg import Odometry
+from nav2_msgs.action import NavigateToPose
 from control_msgs.action import FollowJointTrajectory
 from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
 from builtin_interfaces.msg import Duration
@@ -96,6 +98,8 @@ class Mission:
                                    '/arm_controller/follow_joint_trajectory')
         self.grip_ac = ActionClient(self.node, FollowJointTrajectory,
                                     '/gripper_controller/follow_joint_trajectory')
+        self.nav_ac = ActionClient(self.node, NavigateToPose, '/navigate_to_pose')
+        self.drive_backend = os.environ.get('SHELF_DRIVE_BACKEND', 'nav2')
 
         self.backend = os.environ.get('SHELF_ARM_BACKEND', 'moveit')
         self.moveit = None
@@ -205,6 +209,40 @@ class Mission:
         while self.odom_x is None and time.time() - t0 < 30.0:
             rclpy.spin_once(self.node, timeout_sec=0.1)
 
+    def drive(self):
+        p = self.plan['picking_pose']
+        if self.drive_backend == 'nav2' and self._nav2_drive(p['x'], p['y'], p['yaw']):
+            return
+        if self.drive_backend == 'nav2':
+            self.log.warn('Nav2 drive failed; falling back to odometry drive.')
+        self.drive_to(p['x'])
+
+    def _nav2_drive(self, x, y, yaw):
+        if not self.nav_ac.wait_for_server(timeout_sec=30.0):
+            self.log.warn('Nav2 action server not available.')
+            return False
+        self.log.info(f'Navigating to picking pose ({x:.2f}, {y:.2f}) via Nav2...')
+        goal = NavigateToPose.Goal()
+        ps = PoseStamped()
+        ps.header.frame_id = 'map'
+        ps.header.stamp = self.node.get_clock().now().to_msg()
+        ps.pose.position.x = float(x)
+        ps.pose.position.y = float(y)
+        ps.pose.orientation.z = math.sin(yaw / 2.0)
+        ps.pose.orientation.w = math.cos(yaw / 2.0)
+        goal.pose = ps
+        gh_future = self.nav_ac.send_goal_async(goal)
+        rclpy.spin_until_future_complete(self.node, gh_future, timeout_sec=15.0)
+        gh = gh_future.result()
+        if gh is None or not gh.accepted:
+            return False
+        res_future = gh.get_result_async()
+        rclpy.spin_until_future_complete(self.node, res_future, timeout_sec=90.0)
+        if res_future.result() is None:
+            return False
+        self.log.info('Nav2 reached the picking pose.')
+        return True
+
     def drive_to(self, target_x):
         self.log.info(f'Driving to picking pose x={target_x:.2f}...')
         while rclpy.ok():
@@ -298,7 +336,7 @@ class Mission:
     # ---------- the loop ----------
     def run(self):
         self.wait_ready()
-        self.drive_to(self.plan['picking_pose']['x'])
+        self.drive()
         self.move_gripper(self.plan['gripper']['open'])
         self.spawn_cans()
 
@@ -345,7 +383,7 @@ class Mission:
         rate = 100.0 * placed / n if n else 0.0
         self.log.info('=' * 56)
         self.log.info(f'JOB COMPLETE: {placed}/{n} placed ({rate:.0f}%) '
-                      f'[arm backend: {self.backend}].')
+                      f'[drive: {self.drive_backend}, arm: {self.backend}].')
         self.log.info(f'Per-unit log: {self.log_path}')
         self.log.info('=' * 56)
 

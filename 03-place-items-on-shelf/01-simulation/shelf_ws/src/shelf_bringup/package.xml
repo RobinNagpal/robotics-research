@@ -36,6 +36,10 @@
   <exec_depend>moveit_msgs</exec_depend>
   <exec_depend>shape_msgs</exec_depend>
   <exec_depend>shelf_moveit_config</exec_depend>
+  <exec_depend>nav2_msgs</exec_depend>
+  <exec_depend>nav2_bringup</exec_depend>
+  <exec_depend>topic_tools</exec_depend>
+  <exec_depend>shelf_navigation</exec_depend>
 
   <export>
     <build_type>ament_cmake</build_type>

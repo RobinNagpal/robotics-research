@@ -11,9 +11,11 @@ from moveit_configs_utils import MoveItConfigsBuilder
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import (DeclareLaunchArgument, EmitEvent, ExecuteProcess,
-                            OpaqueFunction, RegisterEventHandler)
+                            IncludeLaunchDescription, OpaqueFunction,
+                            RegisterEventHandler)
 from launch.event_handlers import OnProcessExit
 from launch.events import Shutdown
+from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 
@@ -26,6 +28,7 @@ def launch_setup(context, *args, **kwargs):
     world = LaunchConfiguration('world').perform(context)
     run_mission = LaunchConfiguration('mission').perform(context)
     arm_backend = LaunchConfiguration('arm_backend').perform(context)
+    drive_backend = LaunchConfiguration('drive_backend').perform(context)
 
     candidate = os.path.join(bringup, 'worlds', world)
     world_path = candidate if os.path.exists(candidate) else world
@@ -79,6 +82,29 @@ def launch_setup(context, *args, **kwargs):
 
     actions = [gz, bridge, rsp, spawn, after_spawn, after_jsb]
 
+    # Nav2 for the base drive: static map->odom transform, a cmd_vel relay onto
+    # the diff-drive controller, and the standard navigation servers.
+    if drive_backend == 'nav2':
+        nav_params = os.path.join(
+            get_package_share_directory('shelf_navigation'), 'config', 'nav2_params.yaml')
+        static_tf = Node(
+            package='tf2_ros', executable='static_transform_publisher',
+            name='map_to_odom',
+            arguments=['--frame-id', 'map', '--child-frame-id', 'odom'],
+            output='screen')
+        cmd_relay = Node(
+            package='topic_tools', executable='relay', name='cmd_vel_relay',
+            parameters=[{'input_topic': '/cmd_vel',
+                         'output_topic': '/diff_drive_controller/cmd_vel'}],
+            output='screen')
+        nav2 = IncludeLaunchDescription(
+            PythonLaunchDescriptionSource(os.path.join(
+                get_package_share_directory('nav2_bringup'), 'launch',
+                'navigation_launch.py')),
+            launch_arguments={'use_sim_time': 'true', 'params_file': nav_params,
+                              'autostart': 'true'}.items())
+        actions += [static_tf, cmd_relay, nav2]
+
     # Start the autonomous mission once the controllers are up, and shut the
     # whole launch down cleanly when the mission node exits.
     if run_mission == 'true':
@@ -106,7 +132,8 @@ def launch_setup(context, *args, **kwargs):
             package='shelf_bringup', executable='orchestrator.py', name='moveit_py',
             output='screen',
             parameters=moveit_params + [{'use_sim_time': True}],
-            additional_env={'SHELF_ARM_BACKEND': arm_backend})
+            additional_env={'SHELF_ARM_BACKEND': arm_backend,
+                            'SHELF_DRIVE_BACKEND': drive_backend})
         after_controllers = RegisterEventHandler(
             OnProcessExit(target_action=grip, on_exit=[orchestrator]))
         on_mission_done = RegisterEventHandler(
@@ -129,5 +156,8 @@ def generate_launch_description():
         DeclareLaunchArgument('arm_backend', default_value='moveit',
             description="Arm motion: 'moveit' (collision-aware planning) or "
                         "'direct' (ikpy joint-trajectory, no planning)."),
+        DeclareLaunchArgument('drive_backend', default_value='nav2',
+            description="Base drive: 'nav2' (planned navigation) or "
+                        "'odom' (straight-line odometry drive)."),
         OpaqueFunction(function=launch_setup),
     ])
