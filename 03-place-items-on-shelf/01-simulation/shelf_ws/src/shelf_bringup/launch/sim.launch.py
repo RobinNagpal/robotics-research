@@ -9,9 +9,10 @@ import os
 import xacro
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import (DeclareLaunchArgument, ExecuteProcess,
+from launch.actions import (DeclareLaunchArgument, EmitEvent, ExecuteProcess,
                             OpaqueFunction, RegisterEventHandler)
 from launch.event_handlers import OnProcessExit
+from launch.events import Shutdown
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 
@@ -76,17 +77,18 @@ def launch_setup(context, *args, **kwargs):
 
     actions = [gz, bridge, rsp, spawn, after_spawn, after_jsb]
 
-    # CP4: optionally start the autonomous mission once controllers are up.
+    # Start the autonomous mission once the controllers are up, and shut the
+    # whole launch down cleanly when the mission node exits.
     if run_mission == 'true':
         orchestrator = Node(
             package='shelf_bringup', executable='orchestrator.py',
             output='screen', parameters=[{'use_sim_time': True}])
-        perception = Node(
-            package='shelf_bringup', executable='perception_node.py',
-            output='screen', parameters=[{'use_sim_time': True}])
         after_controllers = RegisterEventHandler(
-            OnProcessExit(target_action=grip, on_exit=[perception, orchestrator]))
-        actions.append(after_controllers)
+            OnProcessExit(target_action=grip, on_exit=[orchestrator]))
+        on_mission_done = RegisterEventHandler(
+            OnProcessExit(target_action=orchestrator,
+                          on_exit=[EmitEvent(event=Shutdown())]))
+        actions += [after_controllers, on_mission_done]
 
     return actions
 

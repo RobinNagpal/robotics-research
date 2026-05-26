@@ -1,0 +1,32 @@
+# The "known store layout" for v1 (see ../../01-requirements.md §3).
+# Poses are world coordinates valid once the robot is parked at picking_pose
+# (x forward, y left, z up). The orchestrator converts them into the arm's
+# base frame for IK.
+shelf_id: shelf_4
+num_units: 3
+
+# Where the base drives to and stops, facing +x toward the shelf.
+picking_pose:
+  x: 0.85
+  y: 0.0
+  yaw: 0.0
+
+# Tray cells (on the robot deck) where cans are spawned and picked from.
+tray:
+  x: 1.10
+  z: 0.43
+  ys: [-0.12, 0.0, 0.12]
+
+# Shelf slots where cans are placed, side by side in one row.
+slot:
+  x: 1.55
+  z: 0.88
+  ys: [-0.12, 0.0, 0.12]
+
+# Vertical clearance for approach/retreat above pick and place targets.
+approach_height: 0.12
+
+# Gripper finger positions (m): open clears the can, grip squeezes it.
+gripper:
+  open: 0.049
+  grip: 0.040
