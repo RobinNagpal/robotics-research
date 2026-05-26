@@ -30,6 +30,27 @@ places it in the slot, verifies, and writes a per-unit success log to
 `logs/`. The code lives in `shelf_ws/` (ROS 2 packages) with Docker glue
 in `docker/`. The phase files below are the design rationale behind it.
 
+**What the v1 code does vs. the full plan.** To get a reliable,
+single-command demo, the shipped code takes the simplest robust path for
+each layer and leaves the heavier frameworks as the documented upgrade:
+
+| Layer | v1 code (shipped) | Upgrade (phase files / `../03-stack/`) |
+|-------|-------------------|----------------------------------------|
+| Drive | odometry go-to-pose | **Nav2** + slam_toolbox/AMCL (`04-navigation.md`) |
+| Arm | `ikpy` IK → joint-trajectory controller | **MoveIt 2** collision-aware planning (`05-manipulation.md`) |
+| Grasp | friction grasp (tuned light can) | **DetachableJoint** / learned grasp (`05-manipulation.md`) |
+| Perception | known poses from `planogram.yaml` | geometric → FoundationPose (`../03-stack/05-perception.md`) |
+| Orchestration | one Python mission node | **BehaviorTree.CPP** (`06-integration-and-metrics.md`) |
+
+This matches the requirements' v1 framing (known layout, geometry first;
+learned/heavier methods deferred). Every interface is still ROS 2, so the
+upgrades drop in without rewriting the others.
+
+> Caveat: this was written to be correct-by-design but has **not** been
+> executed end-to-end yet — expect to tune the friction grasp
+> (`gripper.grip` / can friction) and the arm reach on first run. The
+> grasp is the known-hard part in Gazebo (see `05-manipulation.md`).
+
 ---
 
 ## Why Gazebo Harmonic for stage 1
