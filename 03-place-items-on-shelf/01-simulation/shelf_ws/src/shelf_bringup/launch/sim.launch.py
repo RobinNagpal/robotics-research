@@ -53,7 +53,7 @@ def generate_launch_description():
             'headless', default_value='true',
             description='Run Gazebo without the GUI (server only).'),
         DeclareLaunchArgument(
-            'world', default_value='empty.sdf',
+            'world', default_value='store_aisle.sdf',
             description='World file in shelf_bringup/worlds, an absolute path, '
                         'or a Gazebo built-in name.'),
         OpaqueFunction(function=launch_setup),
