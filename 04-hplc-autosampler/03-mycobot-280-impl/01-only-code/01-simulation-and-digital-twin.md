@@ -177,3 +177,7 @@ why it lands as an Alternative rather than the practical pick.
 - Folder overview: [`README.md`](README.md)
 - Sibling mode (real arm in the loop):
   [`../02-code-plus-hardware/01-simulation-and-digital-twin.md`](../02-code-plus-hardware/01-simulation-and-digital-twin.md)
+- [`../foundation-models.md`](../foundation-models.md) — this layer is
+  also where you **train and evaluate VLA policies**: sim benchmarks
+  (LIBERO/SIMPLER/ManiSkill, Isaac Lab) and **synthetic-demo
+  generation** (NVIDIA GR00T is sim-native).

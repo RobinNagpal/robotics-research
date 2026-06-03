@@ -256,3 +256,7 @@ stack as the destination you grow into.
 - Folder overview: [`README.md`](README.md)
 - Sibling mode (real hardware):
   [`../02-code-plus-hardware/08-software-worklist-and-compliance.md`](../02-code-plus-hardware/08-software-worklist-and-compliance.md)
+- [`../foundation-models.md`](../foundation-models.md) — the compliance
+  tension a VLA raises lives here: a **non-deterministic, black-box**
+  policy is hard to validate under **21 CFR Part 11 / IQ-OQ-PQ**, and it
+  adds **model-versioning / training-data audit** (MLOps) concerns.

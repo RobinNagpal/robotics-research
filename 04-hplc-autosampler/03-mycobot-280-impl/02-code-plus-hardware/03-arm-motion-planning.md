@@ -206,3 +206,7 @@ and defer Tesseract until the real cell is genuinely crowded.
 - Folder overview: [`README.md`](README.md)
 - Sibling mode (pure simulation):
   [`../01-only-code/03-arm-motion-planning.md`](../01-only-code/03-arm-motion-planning.md)
+- [`../foundation-models.md`](../foundation-models.md) — a VLA can emit
+  **motions directly** on the real arm, competing with explicit MoveIt
+  planning (or layered *under* MoveIt for collision safety); the learned
+  alternative to this layer.

@@ -264,3 +264,7 @@ defensibility lives.
 - Folder overview: [`README.md`](README.md)
 - Sibling mode (pure software):
   [`../01-only-code/08-software-worklist-and-compliance.md`](../01-only-code/08-software-worklist-and-compliance.md)
+- [`../foundation-models.md`](../foundation-models.md) — deploying a VLA
+  collides with this layer: a **non-deterministic, black-box** policy is
+  hard to validate under **21 CFR Part 11 / IQ-OQ-PQ**, and it adds
+  **model-versioning / training-data audit** (MLOps) obligations.

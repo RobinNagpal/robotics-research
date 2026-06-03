@@ -34,11 +34,17 @@ learns the perception→grasp→motion mapping from **demonstration data**
 rather than from explicit geometry.
 
 > **Where it sits in our 8 layers.** A VLA is not a new layer — it is an
-> **alternative implementation that cuts across Layers 04 (perception),
-> 05 (grasping/manipulation), and parts of 03/07**. We file it under
-> **Layer 05** because "decide and execute the manipulation" is its
-> centre of gravity, but be clear in a conversation that a strong VLA can
-> subsume the perception and low-level sequencing too.
+> **alternative implementation that cuts across most of them**. Its
+> centre of gravity is **Layer 05 (grasping/manipulation)**, where we
+> file it, but be clear in a conversation that it also: **subsumes Layer
+> 04 (perception)** and parts of **Layer 03 (motion)** and **Layer 07
+> (orchestration)**; is **trained and evaluated in Layer 01 (the
+> simulator / digital twin)**, which doubles as its synthetic-data
+> factory; runs on **Layer 02 (control)** with real latency/QoS
+> concerns; and **collides with Layer 08 (compliance)**, where a
+> black-box policy is hard to validate. About the only layer it leaves
+> alone is **Layer 06 (barcode)**. Each of those layer files links back
+> here.
 
 **The trade in one line:** the analytical pipeline is cheap, exact,
 deterministic, and *explainable* for one known task; a VLA is expensive,
@@ -259,6 +265,12 @@ generalization upgrade when your task variety justifies it."*
   [`01-only-code/04-perception-and-vision.md`](01-only-code/04-perception-and-vision.md).
 - Orchestration it can subsume (and -ER could plan above):
   [`01-only-code/07-orchestration-and-task-logic.md`](01-only-code/07-orchestration-and-task-logic.md).
+- Where it's trained / its data factory:
+  [`01-only-code/01-simulation-and-digital-twin.md`](01-only-code/01-simulation-and-digital-twin.md).
+- Motion it can emit directly (vs MoveIt):
+  [`01-only-code/03-arm-motion-planning.md`](01-only-code/03-arm-motion-planning.md).
+- The compliance tension it raises:
+  [`01-only-code/08-software-worklist-and-compliance.md`](01-only-code/08-software-worklist-and-compliance.md).
 - The safety/sensor gates any deployed policy must respect:
   [`sensor-suite.md`](sensor-suite.md).
 - The learning plan that includes a VLA hello world:

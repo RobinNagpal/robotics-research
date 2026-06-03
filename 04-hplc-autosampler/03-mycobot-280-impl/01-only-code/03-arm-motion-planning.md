@@ -226,3 +226,7 @@ Drake's heavier optimization until the cell actually demands it.
 - Folder overview: [`README.md`](README.md)
 - Sibling mode (real hardware):
   [`../02-code-plus-hardware/03-arm-motion-planning.md`](../02-code-plus-hardware/03-arm-motion-planning.md)
+- [`../foundation-models.md`](../foundation-models.md) — a VLA can emit
+  **motions directly**, competing with explicit MoveIt planning here (or
+  layered *under* MoveIt for collision safety); the learned alternative
+  to this layer.

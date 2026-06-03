@@ -189,13 +189,25 @@ Every hello world uses the **HPLC vial / tray** as its subject.
   use the **grasp-fix attach** so the vial follows the gripper. *Done
   when:* the arm picks the vial, lifts it, and the **gripper width +
   effort** confirm a hold (the two-witness check from the sensor suite).
-- [ ] **Hello world (stretch) — "run a VLA in sim":** install **LeRobot**
-  and roll out a **pretrained policy** (e.g. **SmolVLA** or **OpenVLA**)
+- [ ] **VLA hello world #1 (open low-level policy) — "run SmolVLA in
+  sim":** install **LeRobot** and roll out the pretrained **SmolVLA**
+  (~450M, runs on a normal GPU; **OpenVLA** is the heavier alternative)
   on a simulation benchmark (LIBERO / SIMPLER), or fine-tune it on a few
   recorded vial-pick episodes. *Done when:* a learned policy drives a
   simulated pick end-to-end — so you can credibly say "we've run a modern
-  VLA," not just read about one. (Skip if short on time; the *comparison*
-  above is the must-have.)
+  open VLA," not just read about one.
+- [ ] **VLA hello world #2 (frontier planner) — "let Gemini plan the
+  task":** call **Gemini Robotics-ER** via the **Gemini API in Google AI
+  Studio** with a photo of the bench + an instruction like *"plan how to
+  load vial QC-007 into tray slot A3."* *Done when:* the model returns a
+  sensible **multi-step plan** you could hand to the behavior tree (Layer
+  7) — showing the "VLM-as-high-level-planner" pattern, the accessible
+  way to touch the closed frontier.
+
+  > Both are **stretch / optional** — pick whichever one you have time
+  > for. If short on time, skip both: the *comparison* (knowing which
+  > model and why) is the must-have for the pitch; a running demo is the
+  > bonus. See [`foundation-models.md`](03-mycobot-280-impl/foundation-models.md).
 
 ### Layer 6 — Identification & barcode
 

@@ -178,3 +178,7 @@ on its own — an Alternative that every other choice quietly depends on.
 - Folder overview: [`README.md`](README.md)
 - Sibling mode (pure simulation, no hardware):
   [`../01-only-code/01-simulation-and-digital-twin.md`](../01-only-code/01-simulation-and-digital-twin.md)
+- [`../foundation-models.md`](../foundation-models.md) — the twin is also
+  the **data factory** for VLAs: generate synthetic demos and
+  domain-randomize them for **sim-to-real** transfer onto the real arm
+  (NVIDIA GR00T is sim-native).
