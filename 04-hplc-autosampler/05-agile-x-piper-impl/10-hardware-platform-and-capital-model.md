@@ -180,9 +180,9 @@ experiment, not before.
   — validation needs there drive the layout/enclosure design here, and
   its arm-agnostic software is what survives any platform swap.
 - For the sibling comparisons, see
-  [`../02-reBot-implementation/10-hardware-platform-and-capital-model.md`](../02-reBot-implementation/10-hardware-platform-and-capital-model.md)
+  [`../03-reBot-implementation/10-hardware-platform-and-capital-model.md`](../03-reBot-implementation/10-hardware-platform-and-capital-model.md)
   and
-  [`../03-mycobot-280-impl/10-hardware-platform-and-capital-model.md`](../03-mycobot-280-impl/10-hardware-platform-and-capital-model.md).
+  [`../04-mycobot-280-impl/10-hardware-platform-and-capital-model.md`](../04-mycobot-280-impl/10-hardware-platform-and-capital-model.md).
 - Mirrors
   [`../01-high-level-solution/10-hardware-platform-and-capital-model.md`](../01-high-level-solution/10-hardware-platform-and-capital-model.md);
   back to the index: [`README.md`](README.md).

@@ -274,5 +274,5 @@ generalization upgrade when your task variety justifies it."*
 - The safety/sensor gates any deployed policy must respect:
   [`sensor-suite.md`](sensor-suite.md).
 - The learning plan that includes a VLA hello world:
-  [`../06-learning-checklist.md`](../06-learning-checklist.md).
+  [`../07-learning-checklist.md`](../07-learning-checklist.md).
 - Folder index: [`README.md`](README.md).

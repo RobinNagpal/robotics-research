@@ -10,7 +10,7 @@
 > a team that can help you"* and back it up in the call that follows.
 >
 > Everything here is framed around the stack we already worked out in
-> **[`03-mycobot-280-impl/01-only-code/`](03-mycobot-280-impl/01-only-code/README.md)**
+> **[`04-mycobot-280-impl/01-only-code/`](04-mycobot-280-impl/01-only-code/README.md)**
 > — the fully open-source, simulation-first myCobot 280 cell — so the
 > hello worlds build the *same* system, on the *same* problem, that we
 > would pitch.
@@ -82,12 +82,12 @@ prospect even about a problem we haven't built yet.
   trail**, **IQ/OQ/PQ**, **CSV (computer-system validation)**. See
   [`01-high-level-solution/09-software-compliance-and-integration.md`](01-high-level-solution/09-software-compliance-and-integration.md).
 - [ ] **Know the sensor story** — read
-  [`03-mycobot-280-impl/sensor-suite.md`](03-mycobot-280-impl/sensor-suite.md)
+  [`04-mycobot-280-impl/sensor-suite.md`](04-mycobot-280-impl/sensor-suite.md)
   so you can explain *how a cell sees and feels* (3 cameras + gripper
   feedback + load cell + balance + presence/safety + IMU) and the
   "keep the wrist light, sense off the arm" payload rule.
 - [ ] **Know the AI frontier** — read
-  [`03-mycobot-280-impl/foundation-models.md`](03-mycobot-280-impl/foundation-models.md)
+  [`04-mycobot-280-impl/foundation-models.md`](04-mycobot-280-impl/foundation-models.md)
   so you can speak to **VLA / generalist robot models** (Physical
   Intelligence **π0/π0.5**, Google **Gemini Robotics**, **OpenVLA**,
   NVIDIA **GR00T**, **LeRobot/SmolVLA**) — what they are, open vs closed,
@@ -105,7 +105,7 @@ a given client problem would touch it.
 ## Part B — The 8-layer stack: concept → comparison → hello world
 
 These are the **same 8 layers** as
-[`03-mycobot-280-impl/01-only-code/`](03-mycobot-280-impl/01-only-code/README.md).
+[`04-mycobot-280-impl/01-only-code/`](04-mycobot-280-impl/01-only-code/README.md).
 For each: understand the idea, know the framework comparison (we already
 wrote it — just read and confirm), and **build the one hello world**.
 Every hello world uses the **HPLC vial / tray** as its subject.
@@ -120,7 +120,7 @@ Every hello world uses the **HPLC vial / tray** as its subject.
 
 - [ ] **Understand:** what a physics simulator and a digital twin are;
   why sim-first de-risks a purchase. Read
-  [`01-only-code/01-simulation-and-digital-twin.md`](03-mycobot-280-impl/01-only-code/01-simulation-and-digital-twin.md).
+  [`01-only-code/01-simulation-and-digital-twin.md`](04-mycobot-280-impl/01-only-code/01-simulation-and-digital-twin.md).
 - [ ] **Know the comparison:** Gazebo Harmonic vs MuJoCo vs Isaac Sim
   vs PyBullet vs Webots — and *why we pick Gazebo* (open, ROS-native).
 - [ ] **Hello world — "spawn the cell":** load the **myCobot 280 URDF**
@@ -132,7 +132,7 @@ Every hello world uses the **HPLC vial / tray** as its subject.
 
 - [ ] **Understand:** ROS 2 nodes, topics, services, actions; what
   `ros2_control` does. Read
-  [`01-only-code/02-middleware-and-control.md`](03-mycobot-280-impl/01-only-code/02-middleware-and-control.md).
+  [`01-only-code/02-middleware-and-control.md`](04-mycobot-280-impl/01-only-code/02-middleware-and-control.md).
 - [ ] **Know the comparison:** ROS 2 vs bare middleware; rclpy vs rclcpp;
   CycloneDDS vs FastDDS (just the gist).
 - [ ] **Hello world — "the mock decapper":** write a tiny **rclpy**
@@ -146,7 +146,7 @@ Every hello world uses the **HPLC vial / tray** as its subject.
 
 - [ ] **Understand:** motion planning, inverse kinematics, collision
   checking, planning scene. Read
-  [`01-only-code/03-arm-motion-planning.md`](03-mycobot-280-impl/01-only-code/03-arm-motion-planning.md).
+  [`01-only-code/03-arm-motion-planning.md`](04-mycobot-280-impl/01-only-code/03-arm-motion-planning.md).
 - [ ] **Know the comparison:** MoveIt 2 vs raw OMPL vs writing your own
   IK; MoveIt Servo and MoveIt Task Constructor at a glance.
 - [ ] **Hello world — "reach the vial":** with the `mycobot_ros` MoveIt
@@ -159,7 +159,7 @@ Every hello world uses the **HPLC vial / tray** as its subject.
 
 - [ ] **Understand:** RGB vs RGB-D, point clouds, fiducials, camera
   intrinsics, hand-eye calibration (concept only). Read
-  [`01-only-code/04-perception-and-vision.md`](03-mycobot-280-impl/01-only-code/04-perception-and-vision.md).
+  [`01-only-code/04-perception-and-vision.md`](04-mycobot-280-impl/01-only-code/04-perception-and-vision.md).
 - [ ] **Know the comparison:** OpenCV vs Open3D vs PCL; apriltag_ros;
   camera SDKs (RealSense / OAK / Orbbec) for later hardware.
 - [ ] **Hello world — "see the tray":** add a **simulated camera** to the
@@ -173,13 +173,13 @@ Every hello world uses the **HPLC vial / tray** as its subject.
 
 - [ ] **Understand:** grasp pose, antipodal grasp, parallel-jaw gripper;
   analytical vs learned grasping. Read
-  [`01-only-code/05-grasping-and-manipulation.md`](03-mycobot-280-impl/01-only-code/05-grasping-and-manipulation.md).
+  [`01-only-code/05-grasping-and-manipulation.md`](04-mycobot-280-impl/01-only-code/05-grasping-and-manipulation.md).
 - [ ] **Know the comparison:** analytical/antipodal (Open3D) vs MoveIt
   Task Constructor vs Contact-GraspNet / AnyGrasp — and why **analytical
   wins for one known vial**.
 - [ ] **Know the learned frontier (VLAs):** read the upgrade-path section
-  of [`05-grasping-and-manipulation.md`](03-mycobot-280-impl/01-only-code/05-grasping-and-manipulation.md)
-  and [`foundation-models.md`](03-mycobot-280-impl/foundation-models.md)
+  of [`05-grasping-and-manipulation.md`](04-mycobot-280-impl/01-only-code/05-grasping-and-manipulation.md)
+  and [`foundation-models.md`](04-mycobot-280-impl/foundation-models.md)
   — be able to say which VLA you'd reach for and why (LeRobot/SmolVLA to
   start, π0.5 as the open flagship, Gemini Robotics as the gated
   frontier).
@@ -207,13 +207,13 @@ Every hello world uses the **HPLC vial / tray** as its subject.
   > Both are **stretch / optional** — pick whichever one you have time
   > for. If short on time, skip both: the *comparison* (knowing which
   > model and why) is the must-have for the pitch; a running demo is the
-  > bonus. See [`foundation-models.md`](03-mycobot-280-impl/foundation-models.md).
+  > bonus. See [`foundation-models.md`](04-mycobot-280-impl/foundation-models.md).
 
 ### Layer 6 — Identification & barcode
 
 - [ ] **Understand:** 1D/2D barcodes, why every vial is tracked, the
   vial→worklist mapping. Read
-  [`01-only-code/06-identification-and-barcode.md`](03-mycobot-280-impl/01-only-code/06-identification-and-barcode.md).
+  [`01-only-code/06-identification-and-barcode.md`](04-mycobot-280-impl/01-only-code/06-identification-and-barcode.md).
 - [ ] **Know the comparison:** ZBar/pyzbar vs OpenCV QR vs a cloud OCR
   (and why local/open is enough here).
 - [ ] **Hello world — "read the vial ID":** generate a **QR code** for a
@@ -232,7 +232,7 @@ Every hello world uses the **HPLC vial / tray** as its subject.
 - [ ] **Understand:** behavior trees vs state machines; sequence /
   fallback / retry; the "sensor → gate → retry/quarantine/stop" model.
   Read
-  [`01-only-code/07-orchestration-and-task-logic.md`](03-mycobot-280-impl/01-only-code/07-orchestration-and-task-logic.md).
+  [`01-only-code/07-orchestration-and-task-logic.md`](04-mycobot-280-impl/01-only-code/07-orchestration-and-task-logic.md).
 - [ ] **Know the comparison:** BehaviorTree.CPP (+ Groot2) vs **py_trees**
   vs SMACH/YASMIN/FlexBE.
 - [ ] **Hello world — "the per-vial loop":** in **py_trees** (fastest in
@@ -245,7 +245,7 @@ Every hello world uses the **HPLC vial / tray** as its subject.
 
 - [ ] **Understand:** worklist, audit trail, why a regulated lab needs
   ALCOA+ / 21 CFR Part 11, what SiLA 2 / OPC UA are for. Read
-  [`01-only-code/08-software-worklist-and-compliance.md`](03-mycobot-280-impl/01-only-code/08-software-worklist-and-compliance.md).
+  [`01-only-code/08-software-worklist-and-compliance.md`](04-mycobot-280-impl/01-only-code/08-software-worklist-and-compliance.md).
 - [ ] **Know the comparison:** FastAPI + SQLite (our mock) vs a real
   LIMS/CDS; a SiLA 2 mock vs the real standard.
 - [ ] **Hello world — "the mock LIMS + audit log":** a small **FastAPI**
@@ -257,7 +257,7 @@ Every hello world uses the **HPLC vial / tray** as its subject.
 
 ### Layer S — Sensors (woven through, do alongside 4/5/7)
 
-- [ ] **Understand:** the [sensor suite](03-mycobot-280-impl/sensor-suite.md)
+- [ ] **Understand:** the [sensor suite](04-mycobot-280-impl/sensor-suite.md)
   — 3 cameras, gripper feedback, load cell, balance, presence, safety,
   IMU — and the off-arm payload rule.
 - [ ] **Hello world — "subscribe to a sense":** echo a **simulated
@@ -304,7 +304,7 @@ Learning the tools is half the job; you also have to **sell and scope**.
 - [ ] **The wedge / ROI language:** technician-hours saved, fewer
   re-runs, walk-away/overnight throughput, **flexibility** vs fixed
   liquid handlers (Hamilton/Tecan/Opentrons). See
-  [`03-mycobot-280-impl/10-hardware-platform-and-capital-model.md`](03-mycobot-280-impl/10-hardware-platform-and-capital-model.md).
+  [`04-mycobot-280-impl/10-hardware-platform-and-capital-model.md`](04-mycobot-280-impl/10-hardware-platform-and-capital-model.md).
 - [ ] **Honest scoping** — be able to say clearly **what simulation
   proves** (layout, reachability, sequencing, perception pipeline,
   software/audit, cycle-time *estimates*) and **what needs hardware**
@@ -317,9 +317,9 @@ Learning the tools is half the job; you also have to **sell and scope**.
   deploy** them as the generalization upgrade, but that **v1 stays
   deterministic and validatable** because a black-box policy is hard to
   square with 21 CFR Part 11. Sounds current *and* responsible. See
-  [`03-mycobot-280-impl/foundation-models.md`](03-mycobot-280-impl/foundation-models.md).
+  [`04-mycobot-280-impl/foundation-models.md`](04-mycobot-280-impl/foundation-models.md).
 - [ ] **Know the arm trade-offs** so you can answer "what hardware?" —
-  skim [`05-arms-comparison.md`](05-arms-comparison.md) (myCobot 280 vs
+  skim [`06-arms-comparison.md`](06-arms-comparison.md) (myCobot 280 vs
   reBot vs PiPER) and why we'd dev on a cheap arm and deploy on a bigger
   one.
 - [ ] **Draft the cold email** (3–4 sentences): who we are, the sim-first
@@ -370,16 +370,16 @@ can:
 ## See also
 
 - The stack these hello worlds build:
-  [`03-mycobot-280-impl/01-only-code/`](03-mycobot-280-impl/01-only-code/README.md)
+  [`04-mycobot-280-impl/01-only-code/`](04-mycobot-280-impl/01-only-code/README.md)
   (and the hardware-mode sibling
-  [`02-code-plus-hardware/`](03-mycobot-280-impl/02-code-plus-hardware/README.md)).
+  [`02-code-plus-hardware/`](04-mycobot-280-impl/02-code-plus-hardware/README.md)).
 - The problem being demoed:
   [`01-high-level-solution/`](01-high-level-solution/README.md).
 - Sensors, in depth:
-  [`03-mycobot-280-impl/sensor-suite.md`](03-mycobot-280-impl/sensor-suite.md).
+  [`04-mycobot-280-impl/sensor-suite.md`](04-mycobot-280-impl/sensor-suite.md).
 - VLA / foundation models, in depth:
-  [`03-mycobot-280-impl/foundation-models.md`](03-mycobot-280-impl/foundation-models.md).
-- Which arm to actually buy: [`05-arms-comparison.md`](05-arms-comparison.md).
+  [`04-mycobot-280-impl/foundation-models.md`](04-mycobot-280-impl/foundation-models.md).
+- Which arm to actually buy: [`06-arms-comparison.md`](06-arms-comparison.md).
 - Robotics vocabulary:
   [`../03-place-items-on-shelf/02-glossary.md`](../03-place-items-on-shelf/02-glossary.md).
 - The wider strategic picture: [`../README.md`](../README.md).

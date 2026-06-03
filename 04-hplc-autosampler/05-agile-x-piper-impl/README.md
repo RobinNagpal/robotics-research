@@ -5,7 +5,7 @@
 > in simulation first**, using the **AgileX PiPER** arm and a fully
 > **open-source** stack — *before* buying the arm, the stations, or the
 > instrument. This folder is the PiPER sibling of
-> `../02-reBot-implementation/` and `../03-mycobot-280-impl/`: same 10
+> `../03-reBot-implementation/` and `../04-mycobot-280-impl/`: same 10
 > parts, same method, different arm.
 
 New to a term? See `../../03-place-items-on-shelf/02-glossary.md` for

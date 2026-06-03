@@ -5,7 +5,7 @@
 > in simulation first**, using the **Elephant Robotics myCobot 280** and
 > a fully **open-source** stack — *before* buying the arm, the stations,
 > or the instrument. This folder is the myCobot 280 sibling of
-> `../02-reBot-implementation/`: same 10 parts, same method, different
+> `../03-reBot-implementation/`: same 10 parts, same method, different
 > arm.
 
 New to a term? See `../../03-place-items-on-shelf/02-glossary.md` for

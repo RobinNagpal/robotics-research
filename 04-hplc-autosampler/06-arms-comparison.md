@@ -2,9 +2,9 @@
 
 > **The question.** We have three candidate arms with full
 > implementation notes — the **reBot B601-DM**
-> (`02-reBot-implementation/`), the **Elephant myCobot 280**
-> (`03-mycobot-280-impl/`), and the **AgileX PiPER**
-> (`04-agile-x-piper-impl/`). Which is best **for developing the
+> (`03-reBot-implementation/`), the **Elephant myCobot 280**
+> (`04-mycobot-280-impl/`), and the **AgileX PiPER**
+> (`05-agile-x-piper-impl/`). Which is best **for developing the
 > simulated prototype before we spend money on hardware?** This note
 > scores them on **30 parameters** through exactly that lens.
 
@@ -147,8 +147,8 @@ bench validation.
 
 ## See also
 
-- Per-arm simulation notes: [`02-reBot-implementation/`](02-reBot-implementation/README.md),
-  [`03-mycobot-280-impl/`](03-mycobot-280-impl/README.md),
-  [`04-agile-x-piper-impl/`](04-agile-x-piper-impl/README.md)
+- Per-arm simulation notes: [`03-reBot-implementation/`](03-reBot-implementation/README.md),
+  [`04-mycobot-280-impl/`](04-mycobot-280-impl/README.md),
+  [`05-agile-x-piper-impl/`](05-agile-x-piper-impl/README.md)
 - The problem & solution being simulated:
   [`01-high-level-solution/`](01-high-level-solution/README.md)
