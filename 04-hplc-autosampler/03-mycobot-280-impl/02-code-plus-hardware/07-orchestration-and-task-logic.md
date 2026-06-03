@@ -214,3 +214,7 @@ only; do not choose it for this project.
 - Folder overview: [`README.md`](README.md)
 - Sibling mode (sim only, mocks + fault injection):
   [`../01-only-code/07-orchestration-and-task-logic.md`](../01-only-code/07-orchestration-and-task-logic.md)
+- [`../foundation-models.md`](../foundation-models.md) — a VLA (and
+  especially **Gemini Robotics-ER** as a high-level planner) can take
+  over parts of this task-logic layer; the learned alternative to a
+  hand-built behavior tree.

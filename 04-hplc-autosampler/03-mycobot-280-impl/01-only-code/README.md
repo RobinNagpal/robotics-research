@@ -66,3 +66,12 @@ lives in [`../sensor-suite.md`](../sensor-suite.md).
   good, and how it's bad versus the others.
 - A **Verdict** naming the **best-in-class**, the **cheapest**, and the
   **best-practical** pick (the cost/performance balance).
+
+## The learned upgrade path (VLAs)
+
+Beyond the per-layer frameworks, the grasping/manipulation file (Layer
+05) also surveys **Vision-Language-Action foundation models** — π0/π0.5,
+Gemini Robotics, OpenVLA, NVIDIA GR00T, LeRobot/SmolVLA — which in
+only-code mode you can **evaluate and fine-tune in simulation with zero
+hardware**. Full comparison:
+[`../foundation-models.md`](../foundation-models.md).

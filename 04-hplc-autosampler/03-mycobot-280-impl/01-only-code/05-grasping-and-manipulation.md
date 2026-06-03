@@ -220,10 +220,49 @@ The v1 recommendation is the cheapest grasp *source* (analytical)
 driven by the best-practical *sequencer* (MTC); Contact-GraspNet is the
 deliberate later upgrade, not the starting point.
 
+## The learned upgrade path — VLA / generalist policies
+
+The five above are the **v1 toolbox**. Beyond them sits the frontier:
+**Vision-Language-Action (VLA)** foundation models that take camera
+frames + a text instruction (*"pick the vial, place it in slot A3"*) and
+emit robot actions **end-to-end**, learned from demonstrations rather
+than hand-coded geometry. A strong VLA collapses perception (Layer 04),
+grasp choice, and even some sequencing into one trained network — so it
+belongs *primarily* here in manipulation, but cuts across several layers.
+The full comparison (open vs closed, sim support, data/GPU needs,
+compliance caveats) is in
+[`../foundation-models.md`](../foundation-models.md); the short version:
+
+| Model / ecosystem | Who | Open? | In only-code you can… |
+|---|---|---|---|
+| **π0 / π0.5 / π0.6** (openpi) | Physical Intelligence | Open | Roll out / fine-tune the strongest open flagship on sim demos |
+| **Gemini Robotics 1.5 / -ER / On-Device** | Google DeepMind | Mostly closed | Prototype against the API/SDK; track the capability ceiling |
+| **OpenVLA (+ OFT)** | Stanford/Berkeley/TRI | Open | Fine-tune the clean 7B baseline — the VLA "hello world" |
+| **Isaac GR00T N1.5 / N1.7** | NVIDIA | Open (Apache-2.0) | Train sim-native in Isaac Lab with synthetic demos |
+| **LeRobot + SmolVLA** | Hugging Face | Open | Start here: record sim demos, train a ~450M model on a normal GPU |
+
+In **only-code** mode the appeal is that you can **prove the whole
+learned workflow with zero hardware**: roll a pretrained policy out on a
+simulation benchmark (LIBERO / SIMPLER / ManiSkill, or GR00T in Isaac
+Lab), generate **synthetic demonstrations**, fine-tune, and measure
+success on a simulated vial-pick — before buying anything.
+
+Why this stays an *upgrade*, not the v1 plan: for **one known rigid vial
+in a known slot**, a VLA spends a GPU and a pile of demonstrations
+relearning the pinch the analytical method gives for free, and — being a
+non-deterministic black box — is far harder to **validate** for a
+regulated lab (21 CFR Part 11 / IQ-OQ-PQ; see
+[`../foundation-models.md`](../foundation-models.md)). Its value arrives
+when the lab needs **generalization** — many vial types, novel labware,
+spoken instructions — which is exactly the later milestone this stack
+defers learned methods to.
+
 ## See also
 
 - [`README.md`](README.md) — the only-code layer guide and the other
   seven development layers.
+- [`../foundation-models.md`](../foundation-models.md) — the full VLA /
+  generalist-policy comparison this section summarizes.
 - [`../02-code-plus-hardware/05-grasping-and-manipulation.md`](../02-code-plus-hardware/05-grasping-and-manipulation.md)
   — the same layer once the grasp must **execute on the real
   gripper** (slip, grip force, closing width, hold verification).

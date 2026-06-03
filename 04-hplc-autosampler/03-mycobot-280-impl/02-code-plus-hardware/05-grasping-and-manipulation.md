@@ -236,10 +236,48 @@ sequences it with MTC, **executes** it through the gripper driver, and
 **verifies** it with width/current feedback; Contact-GraspNet remains
 the deliberate later upgrade, not the v1 starting point.
 
+## The learned upgrade path — VLA / generalist policies
+
+Beyond the five sits the frontier: **Vision-Language-Action (VLA)**
+foundation models that map camera frames + a text instruction straight
+to robot actions, learned from demonstrations. On **real hardware** their
+appeal is concrete — instead of hand-coding each new vial/labware case,
+you **teleoperate a few demos and fine-tune**. The full comparison
+(open vs closed, GPU, data needs, compliance) is in
+[`../foundation-models.md`](../foundation-models.md); the short version:
+
+| Model / ecosystem | Who | Open? | On real hardware you'd… |
+|---|---|---|---|
+| **π0 / π0.5 / π0.6** (openpi) | Physical Intelligence | Open | Fine-tune the strongest open flagship on real teleop demos |
+| **Gemini Robotics On-Device / -ER** | Google DeepMind | Mostly closed | Adapt On-Device with **~50–100 demos**; run locally, low-latency |
+| **OpenVLA (+ OFT)** | Stanford/Berkeley/TRI | Open | Fine-tune (LoRA); **OFT** gives real-time, multi-image inference |
+| **Isaac GR00T N1.5 / N1.7** | NVIDIA | Open (Apache-2.0) | Sim-train + sim-to-real transfer onto the arm (needs Isaac + GPU) |
+| **LeRobot + SmolVLA** | Hugging Face | Open | Record demos with LeRobot, train a ~450M model on a consumer GPU |
+
+The hardware concerns these add on top of the analytical path: real
+**inference latency** and **GPU placement** (on-arm compute vs a nearby
+box), **data collection** (teleoperating enough clean demos), and — the
+big one — **safety and trust**. A black-box policy driving a real arm
+near glass must be wrapped in the same **safety gates** from the
+[sensor suite](../sensor-suite.md): gripper-feedback hold check (#4),
+wrist-camera confirm (#3), force/torque limits (#5), and the light
+curtain / e-stop (#10/#11) that can halt it regardless of what it
+"intends." Note **myCobot 280 support in LeRobot is community-dependent**
+(verify) — you may need a custom data/driver bridge versus the
+SO-100/SO-101-class arms LeRobot targets first.
+
+**Compliance reality:** a non-deterministic learned policy is hard to
+validate under **21 CFR Part 11 / IQ-OQ-PQ**. The honest deployment
+pattern is **analytical/deterministic on the validated critical path,
+VLA on flexible or non-GxP steps** — keep the cheap, exact, *executable*
+pinch as v1 and treat the VLA as the generalization upgrade.
+
 ## See also
 
 - [`README.md`](README.md) — the code-plus-hardware layer guide and the
   other seven development layers.
+- [`../foundation-models.md`](../foundation-models.md) — the full VLA /
+  generalist-policy comparison this section summarizes.
 - [`../01-only-code/05-grasping-and-manipulation.md`](../01-only-code/05-grasping-and-manipulation.md)
   — the same layer proven **in simulation only**, before any real
   gripper, slip, or grip-force concerns enter.

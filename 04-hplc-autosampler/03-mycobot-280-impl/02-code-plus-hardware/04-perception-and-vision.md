@@ -209,3 +209,6 @@ camera reading is trusted only when an independent sensor agrees.
 - [`../01-only-code/04-perception-and-vision.md`](../01-only-code/04-perception-and-vision.md)
   — the same layer in **pure simulation**, where synthetic frames are
   clean and the camera is part of the digital twin.
+- [`../foundation-models.md`](../foundation-models.md) — VLA models can
+  **subsume this perception layer**, mapping real camera frames straight
+  to actions; the learned-upgrade alternative to the explicit pipeline.

@@ -202,3 +202,6 @@ only if a specific 3-D algorithm you need lives only there.
 - [`../02-code-plus-hardware/04-perception-and-vision.md`](../02-code-plus-hardware/04-perception-and-vision.md)
   — the same layer once **real cameras** feed the pipeline (camera SDKs,
   hand-eye calibration, glass glare, real noise, latency).
+- [`../foundation-models.md`](../foundation-models.md) — VLA models can
+  **subsume this perception layer**, mapping camera frames straight to
+  actions; the learned-upgrade alternative to the explicit pipeline here.

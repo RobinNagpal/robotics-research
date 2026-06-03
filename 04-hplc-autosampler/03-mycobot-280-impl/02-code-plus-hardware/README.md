@@ -65,3 +65,12 @@ the layer files below integrate it where it bites.
   good, and how it's bad versus the others.
 - A **Verdict** naming the **best-in-class**, the **cheapest**, and the
   **best-practical** pick (the cost/performance balance).
+
+## The learned upgrade path (VLAs)
+
+Beyond the per-layer frameworks, the grasping/manipulation file (Layer
+05) also surveys **Vision-Language-Action foundation models** — π0/π0.5,
+Gemini Robotics On-Device, OpenVLA, NVIDIA GR00T, LeRobot/SmolVLA —
+which on real hardware you'd **fine-tune from teleop demos and deploy**,
+wrapped in the sensor-suite safety gates. Full comparison and the
+compliance caveats: [`../foundation-models.md`](../foundation-models.md).

@@ -86,6 +86,15 @@ prospect even about a problem we haven't built yet.
   so you can explain *how a cell sees and feels* (3 cameras + gripper
   feedback + load cell + balance + presence/safety + IMU) and the
   "keep the wrist light, sense off the arm" payload rule.
+- [ ] **Know the AI frontier** — read
+  [`03-mycobot-280-impl/foundation-models.md`](03-mycobot-280-impl/foundation-models.md)
+  so you can speak to **VLA / generalist robot models** (Physical
+  Intelligence **π0/π0.5**, Google **Gemini Robotics**, **OpenVLA**,
+  NVIDIA **GR00T**, **LeRobot/SmolVLA**) — what they are, open vs closed,
+  and the honest line on *why v1 stays analytical* (determinism +
+  21 CFR Part 11 validation) while we **track and can deploy** the
+  learned upgrade when task variety justifies it. This is increasingly
+  the first thing a savvy prospect asks about.
 
 **Done with Part A when:** anyone on the team can whiteboard the
 8-layer stack and say, in plain English, what each layer does and where
@@ -168,12 +177,25 @@ Every hello world uses the **HPLC vial / tray** as its subject.
 - [ ] **Know the comparison:** analytical/antipodal (Open3D) vs MoveIt
   Task Constructor vs Contact-GraspNet / AnyGrasp — and why **analytical
   wins for one known vial**.
+- [ ] **Know the learned frontier (VLAs):** read the upgrade-path section
+  of [`05-grasping-and-manipulation.md`](03-mycobot-280-impl/01-only-code/05-grasping-and-manipulation.md)
+  and [`foundation-models.md`](03-mycobot-280-impl/foundation-models.md)
+  — be able to say which VLA you'd reach for and why (LeRobot/SmolVLA to
+  start, π0.5 as the open flagship, Gemini Robotics as the gated
+  frontier).
 - [ ] **Hello world — "grab the vial":** compute an **antipodal pinch**
   on the vial cylinder (jaws perpendicular to its axis, just under
   ~12 mm), command the **sim gripper** (`GripperCommand`) to close, and
   use the **grasp-fix attach** so the vial follows the gripper. *Done
   when:* the arm picks the vial, lifts it, and the **gripper width +
   effort** confirm a hold (the two-witness check from the sensor suite).
+- [ ] **Hello world (stretch) — "run a VLA in sim":** install **LeRobot**
+  and roll out a **pretrained policy** (e.g. **SmolVLA** or **OpenVLA**)
+  on a simulation benchmark (LIBERO / SIMPLER), or fine-tune it on a few
+  recorded vial-pick episodes. *Done when:* a learned policy drives a
+  simulated pick end-to-end — so you can credibly say "we've run a modern
+  VLA," not just read about one. (Skip if short on time; the *comparison*
+  above is the must-have.)
 
 ### Layer 6 — Identification & barcode
 
@@ -277,6 +299,13 @@ Learning the tools is half the job; you also have to **sell and scope**.
   (grasp friction on glass, decap torque, dispense accuracy, optics on
   clear glass, IQ/OQ/PQ). Over-promising here is the fastest way to lose
   trust. See "What sim can and can't prove" in the impl READMEs.
+- [ ] **Position on the AI frontier** — when a prospect asks "are you
+  using the new AI robot models?", answer crisply: name **π0.5 / Gemini
+  Robotics / GR00T / OpenVLA / SmolVLA**, explain we **track and can
+  deploy** them as the generalization upgrade, but that **v1 stays
+  deterministic and validatable** because a black-box policy is hard to
+  square with 21 CFR Part 11. Sounds current *and* responsible. See
+  [`03-mycobot-280-impl/foundation-models.md`](03-mycobot-280-impl/foundation-models.md).
 - [ ] **Know the arm trade-offs** so you can answer "what hardware?" —
   skim [`05-arms-comparison.md`](05-arms-comparison.md) (myCobot 280 vs
   reBot vs PiPER) and why we'd dev on a cheap arm and deploy on a bigger
@@ -336,6 +365,8 @@ can:
   [`01-high-level-solution/`](01-high-level-solution/README.md).
 - Sensors, in depth:
   [`03-mycobot-280-impl/sensor-suite.md`](03-mycobot-280-impl/sensor-suite.md).
+- VLA / foundation models, in depth:
+  [`03-mycobot-280-impl/foundation-models.md`](03-mycobot-280-impl/foundation-models.md).
 - Which arm to actually buy: [`05-arms-comparison.md`](05-arms-comparison.md).
 - Robotics vocabulary:
   [`../03-place-items-on-shelf/02-glossary.md`](../03-place-items-on-shelf/02-glossary.md).

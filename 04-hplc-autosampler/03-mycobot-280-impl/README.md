@@ -90,6 +90,20 @@ suite is:
 > RGB-D and a wrist force/torque sensor instead; see
 > [`sensor-suite.md`](sensor-suite.md) and Part 10.
 
+## Beyond v1: learned generalist policies (VLAs)
+
+The stack above is deliberately **geometric / analytical** — the right
+call for one known vial. The **learned upgrade path** is
+Vision-Language-Action (**VLA**) foundation models — π0/π0.5 (Physical
+Intelligence), Gemini Robotics (Google DeepMind), OpenVLA, NVIDIA Isaac
+GR00T, and the LeRobot/SmolVLA ecosystem — which map camera frames + a
+text instruction straight to actions. They are tracked as an **option**
+(centred on the grasping/manipulation layer, cutting across perception
+and orchestration) for when the lab needs *generalization* across vial
+types and tasks. The full comparison and the honest "why not yet for v1
+/ compliance" framing is in
+**[`foundation-models.md`](foundation-models.md)**.
+
 ## What simulation *can* and *can't* prove
 
 **Can prove fully in open-source sim:** bench layout and **reachability**

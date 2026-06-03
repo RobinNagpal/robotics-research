@@ -214,3 +214,7 @@ lineage is clear; it should not be chosen for this project.
 - Folder overview: [`README.md`](README.md)
 - Sibling mode (real arm + peripherals in the loop):
   [`../02-code-plus-hardware/07-orchestration-and-task-logic.md`](../02-code-plus-hardware/07-orchestration-and-task-logic.md)
+- [`../foundation-models.md`](../foundation-models.md) — a VLA (and
+  especially **Gemini Robotics-ER** as a high-level planner) can take
+  over parts of this task-logic layer; the learned alternative to a
+  hand-built behavior tree.
