@@ -151,6 +151,33 @@ approach → (search) → detach/seat → verify → retreat → add neighbour
 as collision object → next row. Repeat until the tray is full (or all
 reachable slots are used), then signal "tray ready for hand-off."
 
+### Sensors that confirm the slot and the seat (off the arm)
+
+Slot occupancy and seating are **depth work**, and on the 280 that
+depth work is done **off the arm** — the wrist stays light (only a tiny
+RGB module), so the heavy/depth-hungry sensing lives on a fixed frame
+(see the canonical [`sensor-suite.md`](sensor-suite.md)). Two sensors
+gate each placement:
+
+- **Overhead RGB-D camera (#1).** A fixed depth camera above the bench
+  watches the **whole tray at once** — which slots are occupied and
+  whether each placed vial is **fully seated** (top flush, not standing
+  proud) — and doubles as the collision watch over the dense grid. One
+  fixed camera covers every slot the short-reach arm can place into,
+  which a wrist depth camera could not do without eating the payload.
+  *Sim stand-in:* a Gazebo `depth_camera` on the overhead frame, read by
+  the Part 07 occupancy/seating check.
+- **Station presence / proximity (#7).** A per-slot (or per-region)
+  presence sensor confirms the **target slot is empty before release**
+  and that the **vial is present after release** — the direct,
+  non-visual seated/occupied read. *Sim stand-in:* a Gazebo
+  logical-camera / contact sensor at the slot.
+
+Per the **two-witness habit**, "vial is seated in the right slot" is
+trusted only when the overhead RGB-D (#1) **and** the station presence
+(#7) agree; a vial that presence reports but the camera sees standing
+proud still fails the gate and goes to Part 08.
+
 ## Additional hardware needed
 
 | Real hardware | Why | How mocked in sim |
@@ -172,6 +199,10 @@ the arm + tray on the bench.
 - [`06-identification-labeling-and-tracking.md`](06-identification-labeling-and-tracking.md)
   — defines the vial-ID ↔ slot mapping this doc realises physically;
   we report back the slot actually used.
+- [`sensor-suite.md`](sensor-suite.md) — the canonical sensor list;
+  the overhead RGB-D camera (#1) and station presence (#7) that confirm
+  slot occupancy and seating off the arm are defined there with costs
+  and sim stand-ins.
 - [`07-perception-and-verification.md`](07-perception-and-verification.md)
   — provides the slot-occupancy and seating verification that
   confirms each place succeeded.

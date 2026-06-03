@@ -31,6 +31,22 @@ camera). Each tag has a unique ID and, once detected, yields an exact
 position and orientation (a **pose**). Tags on the rack, tray, and
 stations give the arm a precise, self-checking reference frame.
 
+> **The cameras are three of twelve sensors.** This part covers the
+> three cameras in detail — wrist RGB (#3), tray top-down RGB-D (#1),
+> and dispense side-on RGB/RGB-D (#2) — but they are part of one
+> **unified sensor suite** defined in [`sensor-suite.md`](sensor-suite.md).
+> The verification gates here do not rely on cameras alone: every
+> camera check has **non-camera co-witnesses** the gates fuse with it
+> (the *two-witness* habit). "Vial held" = wrist glance (#3) **and**
+> gripper servo feedback (#4, jaw width + motor current); "cap off /
+> seated" = station cam (#2) **and** decapper load-cell torque (#5);
+> "right fill" = level / meniscus (#2/#8) **and** the analytical
+> balance (#6, gravimetric); "vial staged / seated in slot" = camera
+> **and** station presence/proximity (#7); and the base IMU (#12)
+> watches that the bench stays level under all of it. So a gate that
+> returns PASS is typically agreeing across an *image* and a *physical*
+> measurement, not trusting either alone.
+
 ## What we can prove in simulation
 
 Entirely before buying a single camera, the sim lets us prove:
@@ -195,5 +211,8 @@ and changing light. Those are validated only on hardware bring-up.
   checks confirm the right slot is empty and the vial is fully down.
 - **`08-orchestration-error-handling-and-safety.md`** — a failed gate is
   the trigger the Behavior Tree branches on (retry / quarantine / stop).
+- **[`sensor-suite.md`](sensor-suite.md)** — the canonical list of all
+  twelve sensors; the three cameras here are entries #1–#3, and the
+  co-witnesses the gates fuse with them (#4–#8, #12) are defined there.
 - High-level companion: `../01-high-level-solution/07-perception-and-verification.md`.
 - Folder overview: [`README.md`](README.md).

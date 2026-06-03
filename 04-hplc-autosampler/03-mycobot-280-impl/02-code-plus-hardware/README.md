@@ -29,6 +29,18 @@ reuse the *same* frameworks as the only-code folder — but each file notes
 **what changes once hardware is real** (e.g. MoveIt Servo, controller
 latency, gripper drivers, hand-eye calibration).
 
+The real cell is not a blind arm replaying poses: it carries a **full
+sensor suite** — three cameras (overhead RGB-D, station, light wrist),
+gripper servo feedback, a decapper load cell, an analytical balance,
+station presence and liquid-level sensors, safety light curtain / door
+interlock / e-stop, and the base IMU — and almost every motion is gated
+by what a sensor just reported. The 280's **~250 g payload** forces most
+of that sensing **off the arm**: the wrist carries only a tiny RGB
+module, while the heavy or depth-hungry sensors live on a fixed frame or
+in the stations. The canonical list — what each sensor confirms, where it
+sits, and roughly what it costs — is [`../sensor-suite.md`](../sensor-suite.md);
+the layer files below integrate it where it bites.
+
 ## The 8 development layers
 
 | # | Layer | File |

@@ -146,6 +146,37 @@ the deliverable that feeds the capital story below.
   **Opentrons**) is **flexibility**: a reprogrammable arm + compliant
   software adapts to new vial types, trays, and workflows where a fixed
   deck cannot.
+- **The sensor suite is a real line item — and another input to the
+  platform call.** The [`sensor-suite.md`](sensor-suite.md) is designed
+  *around* the 280's limits: with ~250 g payload and no joint
+  force/torque sensing, the wrist carries only a tiny RGB module and all
+  the heavy/depth sensing is pushed **off the arm** (fixed cameras,
+  station load cells + balance, per-station proximity, cell-boundary
+  safety sensors). A bigger arm (**320 / UR-class**) can instead carry a
+  **wrist RGB-D camera and a wrist force/torque sensor**, folding several
+  off-arm sensors back onto the wrist and *simplifying* the suite — so
+  the arm choice and the sensor BOM are coupled, and both feed the buy
+  decision. Rough per-sensor costs (hedged — re-verify):
+
+  | Sensor | ~Cost (USD) |
+  |--------|-------------|
+  | Overhead RGB-D (#1) | ~$150–350 |
+  | Station camera (#2) | ~$50–250 |
+  | Wrist RGB module (#3) | ~$30–100 |
+  | Gripper feedback (#4) | ~$0 (built in) |
+  | Decapper load cell / torque (#5) | ~$20–200 |
+  | **Analytical balance (#6)** | **~$300–2,000** |
+  | Proximity / presence ×~4 (#7) | ~$10–40 each |
+  | Liquid-level sensor (#8) | ~$10–100 |
+  | **Light curtain / laser scanner (#10)** | **~$200–1,500** |
+  | Door interlock + e-stop (#11) | ~$30–150 |
+  | Base IMU (#12) | ~$0 (on-board) |
+
+  The **big swings are the balance (#6) and the safety light curtain
+  (#10)** — both are where lab-grade and safety-rated parts cost real
+  money, so the twin lets you decide which are truly needed *before*
+  buying. In **only-code** every line above is a free Gazebo plugin or
+  mock topic — ~$0. (Homing/limit switches #9 are part of the arm.)
 
 ## Additional hardware needed
 
@@ -154,6 +185,7 @@ the deliverable that feeds the capital story below.
 | **The chosen production arm** (likely a step up from the 280 — a 320 or UR-class) | The 280's ~280 mm reach / ~250 g payload likely won't cover a full tray or carry a tool turret | Interchangeable URDF in the same Gazebo world |
 | **Tool changer** + **end-effectors** (gripper, decapper, pipette) | Real swapping mechanics, mass, and repeatability | Attach/detach of end-effector models at the flange |
 | **Enclosure + safety** (guarding, interlocks, e-stop) | A cell you can put a boundary around is a cell you can validate | Collision geometry + safety-zone models |
+| **Sensor suite** (cameras, gripper feedback, load cell, balance, proximity, level, safety curtain, interlock, IMU — see [`sensor-suite.md`](sensor-suite.md)) | The off-arm sensing the 280's payload forces; balance (#6) + light curtain (#10) are the cost swings | Gazebo sensor plugins + mock topics (~$0 in sim) |
 | **Controller PC** | Hosts the controller + compliant software in the lab | Any workstation in dev; the software is identical |
 | **HPLC autosampler + stations** | The real instruments the cell serves | Mock service/action nodes at fixed tf frames (Parts 01–08) |
 
@@ -174,6 +206,9 @@ experiment, not before.
 - [`09-software-compliance-and-integration.md`](09-software-compliance-and-integration.md)
   — validation needs there drive the layout/enclosure design here, and
   its arm-agnostic software is what survives any platform swap.
+- [`sensor-suite.md`](sensor-suite.md) — the canonical sensor list and
+  full BOM; the per-sensor costs above are summarised from it, and the
+  arm choice directly shapes how much of that suite must live off-arm.
 - For the reBot comparison, see
   [`../02-reBot-implementation/10-hardware-platform-and-capital-model.md`](../02-reBot-implementation/10-hardware-platform-and-capital-model.md).
 - Mirrors

@@ -125,6 +125,46 @@ signal from the grasp-fix plugin (joint present?) so orchestration
 verification (point-cloud or image check that a vial is in the jaws)
 is built in `07-perception-and-verification.md`.
 
+## Sensing that makes a grasp on smooth glass trustworthy
+
+A taught grasp on a small, smooth, rigid vial is exactly where a
+"blind" arm fails silently — the jaws close on nothing, or the vial
+slips, and the arm carries air to the next station. The full cell is
+sensor-gated; see the canonical [`sensor-suite.md`](sensor-suite.md)
+for the whole list. Three sensors matter most here:
+
+- **Gripper servo feedback (#4) — the primary grasp sensor.** The
+  Elephant gripper's servo reports **jaw width** and **motor
+  current**, with no extra hardware. Jaw width at the end of a close
+  tells you *something is between the fingers* and roughly its
+  diameter (a vial vs empty air vs a doubled-up pick), and motor
+  current stands in for **grip force** — too low means a slipping or
+  missed grasp, a sudden drop mid-transport flags **slip**. This is
+  what makes a grasp on borosilicate trustworthy without joint F/T
+  sensing the 280 lacks. *Sim stand-in:* `ros2_control` publishes the
+  gripper joint **position + effort**; pair it with the **grasp-fix
+  contact** so "joint present + width-in-band + effort-in-band" is the
+  held signal.
+- **Wrist camera (#3) — the second witness.** A light eye-in-hand RGB
+  module on the flange takes a close glance after the close to confirm
+  a **vial is actually in the gripper** (and reads its barcode/QR at
+  the vial). Depth is deliberately left to the fixed cameras so the
+  wrist stays within the 280's tiny payload. *Sim stand-in:* a Gazebo
+  `camera` on a fixed joint at the flange. Per the **two-witness
+  habit**, "vial is held" is trusted only when gripper feedback (#4)
+  **and** the wrist glance (#3) agree — a single sensor can lie about a
+  shiny vial; two rarely lie the same way.
+- **Station presence / proximity (#7) — before the pick.** A
+  photoelectric/inductive sensor at the supply rack confirms a **vial
+  is staged** in the target nest *before* the arm commits to the pick,
+  so it never grasps an empty slot. *Sim stand-in:* a Gazebo
+  logical-camera / contact sensor at the nest.
+
+These signals feed the same "holding/not-holding" gate above; the
+richer image/point-cloud check is layered in
+`07-perception-and-verification.md`, and the gates themselves are
+ticked by the behavior tree in Part 08.
+
 ## Additional hardware needed
 
 - **Gripper** — Elephant's **adaptive/parallel gripper** for the 280
@@ -151,6 +191,9 @@ is the headline thing deferred to hardware.
 - `03-decapping-and-capping.md`, `04-liquid-handling-and-sample-prep.md`,
   `05-tray-loading-and-positioning.md` — receive the vial this part
   picks up; the grasp-fix attachment carries it to those stations.
+- [`sensor-suite.md`](sensor-suite.md) — the canonical sensor list;
+  the gripper feedback (#4), wrist camera (#3), and station presence
+  (#7) used here are defined there with costs and sim stand-ins.
 - `07-perception-and-verification.md` — upgrades the simple
   grip-verification hook into a real sensor-based held-vial check.
 - High-level companion:

@@ -20,6 +20,20 @@ The vocabulary is the same as the sim file, but the stakes change:
   a deadline is missed. In sim the clock could wait for you; **a real
   motor cannot.** This is the through-line of the whole file.
 
+This layer also **carries the real sensor data.** The cell's full sensor
+suite (see [`../sensor-suite.md`](../sensor-suite.md)) reaches the graph
+*through* this middleware: camera SDKs, a force-torque / IMU node, serial
+sensor nodes, and GPIO for proximity, limit, and safety lines all publish
+onto the **same ROS 2 topics the sim used**, so the gates above don't know
+(or care) whether a reading came from Gazebo or a real device. That faith
+in the topic boundary is exactly why the new hardware concerns land here:
+**latency and QoS** for sensor streams (a depth stream wants low,
+predictable latency, not just reliable delivery), **time-sync** across
+devices so two-witness checks compare frames from the *same* instant, and
+the cardinal rule that the cell must **never act on a stale frame** — a
+late or dropped reading must be detected and treated as "unknown," not
+trusted as current.
+
 With hardware attached, the cheapest-to-run idea and the
 best-to-live-with idea diverge — so the comparison below weighs each
 option on what it costs you *at 50 Hz on a real USB serial link,* not
@@ -172,7 +186,11 @@ affects end-to-end latency and how gracefully the system degrades.
 latency and reliability** at the transport level — the part the
 application layers can't fix. For control and state traffic you tune
 toward low, predictable latency; for occasional commands you favour
-reliable delivery. CycloneDDS is light with sane defaults; Fast DDS is
+reliable delivery. The same knob governs the **sensor streams** from
+[`../sensor-suite.md`](../sensor-suite.md): a depth or wrist-camera feed
+wants best-effort, shallow-history QoS so the gates always see the
+*newest* frame and a backlog can never push a stale one through, whereas
+a safety or interlock signal wants reliable, latched delivery. CycloneDDS is light with sane defaults; Fast DDS is
 highly configurable and supports modes (e.g. shared-memory for
 same-host nodes) that cut latency between co-located processes — handy
 when arm driver, controllers, and orchestration share one PC.

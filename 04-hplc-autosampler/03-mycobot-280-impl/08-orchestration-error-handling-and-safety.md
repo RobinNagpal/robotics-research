@@ -144,7 +144,49 @@ rule in software. (Again: this is logic only, not a certified stop.)
 and safe-stop is written to the SQLite/FastAPI audit trail in
 `09-software-compliance-and-integration.md`. In a regulated lab the
 recovery logic is only trustworthy if it is fully recorded, and
-compliance rules constrain which auto-recovery is even allowed.
+compliance rules constrain which auto-recovery is even allowed. **Every
+sensor reading — not just decisions — is logged the same way**, so the
+audit trail can later show *which sensor value* opened or blocked each
+step.
+
+### Safety & state sensors — the gates this part owns
+
+The verification gates in Part 07 are camera-and-physical checks on the
+*sample*. This part owns the other half of the
+[unified sensor suite](sensor-suite.md): the **safety and machine-state
+sensors** that gate the tree as plain boolean / state inputs, regardless
+of which vial is in flight. The mental model is one line:
+
+> **Sensor → gate.** *Every* step in the per-vial loop is opened or
+> blocked by a sensor reading; the BT ticks that reading as a condition
+> node, and a FAIL branches to **retry / quarantine / stop**. The safety
+> sensors below sit *above* the loop — they can block any step.
+
+| # | Sensor | BT input | Tripped → | Sim stand-in |
+|---|--------|----------|-----------|--------------|
+| 10 | **Safety light curtain / laser scanner** | `/light_curtain_clear` (bool) | Beam broken → **safe stop** | `/light_curtain_clear` topic |
+| 11 | **Door interlock + e-stop** | `/door_closed`, `/estop` (bool) | Door open or e-stop pressed → **safe stop** | `/door_closed`, `/estop` topics |
+| 12 | **Base IMU / tilt** | tilt within bound? (state) | Bench knocked / not level → **safe stop** | Gazebo `imu` sensor on the base link |
+| 9 | **Homing / limit switches** | at-home / within-limits (state) | Not homed or at end-stop → **block motion** | Joint-limit / home state |
+
+These fold into the same `/safety_stop` discipline from step 6: the
+high-priority `ReactiveSequence` guard at the root checks the safety
+inputs (#10, #11) **and** the tilt / limit state (#12, #9) every tick.
+If `/light_curtain_clear` goes false, `/door_closed` goes false, `/estop`
+latches, the IMU reports the bench out of level, or a joint sits past a
+limit / the arm is not homed, the guard halts the current safe sub-step,
+holds worklist state, and refuses to resume until an operator explicitly
+clears it. The homing/limit state also gates *start-up*: the tree will
+not begin a loop until the arm reports homed and within limits.
+
+Two-witness applies here too: a tilt event from the **IMU (#12)** plus a
+limit-switch trip (#9) is stronger evidence of a real knock than either
+alone. As above, every safety reading and every stop is logged to the
+audit trail (Part 09).
+
+(Honesty, repeated: in sim these are topics and state checks — they
+prove the *stop logic*, not a *certified* stop. See the limits above
+and `10-hardware-platform-and-capital-model.md`.)
 
 ## Additional hardware needed
 
@@ -171,7 +213,11 @@ must be designed, risk-assessed, and certified on hardware — see
 - **`07-perception-and-verification.md`** — a failed gate is the primary
   trigger for the recovery branches above.
 - **`09-software-compliance-and-integration.md`** — every sequencing
-  decision, retry, quarantine, pause, and safety stop is logged to the
-  audit trail; compliance constrains what auto-recovery may do.
+  decision, retry, quarantine, pause, safety stop, **and sensor
+  reading** is logged to the audit trail; compliance constrains what
+  auto-recovery may do.
+- **[`sensor-suite.md`](sensor-suite.md)** — the canonical sensor list;
+  this part is the home of the safety / state sensors #9–#12 and the
+  *sensor → gate* model that drives the whole tree.
 - High-level companion: `../01-high-level-solution/08-orchestration-error-handling-and-safety.md`.
 - Folder overview: [`README.md`](README.md).

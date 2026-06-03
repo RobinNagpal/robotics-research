@@ -27,6 +27,20 @@ arm to a controlled, harmless halt (and honouring the hardware e-stop)
 the instant anything is wrong — a person in the cell, a dropped vial, a
 device timeout.
 
+On hardware the tree is **gated by real safety and state sensors** (see
+[`../sensor-suite.md`](../sensor-suite.md)), not by mock topics: the
+safety light curtain / laser scanner (**#10**) and the door interlock +
+e-stop (**#11**) feed the top-priority safe-stop branch; the base IMU /
+tilt (**#12**) flags a knocked bench; and the homing / limit switches
+(**#9**) confirm the arm and any rail/turntable are where the logic
+assumes. These fuse with the perception and grasp gates (Layers 04–05) in
+the same pattern throughout — **sensor → gate; FAIL → retry / quarantine
+/ safe-stop.** One caveat the BT cannot wave away: a **safety-rated**
+light curtain or interlock often needs safety-rated wiring and a
+hardware/safety-PLC stop path, *not* just a ROS 2 topic the tree reads —
+the topic mirrors the state for the logic, but the certified stop must
+exist below the software.
+
 What changes once hardware is real, in one paragraph: (1) **safe-stop
 becomes a top-priority branch** that can pre-empt any step on the next
 tick and must also react to the physical e-stop line; (2) **every tick

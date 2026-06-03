@@ -127,7 +127,15 @@ grasp source, change approach distances, or add a "scan label" stage
 without rewriting the loop. Pairing MTC with the analytical pinch
 gives you the best of both: trivial, exact grasp computation *plus* a
 robust, collision-checked, restartable sequence. That combination is
-the recommended v1 path.
+the recommended v1 path. In sim, MTC's "close gripper" stage does not
+just assume success — a **two-witness "did we get it?" check** confirms
+it: simulated gripper feedback (#4 — `ros2_control` jaw width plus joint
+effort) and the grasp-fix contact say the jaws closed on glass, and a
+**wrist-camera glance** (#3) confirms a vial is in hand. Both agree
+before the lift stage fires; either one dissenting branches to a retry.
+The decap stage similarly reads decap torque from the Gazebo
+force-torque sensor (#5) on the cap joint. See
+[`../sensor-suite.md`](../sensor-suite.md).
 
 Its weakness against the others is that it is **infrastructure, not a
 grasper**. On its own MTC produces nothing — point it at no grasp

@@ -21,6 +21,14 @@ makes this the right place to prove the *algorithms* before real-world
 noise (handled in the sibling hardware file) is allowed to complicate
 them.
 
+These simulated cameras are sensors **#1–#3** (overhead, station, and
+wrist) of a wider suite — see [`../sensor-suite.md`](../sensor-suite.md).
+The non-camera sim sensors are deliberate **co-witnesses**: the
+verification gates fuse a camera check with a force-torque reading (#5),
+the base IMU (#12), or a logical-camera presence check (#7) so that no
+fact rests on vision alone (the **two-witness** habit). Perception's job
+here is to deliver one of the two witnesses, not the whole verdict.
+
 ## The five at a glance
 
 | Framework | Role | Tier | One-liner |

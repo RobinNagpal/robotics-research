@@ -109,6 +109,36 @@ flow, no CFD.
    (from state or the rendered cylinder) to confirm the fill before
    proceeding.
 
+### Sensors that cross-check the dispensed volume
+
+The **commanded volume stays the v1 source of truth** — the worklist
+says "950 µL diluent" and the recipe drives that. But a flawless cell
+does not assume the liquid actually arrived; it confirms the fill with
+sensors that are independent of the command (see the canonical
+[`sensor-suite.md`](sensor-suite.md)). Three of them sit off the arm:
+
+- **Analytical balance (#6) — gravimetric check.** A lab balance at the
+  dispense/weigh station reads the **true dispensed mass**, which (with
+  an assumed density) is the most trustworthy independent measure of
+  how much liquid really went in. It also gives a **weight-presence**
+  read (is a vial even on the pan?). *Sim stand-in:* the `/weigh`
+  service already in step 6 — the mock balance reads the **fill-volume
+  scalar as mass**.
+- **Liquid-level sensor (#8).** A capacitive/optical sensor on the
+  dispenser line confirms **liquid is present and flowing** and flags
+  gross over/underfill. *Sim stand-in:* the **fill-volume scalar
+  exposed as a level** (the same number the optional level mesh in
+  step 4 visualises).
+- **Station camera meniscus check (#2).** A fixed, side-on camera reads
+  the **meniscus / liquid level** in the vial and watches for **foam or
+  spill**. *Sim stand-in:* a Gazebo `camera` at the station that Part 07
+  "reads" against the rendered level cylinder.
+
+Per the **two-witness habit**, "right fill" is trusted only when the
+balance (#6) **and** the level/meniscus check (#2/#8) agree with the
+commanded volume; a disagreement flags a clog, a missed tip, or a spill
+to Part 08 rather than passing a bad sample downstream.
+
 ## Additional hardware needed
 
 Beyond the **myCobot 280 + gripper**, the real bench needs the actual
@@ -140,6 +170,10 @@ validation.
   will act on it.
 - [`06-identification-labeling-and-tracking.md`](06-identification-labeling-and-tracking.md)
   — tells the dispenser *which recipe* applies to each `vial_id`.
+- [`sensor-suite.md`](sensor-suite.md) — the canonical sensor list;
+  the analytical balance (#6), liquid-level sensor (#8), and station
+  camera meniscus check (#2) that cross-check the dispensed volume are
+  defined there with costs and sim stand-ins.
 - [`07-perception-and-verification.md`](07-perception-and-verification.md)
   — "reads" the fill level (from state or the rendered cylinder) to
   verify the dispense before recapping.

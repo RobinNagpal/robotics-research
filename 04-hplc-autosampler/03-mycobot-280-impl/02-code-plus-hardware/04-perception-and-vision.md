@@ -191,6 +191,17 @@ simulation hid: **hand-eye calibration** (e.g. easy_handeye2), taming
 depth noise**, and keeping **latency** low enough that the arm never acts
 on a stale frame.
 
+These cameras are sensors **#1–#3** of a wider suite (overhead RGB-D,
+station camera, light wrist module — see [`../sensor-suite.md`](../sensor-suite.md)).
+The point of that suite is that vision does not decide alone: the
+non-camera sensors are real **co-witnesses** the gates fuse with what the
+cameras see — the gripper feedback (#4) and decapper load cell (#5)
+confirm a grasp or a decap the wrist camera glances at, the analytical
+balance (#6) seconds the level/meniscus read, station presence (#7)
+seconds a seated-in-slot check, and the base IMU (#12) flags a knock that
+would invalidate every calibrated pose. The **two-witness** habit means a
+camera reading is trusted only when an independent sensor agrees.
+
 ## See also
 
 - [`README.md`](README.md) — the code-plus-hardware folder overview and the

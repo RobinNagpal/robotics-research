@@ -30,6 +30,16 @@ Everything here is **open-source-first**. Where a commercial tool is the
 true best-in-class, we say so, but the cheapest/best-practical picks stay
 open.
 
+In only-code, the **full sensor suite** is simulated for `~$0`: Gazebo
+camera / depth-camera / IMU / force-torque / logical-camera plugins
+stand in for the cameras, base IMU, decapper torque, and station
+presence, while safety and level sensors are **mock topics**
+(`/light_curtain_clear`, `/door_closed`, `/estop`, a fill-level reading).
+Each one publishes the **same ROS 2 topics a real sensor would**, so the
+gate logic and the off-arm sensor layout can be proven before anything is
+bought. The canonical list of sensors, sim stand-ins, and rough costs
+lives in [`../sensor-suite.md`](../sensor-suite.md).
+
 ## The 8 development layers
 
 | # | Layer | File |

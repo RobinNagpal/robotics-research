@@ -117,7 +117,13 @@ controller configs, action interfaces, and orchestration against a
 faithful stand-in, and the *only* thing that changes for hardware is
 swapping the `gz_ros2_control` plugin for the myCobot's real
 hardware_interface — described in the sibling file. It de-risks the
-purchase: the loop is proven before a cable is plugged in.
+purchase: the loop is proven before a cable is plugged in. The same
+middleware also **carries the simulated sensor suite**: the Gazebo
+camera, depth-camera, force-torque, IMU, and logical-camera plugins —
+plus the mock safety topics — publish onto ordinary ROS 2 topics, the
+*identical* interface a real sensor would present, so perception and
+orchestration consume them with no idea whether the bytes came from a
+plugin or a device (see [`../sensor-suite.md`](../sensor-suite.md)).
 
 **How it's bad (vs the other four).** It carries **all** of
 `ros2_control`'s setup weight (so heavier than plain `rclpy`) plus a
@@ -199,6 +205,27 @@ cross-compile toolchain you don't need yet. Versus full ROS 2 +
 limits). Versus **CycloneDDS**/**Zenoh** it is an application-side
 client, not a general transport. So today it is an Alternative — a
 placeholder for the hardware build, where it becomes genuinely useful.
+
+## How the sensor suite rides this layer
+
+Every sensor in [`../sensor-suite.md`](../sensor-suite.md) reaches the
+rest of the cell as a standard ROS 2 topic carried by this layer —
+identical to what a real device would publish, so nothing above changes
+at hardware bring-up:
+
+- Cameras #1–#3 → `sensor_msgs/Image` (+ `CameraInfo`, and
+  `PointCloud2` for the depth cameras).
+- Gripper feedback #4 → `sensor_msgs/JointState` (jaw position +
+  effort), via `ros2_control` and a grasp-fix contact.
+- Decapper torque #5 → `geometry_msgs/WrenchStamped` from the Gazebo
+  force-torque sensor on the cap joint.
+- Balance #6 / level #8 → the fill-volume scalar exposed as a small
+  custom or `std_msgs` reading.
+- Station presence #7 → a logical-camera / contact message per station.
+- Limit/home #9 → joint-limit state on `JointState`.
+- Base IMU #12 → `sensor_msgs/Imu`.
+- Safety #10/#11 → mock `std_msgs/Bool` topics `/light_curtain_clear`,
+  `/door_closed`, `/estop`.
 
 ## Verdict
 

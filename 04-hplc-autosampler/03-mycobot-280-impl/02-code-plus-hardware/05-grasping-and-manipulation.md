@@ -204,10 +204,16 @@ and moves nothing, and it is only as good as the signals a light
 desktop gripper exposes. Width/current feedback confirms *that* glass
 is held but not *how securely*; it will not catch a vial held slightly
 crooked but at the right width, and the small gripper's current
-reading is coarse. For higher assurance you would add a confirmation
-**camera glance** (Layer 04) after lift. Essential glue, but
-**Alternative** because it rides on the driver rather than standing
-alone.
+reading is coarse. For higher assurance you add a confirmation
+**camera glance** (Layer 04) after lift — which is exactly the
+**two-witness** rule from [`../sensor-suite.md`](../sensor-suite.md):
+"vial is held" = gripper feedback (**#4**) **and** a wrist-camera glance
+(**#3**), two independent sensors that rarely lie the same way. Note the
+heavier force sensing lives **off the light wrist**: the decapper load
+cell / torque sensor (**#5**) belongs to the decap *station*, not the
+gripper, because the 280's ~250 g payload can't carry a wrist
+force-torque sensor. Essential glue, but **Alternative** because it rides
+on the driver rather than standing alone.
 
 ## Verdict
 

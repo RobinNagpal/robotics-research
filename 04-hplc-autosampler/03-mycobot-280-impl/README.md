@@ -65,6 +65,31 @@ Identical to the reBot path, so the two arms are directly comparable:
 
 ---
 
+## The sensor suite (this cell is not blind)
+
+A reliable cell is **covered in sensors**, and almost every motion is
+**gated by what a sensor just reported** — the arm acts, a sensor
+confirms, and only then does the next motion fire. The full, canonical
+list lives in **[`sensor-suite.md`](sensor-suite.md)**; in brief the v1
+suite is:
+
+- **3 cameras** — a fixed **overhead RGB-D** (whole-tray occupancy &
+  seating), a fixed **station camera** (cap on/off, liquid level, spill),
+  and a **light wrist RGB** module (close alignment + barcode).
+- **Gripper feedback** (jaw width + motor current) for grasp success and
+  slip, a **decapper load cell** for torque, and an **analytical
+  balance** for gravimetric fill — sensing pushed *off* the arm.
+- **Presence/proximity** sensors per station, **homing/limit** switches,
+  a **liquid-level** sensor, **safety** sensors (light curtain, door
+  interlock, e-stop), and the **base IMU**.
+
+> **The 280's one design rule:** with only ~250 g payload, the wrist
+> stays light (a tiny RGB module), and everything heavy or depth-hungry
+> is mounted **off the arm** — fixed cameras, station load cells, a
+> balance. A *production* cell on a bigger arm (320/UR) can carry a wrist
+> RGB-D and a wrist force/torque sensor instead; see
+> [`sensor-suite.md`](sensor-suite.md) and Part 10.
+
 ## What simulation *can* and *can't* prove
 
 **Can prove fully in open-source sim:** bench layout and **reachability**
@@ -118,9 +143,15 @@ arm-agnostic. In simulation each is a model or a mock-station node.
 | Syringe pump / dispenser / pipetting head, tips, wash station | 04 | `/dispense` service + fill-volume state |
 | Analytical balance (optional gravimetric check) | 04 | Reads the simulated fill state |
 | Barcode scanner (+ optional label printer/applicator) | 06 | Sim camera + ZBar, or `/scan` mock |
-| RGB-D cameras (wrist + fixed) + lighting | 07 | Gazebo depth-camera sensors |
+| **Cameras ×3**: overhead RGB-D + station RGB-D + light wrist RGB | 07 | Gazebo `camera`/`depth_camera` sensors |
+| **Gripper feedback** (jaw width + motor current) | 02 | `ros2_control` joint pos+effort + grasp-fix |
+| **Decapper load cell / torque sense** | 03 | Force-torque sensor on the cap joint |
+| **Analytical balance** (gravimetric fill check) | 04 | Reads the fill-volume scalar as mass |
+| **Proximity/presence** sensors per station; **liquid-level** sensor | 04, 05 | Logical-camera/contact sensors; level from fill state |
+| **Base IMU / tilt**; **homing/limit** switches | 08 | Gazebo `imu` sensor; joint-limit state |
+| Controlled **lighting** (LED panel + matte backdrop) | 07 | Gazebo scene lights (clean — glare can't be proven) |
 | HPLC autosampler + trays/racks; vial supply racks; bench, jigs | 01, 05 | Static models with named tf frames |
-| Enclosure/guarding, e-stop, interlocks | 08, 10 | `/safety_stop` topic + state |
+| Enclosure/guarding, e-stop, interlocks, **light curtain** | 08, 10 | `/safety_stop`, `/door_closed`, `/light_curtain_clear` |
 | Compute (the myCobot's Pi/Jetson, or a controller PC) | 09, 10 | The dev machine running ROS 2 |
 
 > **myCobot-specific hardware note.** Because the 280's reach is short,

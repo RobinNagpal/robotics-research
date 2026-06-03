@@ -111,6 +111,33 @@ No torque, no rotation, no contact dynamics are simulated.
    present vs absent, cap seating height). This mirrors the real
    recap-integrity check.
 
+### The two sensors that gate a decap/recap
+
+On the real bench the `torque_ok` flag is not a guess — it comes from
+sensors in the station, cross-checked by a camera (see the canonical
+[`sensor-suite.md`](sensor-suite.md)). Two witnesses gate this step:
+
+- **Decapper load cell / torque sense (#5).** The station's torque
+  motor reports the **decap / cap torque**, which is how the real cell
+  detects **cross-threading** (torque climbs abnormally as the cap
+  bites at an angle) and a **stuck cap** (torque hits a ceiling without
+  the cap breaking free). This is the sensor behind the abstract
+  `torque_ok` flag — and it lives in the station, not on the arm,
+  precisely because the 280 has no joint F/T sensing. *Sim stand-in:* a
+  Gazebo **force-torque sensor on the cap joint**; the mock station
+  reads it (or an injected fault value) to set `torque_ok` instead of
+  always returning `true`.
+- **Station camera (#2) — the second witness.** A fixed, side-on
+  RGB/RGB-D camera at the station confirms **cap-off** after `/decap`
+  and **cap-seated** (correct seating height, square on the mouth)
+  after `/cap`. *Sim stand-in:* a Gazebo `camera` at the
+  `decap_station` frame feeding the Part 07 check.
+
+Per the **two-witness habit**, "cap is off" / "cap is seated" is
+trusted only when the load-cell torque (#5) **and** the station camera
+(#2) agree, so a torque sensor that reads fine on a cap that visibly
+isn't seated still fails the gate.
+
 Optionally, if you want a contact-rich *grip-against-rotation* study
 (the vial trying to spin while held), move just that sub-scene into
 **MuJoCo** — but treat results as qualitative; real glass friction is
@@ -150,6 +177,10 @@ explicitly deferred to hardware validation.
 - [`04-liquid-handling-and-sample-prep.md`](04-liquid-handling-and-sample-prep.md)
   — a successful `/decap` is what makes the vial *open* so the dispenser
   service can change its fill-volume state; `/cap` runs after prep.
+- [`sensor-suite.md`](sensor-suite.md) — the canonical sensor list;
+  the decapper load cell / torque sense (#5) behind `torque_ok` and the
+  station camera (#2) used to confirm cap-off / cap-seated are defined
+  there with costs and sim stand-ins.
 - [`07-perception-and-verification.md`](07-perception-and-verification.md)
   — confirms (from the rendered scene) that the cap is actually removed
   before dispensing and properly seated after recap.

@@ -33,6 +33,19 @@ framework lets us **swap real devices for mocks** and **force failures
 on demand** — a scanner that returns "no read," a grip that reports
 slip — so that the recovery logic is exercised without any bench time.
 
+Whichever framework wins, the tree (or state machine) is **gated by
+sensor topics**, exactly as it will be on hardware. The model is
+uniform: each step is a **sensor → gate; FAIL → retry / quarantine /
+stop**. Safety gates read the mock topics `/light_curtain_clear`,
+`/door_closed`, and `/estop` (sensors #10/#11) and can pre-empt any
+running motion; a base-IMU tilt check (#12) and the limit/home state
+(#9) guard that the cell is level and the arm is where it claims; and
+the perception (Layer 04) and grasp-success (Layer 05) gates feed in as
+ordinary condition nodes. In sim these topics come from Gazebo plugins
+and mock publishers, so the whole gate structure can be exercised — and
+fault-injected — with no bench time. The canonical sensor → gate map is
+in [`../sensor-suite.md`](../sensor-suite.md).
+
 ## The five at a glance
 
 | Framework | Role | Tier | One-liner |
