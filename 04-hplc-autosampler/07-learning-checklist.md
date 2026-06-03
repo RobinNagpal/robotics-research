@@ -127,6 +127,7 @@ Every hello world uses the **HPLC vial / tray** as its subject.
   into an empty Gazebo world with a **table** and a **2 mL vial** model;
   view it in **RViz2**. *Done when:* the arm and a vial appear in both
   Gazebo and RViz, and you can see `/joint_states` and the tf tree.
+  **Code:** [`02-hello-worlds/01-spawn-the-cell.md`](02-hello-worlds/01-spawn-the-cell.md).
 
 ### Layer 2 — Middleware & control (ROS 2)
 
@@ -141,6 +142,7 @@ Every hello world uses the **HPLC vial / tray** as its subject.
   service from the CLI (`ros2 service call …`). *Done when:* you can
   call `/decap` and echo `/balance/mass` from another terminal — you've
   built the pattern every mock station uses.
+  **Code:** [`02-hello-worlds/02-mock-decapper.md`](02-hello-worlds/02-mock-decapper.md).
 
 ### Layer 3 — Arm motion planning (MoveIt 2)
 
@@ -154,6 +156,7 @@ Every hello world uses the **HPLC vial / tray** as its subject.
   a **named pose above the vial**, then to a **tray slot** pose. *Done
   when:* the arm moves between the supply nest and a tray slot in
   RViz/Gazebo without colliding with the table.
+  **Code:** [`02-hello-worlds/03-reach-the-vial.md`](02-hello-worlds/03-reach-the-vial.md).
 
 ### Layer 4 — Perception & 3D vision
 
@@ -168,6 +171,7 @@ Every hello world uses the **HPLC vial / tray** as its subject.
   as a bonus, use **OpenCV** to find the vial **rim** (a circle) in the
   same image. *Done when:* a script prints the tray tag's 6-number pose
   and draws the detected vial rim.
+  **Code:** [`02-hello-worlds/04-see-the-tray.md`](02-hello-worlds/04-see-the-tray.md).
 
 ### Layer 5 — Grasping & manipulation
 
@@ -189,6 +193,7 @@ Every hello world uses the **HPLC vial / tray** as its subject.
   use the **grasp-fix attach** so the vial follows the gripper. *Done
   when:* the arm picks the vial, lifts it, and the **gripper width +
   effort** confirm a hold (the two-witness check from the sensor suite).
+  **Code:** [`02-hello-worlds/05-grab-the-vial.md`](02-hello-worlds/05-grab-the-vial.md).
 - [ ] **VLA hello world #1 (open low-level policy) — "run SmolVLA in
   sim":** install **LeRobot** and roll out the pretrained **SmolVLA**
   (~450M, runs on a normal GPU; **OpenVLA** is the heavier alternative)
@@ -196,6 +201,7 @@ Every hello world uses the **HPLC vial / tray** as its subject.
   recorded vial-pick episodes. *Done when:* a learned policy drives a
   simulated pick end-to-end — so you can credibly say "we've run a modern
   open VLA," not just read about one.
+  **Code:** [`02-hello-worlds/06-run-smolvla-in-sim.md`](02-hello-worlds/06-run-smolvla-in-sim.md).
 - [ ] **VLA hello world #2 (frontier planner) — "let Gemini plan the
   task":** call **Gemini Robotics-ER** via the **Gemini API in Google AI
   Studio** with a photo of the bench + an instruction like *"plan how to
@@ -203,6 +209,7 @@ Every hello world uses the **HPLC vial / tray** as its subject.
   sensible **multi-step plan** you could hand to the behavior tree (Layer
   7) — showing the "VLM-as-high-level-planner" pattern, the accessible
   way to touch the closed frontier.
+  **Code:** [`02-hello-worlds/07-gemini-plans-the-task.md`](02-hello-worlds/07-gemini-plans-the-task.md).
 
   > Both are **stretch / optional** — pick whichever one you have time
   > for. If short on time, skip both: the *comparison* (knowing which
@@ -226,6 +233,7 @@ Every hello world uses the **HPLC vial / tray** as its subject.
   ```
   *Done when:* a label image resolves to a known worklist row (and an
   unknown code is flagged).
+  **Code:** [`02-hello-worlds/08-read-the-vial-id.md`](02-hello-worlds/08-read-the-vial-id.md).
 
 ### Layer 7 — Orchestration & task logic (Behavior Trees)
 
@@ -240,6 +248,7 @@ Every hello world uses the **HPLC vial / tray** as its subject.
   with a **fallback that retries** a failed gate once then quarantines.
   Tick it with mocked gate results. *Done when:* a forced gate-failure
   visibly triggers the retry/quarantine branch instead of charging on.
+  **Code:** [`02-hello-worlds/09-per-vial-loop.md`](02-hello-worlds/09-per-vial-loop.md).
 
 ### Layer 8 — Software, worklist & compliance
 
@@ -254,6 +263,7 @@ Every hello world uses the **HPLC vial / tray** as its subject.
   with the **sensor reading that gated each step** — into **SQLite**.
   *Done when:* you can pull a worklist and see an immutable audit row
   per completed step, including which sensor value opened/blocked it.
+  **Code:** [`02-hello-worlds/10-mock-lims-and-audit.md`](02-hello-worlds/10-mock-lims-and-audit.md).
 
 ### Layer S — Sensors (woven through, do alongside 4/5/7)
 
@@ -265,6 +275,7 @@ Every hello world uses the **HPLC vial / tray** as its subject.
   **effort**) and print a PASS/FAIL when it crosses a threshold. *Done
   when:* a number from a simulated sensor drives a boolean gate — the
   atom that makes the whole cell non-blind.
+  **Code:** [`02-hello-worlds/11-subscribe-to-a-sense.md`](02-hello-worlds/11-subscribe-to-a-sense.md).
 
 ---
 
@@ -278,6 +289,7 @@ Chain the hello worlds into the **smallest end-to-end loop**, because
   `call mock /decap (L2)` → `place in tray slot + verify seated (L3+L4)`
   → `log every step + its gating sensor to the audit trail (L8)`,
   all sequenced by the **behavior tree (L7)**.
+  **Code:** [`02-hello-worlds/12-hello-cell-capstone.md`](02-hello-worlds/12-hello-cell-capstone.md).
 - [ ] **Record a 60–90 s screen capture** of it running in Gazebo/RViz
   with the audit log scrolling. This clip is your proof-of-competence
   attachment / demo.
