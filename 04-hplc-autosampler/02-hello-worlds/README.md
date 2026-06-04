@@ -81,7 +81,9 @@ but here is the short version so the table below makes sense:
 | 7 — Orchestration | The per-vial loop (a decision tree that retries on failure) | [`09-per-vial-loop.md`](09-per-vial-loop.md) |
 | 8 — Software & compliance | The mock records system and tamper-evident log | [`10-mock-lims-and-audit.md`](10-mock-lims-and-audit.md) |
 | S — Sensors | Subscribe to a sense (turn a sensor reading into a pass/fail) | [`11-subscribe-to-a-sense.md`](11-subscribe-to-a-sense.md) |
-| Part C — Capstone | The whole loop, one vial start to finish | [`12-hello-cell-capstone.md`](12-hello-cell-capstone.md) |
+| 3 ext — Closing the loop | Keep the world current (stream moving obstacles into MoveIt) | [`12-keep-the-world-current.md`](12-keep-the-world-current.md) |
+| 3 ext — Closing the loop | Watch the move (command MoveIt continuously, then verify it landed) | [`13-watch-the-move.md`](13-watch-the-move.md) |
+| Part C — Capstone | The whole loop, one vial start to finish | [`14-hello-cell-capstone.md`](14-hello-cell-capstone.md) |
 
 ---
 

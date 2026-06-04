@@ -381,6 +381,6 @@ about where things are out of a flat photograph — the foundation of every
 - The deeper write-up of perception and vision (cameras, depth, and why
   we lean on markers first) is
   [`../04-mycobot-280-impl/01-only-code/04-perception-and-vision.md`](../04-mycobot-280-impl/01-only-code/04-perception-and-vision.md).
-- The capstone, [`12-hello-cell-capstone.md`](12-hello-cell-capstone.md),
+- The capstone, [`14-hello-cell-capstone.md`](14-hello-cell-capstone.md),
   uses this same "look at the tray, find the marker and the vial" step to
   decide where to send the arm in the full pick-and-place loop.

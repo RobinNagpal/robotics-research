@@ -456,7 +456,10 @@ whole project was building toward.
   replace a stub here:
   - the world it all runs in — [`01-spawn-the-cell.md`](01-spawn-the-cell.md);
   - the cap-removal service — [`02-mock-decapper.md`](02-mock-decapper.md);
-  - reaching and placing — [`03-reach-the-vial.md`](03-reach-the-vial.md);
+  - reaching and placing — [`03-reach-the-vial.md`](03-reach-the-vial.md)
+    (made continuous and self-checking in
+    [`12-keep-the-world-current.md`](12-keep-the-world-current.md) and
+    [`13-watch-the-move.md`](13-watch-the-move.md));
   - seeing the tray — `04-see-the-tray.md`;
   - grabbing the vial — [`05-grab-the-vial.md`](05-grab-the-vial.md);
   - reading the vial's identity — [`08-read-the-vial-id.md`](08-read-the-vial-id.md);

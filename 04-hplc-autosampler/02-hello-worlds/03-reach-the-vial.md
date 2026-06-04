@@ -310,9 +310,16 @@ real, safe movement.
 
 - This is the runnable version of the **Layer 3** exercise in
   [`../07-learning-checklist.md`](../07-learning-checklist.md).
+- This file plans **one move, once**. Two follow-ups turn that into the
+  *continuous, self-checking* control a real cell needs:
+  [`12-keep-the-world-current.md`](12-keep-the-world-current.md) streams
+  moving obstacles into MoveIt so every plan avoids the tray's *current*
+  position, and [`13-watch-the-move.md`](13-watch-the-move.md) commands
+  MoveIt over and over and then verifies, from sensor feedback, that the
+  hand actually arrived.
 - The deeper write-up of arm motion planning (and why we choose MoveIt 2)
   is
   [`../04-mycobot-280-impl/01-only-code/03-arm-motion-planning.md`](../04-mycobot-280-impl/01-only-code/03-arm-motion-planning.md).
-- The capstone, [`12-hello-cell-capstone.md`](12-hello-cell-capstone.md),
+- The capstone, [`14-hello-cell-capstone.md`](14-hello-cell-capstone.md),
   uses these same "move above the vial" and "move above the tray slot" steps
   as part of the full pick-and-place loop.

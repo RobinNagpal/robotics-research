@@ -462,6 +462,6 @@ failure visibly sends the vial to quarantine instead of charging ahead.
   way to structure the robot's decisions, and how the real steps plug in —
   is
   [`../04-mycobot-280-impl/01-only-code/07-orchestration-and-task-logic.md`](../04-mycobot-280-impl/01-only-code/07-orchestration-and-task-logic.md).
-- The capstone, [`12-hello-cell-capstone.md`](12-hello-cell-capstone.md),
+- The capstone, [`14-hello-cell-capstone.md`](14-hello-cell-capstone.md),
   wraps the real pick, place, and check steps in this very tree so the
   whole loop retries and quarantines exactly as you saw here.

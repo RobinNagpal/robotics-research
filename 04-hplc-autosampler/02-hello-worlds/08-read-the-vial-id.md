@@ -288,6 +288,6 @@ quarantine.
 - The deeper write-up of identification — reading codes from a real
   camera image and matching them to the worklist — is
   [`../04-mycobot-280-impl/01-only-code/06-identification-and-barcode.md`](../04-mycobot-280-impl/01-only-code/06-identification-and-barcode.md).
-- The capstone, [`12-hello-cell-capstone.md`](12-hello-cell-capstone.md),
+- The capstone, [`14-hello-cell-capstone.md`](14-hello-cell-capstone.md),
   uses this read-and-look-up step to decide which slot each vial is for
   before the arm ever moves.

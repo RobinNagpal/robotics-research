@@ -410,5 +410,5 @@ the three `print` lines will still show the plan.
 - The verify step here is a close cousin of the sensor gate in
   [`11-subscribe-to-a-sense.md`](11-subscribe-to-a-sense.md): both turn a
   reading into a pass/fail decision. The capstone,
-  [`12-hello-cell-capstone.md`](12-hello-cell-capstone.md), runs this grab
+  [`14-hello-cell-capstone.md`](14-hello-cell-capstone.md), runs this grab
   as one step of the full pick-drive-place loop.

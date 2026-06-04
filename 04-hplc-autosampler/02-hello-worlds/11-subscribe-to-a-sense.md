@@ -289,7 +289,7 @@ makes about the real world.
   and the full list of senses this robot has — what each one measures and
   on which channel — is in
   [`../04-mycobot-280-impl/sensor-suite.md`](../04-mycobot-280-impl/sensor-suite.md).
-- The capstone, [`12-hello-cell-capstone.md`](12-hello-cell-capstone.md),
+- The capstone, [`14-hello-cell-capstone.md`](14-hello-cell-capstone.md),
   uses gates like this one to verify each step of the full pick-drive-place
   loop.
 </content>

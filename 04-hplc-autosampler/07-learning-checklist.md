@@ -157,6 +157,20 @@ Every hello world uses the **HPLC vial / tray** as its subject.
   when:* the arm moves between the supply nest and a tray slot in
   RViz/Gazebo without colliding with the table.
   **Code:** [`02-hello-worlds/03-reach-the-vial.md`](02-hello-worlds/03-reach-the-vial.md).
+- [ ] **Hello world (extension) — "keep the world current":** stream the
+  tray's (moving) position into MoveIt's **planning scene** as a
+  collision object, so a fresh plan routes around wherever the tray is
+  *now*. *Done when:* the tray box tracks its real position in RViz and a
+  new plan avoids its current spot — you never edited the path yourself.
+  **Code:** [`02-hello-worlds/12-keep-the-world-current.md`](02-hello-worlds/12-keep-the-world-current.md).
+- [ ] **Hello world (extension) — "close the loop on motion":** write the
+  tiny **executive** that calls MoveIt over and over toward the latest
+  target, then **verifies** the move by comparing the commanded pose to
+  the hand's measured pose from the **TF tree**, passing or failing
+  against a tolerance. *Done when:* each cycle prints a pass/fail verdict
+  computed from feedback, not from MoveIt's own say-so, and you can flip
+  it between PASS and FAIL by changing the tolerance.
+  **Code:** [`02-hello-worlds/13-watch-the-move.md`](02-hello-worlds/13-watch-the-move.md).
 
 ### Layer 4 — Perception & 3D vision
 
@@ -289,7 +303,7 @@ Chain the hello worlds into the **smallest end-to-end loop**, because
   `call mock /decap (L2)` → `place in tray slot + verify seated (L3+L4)`
   → `log every step + its gating sensor to the audit trail (L8)`,
   all sequenced by the **behavior tree (L7)**.
-  **Code:** [`02-hello-worlds/12-hello-cell-capstone.md`](02-hello-worlds/12-hello-cell-capstone.md).
+  **Code:** [`02-hello-worlds/14-hello-cell-capstone.md`](02-hello-worlds/14-hello-cell-capstone.md).
 - [ ] **Record a 60–90 s screen capture** of it running in Gazebo/RViz
   with the audit log scrolling. This clip is your proof-of-competence
   attachment / demo.

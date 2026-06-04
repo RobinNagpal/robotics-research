@@ -285,5 +285,5 @@ broadcast pattern that every mock station in this project reuses.
 - The deeper write-up of this layer (and why the robot framework is the
   right choice) is
   [`../04-mycobot-280-impl/01-only-code/02-middleware-and-control.md`](../04-mycobot-280-impl/01-only-code/02-middleware-and-control.md).
-- The capstone, [`12-hello-cell-capstone.md`](12-hello-cell-capstone.md),
+- The capstone, [`14-hello-cell-capstone.md`](14-hello-cell-capstone.md),
   calls this very `decap` service as one step of the full loop.

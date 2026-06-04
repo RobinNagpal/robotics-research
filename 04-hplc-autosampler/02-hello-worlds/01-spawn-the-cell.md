@@ -314,5 +314,5 @@ the checklist describes — the arm, a table, and a vial, all in one world.
 - The deeper write-up of simulators (and why we choose Gazebo) is
   [`../04-mycobot-280-impl/01-only-code/01-simulation-and-digital-twin.md`](../04-mycobot-280-impl/01-only-code/01-simulation-and-digital-twin.md).
 - Every later exercise assumes this world exists; the capstone
-  [`12-hello-cell-capstone.md`](12-hello-cell-capstone.md) runs the whole
+  [`14-hello-cell-capstone.md`](14-hello-cell-capstone.md) runs the whole
   loop inside it.

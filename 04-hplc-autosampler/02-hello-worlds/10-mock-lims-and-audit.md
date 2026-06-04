@@ -403,6 +403,6 @@ in.
   records systems, and what a regulated lab demands) is
   [`../04-mycobot-280-impl/01-only-code/08-software-worklist-and-compliance.md`](../04-mycobot-280-impl/01-only-code/08-software-worklist-and-compliance.md).
 - The capstone,
-  [`12-hello-cell-capstone.md`](12-hello-cell-capstone.md), reads the
+  [`14-hello-cell-capstone.md`](14-hello-cell-capstone.md), reads the
   worklist from this service and reports every completed step back to its
   `/event` endpoint, so the whole demonstration run leaves an audit trail.
