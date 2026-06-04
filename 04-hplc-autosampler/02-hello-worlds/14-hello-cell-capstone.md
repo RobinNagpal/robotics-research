@@ -1,4 +1,4 @@
-# 12 — The whole loop, one vial start to finish (Capstone)
+# 14 — The whole loop, one vial start to finish (Capstone)
 
 > Checklist exercise: **Part C — "the whole loop, one vial start to
 > finish."**

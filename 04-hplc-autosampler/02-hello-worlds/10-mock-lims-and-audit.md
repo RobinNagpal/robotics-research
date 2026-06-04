@@ -28,7 +28,7 @@ follow from that, and this program builds both:
 
 This program is a tiny **web service**: a program that sits waiting and
 answers requests that arrive over the network, the same way a website
-answers your browser. Other programs (including the capstone in file 12)
+answers your browser. Other programs (including the capstone in file 14)
 send it requests to fetch the worklist and to record events.
 
 Once you can do this, you have proven the part of the system that auditors
@@ -246,7 +246,7 @@ Each entry is a small labelled bundle (the curly brackets) pairing a
 sample name with the tray slot it belongs in. In a real system this would
 be read from the lab's central database; here we simply fix two rows so
 the example runs on its own. The first pairs sample `QC-007` with slot
-`A3` — the very job the capstone in file 12 carries out.
+`A3` — the very job the capstone in file 14 carries out.
 
 **`class Event(BaseModel):`**
 Begins the description of the *shape* a recorded event must have. The word
