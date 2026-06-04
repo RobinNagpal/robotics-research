@@ -37,10 +37,13 @@ matters. This area keeps them separate so you can learn one at a time.
 
 ## The model types covered here
 
-Each folder below contains three documents — `00-introduction.md` (what
-it is, in plain language), `01-working.md` (how it works under the
-hood), and `02-top-three-models.md` (the three most famous examples,
-with runnable code for each).
+Folders **02–08** are organised by *kind of model* and each contains
+three documents — `00-introduction.md` (what it is, in plain language),
+`01-working.md` (how it works under the hood), and
+`02-top-three-models.md` (the three most famous examples, with runnable
+code for each). Folder **09** is organised differently — by *company /
+product* — because the headline robotics foundation models from the
+leading labs are best understood one product at a time.
 
 | # | Folder | What kind of model | One-line job |
 |---|---|---|---|
@@ -52,6 +55,7 @@ with runnable code for each).
 | 06 | [`06-imitation-learning-policies/`](06-imitation-learning-policies/00-introduction.md) | Imitation-learning policy | Copy motions from human demonstrations |
 | 07 | [`07-reinforcement-learning-policies/`](07-reinforcement-learning-policies/00-introduction.md) | Reinforcement-learning policy | Learn motions by trial and error against a reward |
 | 08 | [`08-world-models/`](08-world-models/00-introduction.md) | World model | Learn to *predict* what happens next, and plan in imagination |
+| 09 | [`09-robotics-foundation-models/`](09-robotics-foundation-models/README.md) | *(by company, not type)* | The headline robotics foundation models from leading labs — Gemini Robotics, π (Physical Intelligence), NVIDIA GR00T |
 
 ---
 
