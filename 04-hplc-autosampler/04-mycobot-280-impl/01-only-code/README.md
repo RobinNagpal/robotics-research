@@ -2,10 +2,13 @@
 
 > **What this folder is.** A framework/library guide for building the
 > myCobot 280 HPLC cell **entirely in code and simulation — zero hardware
-> purchased.** For each of the **8 development layers** below, one file
+> purchased.** For each of the **10 development layers** below, one file
 > covers **five** frameworks or libraries that help you build that layer,
 > and explicitly names the **best-in-class**, the **cheapest**, and the
-> **best-practical** (the one that balances cost and performance).
+> **best-practical** (the one that balances cost and performance). Each
+> file then ends with **Meta code** (the pipeline's shape in pseudocode)
+> and **Real code** (a complete, line-by-line-commented implementation of
+> the best-practical pick).
 >
 > The sibling folder [`../02-code-plus-hardware/`](../02-code-plus-hardware/README.md)
 > answers the same question for when the **real myCobot 280 + peripherals
@@ -40,7 +43,7 @@ gate logic and the off-arm sensor layout can be proven before anything is
 bought. The canonical list of sensors, sim stand-ins, and rough costs
 lives in [`../sensor-suite.md`](../sensor-suite.md).
 
-## The 8 development layers
+## The 10 development layers
 
 | # | Layer | File |
 |---|-------|------|
@@ -52,8 +55,17 @@ lives in [`../sensor-suite.md`](../sensor-suite.md).
 | 06 | Identification & barcode | [`06-identification-and-barcode.md`](06-identification-and-barcode.md) |
 | 07 | Orchestration & task logic | [`07-orchestration-and-task-logic.md`](07-orchestration-and-task-logic.md) |
 | 08 | Software, worklist & compliance | [`08-software-worklist-and-compliance.md`](08-software-worklist-and-compliance.md) |
+| 09 | Sensing & signal acquisition | [`09-sensing-and-signal-acquisition.md`](09-sensing-and-signal-acquisition.md) |
+| 10 | Sensor fusion, gating & full-flow integration | [`10-sensor-fusion-and-gating.md`](10-sensor-fusion-and-gating.md) |
 
-> These 8 are the *framework-developable* layers. They cut across the 10
+> **Sensing (09–10) is new and ties the rest together.** Layer 09 makes
+> every sensor in [`../sensor-suite.md`](../sensor-suite.md) exist as a
+> ROS 2 topic in simulation; Layer 10 fuses those readings into the
+> two-witness **gates** that open or block each motion in the per-vial
+> flow. The earlier layers *act*; these two make the cell *sense and
+> verify* before it acts.
+
+> These 10 are the *framework-developable* layers. They cut across the 10
 > solution parts in [`../01-scope-and-workflow.md`](../01-scope-and-workflow.md)
 > onward (e.g. perception serves parts 06/07; orchestration serves part
 > 08) — the parts say *what* to build, these layers say *what to build it
@@ -66,6 +78,11 @@ lives in [`../sensor-suite.md`](../sensor-suite.md).
   good, and how it's bad versus the others.
 - A **Verdict** naming the **best-in-class**, the **cheapest**, and the
   **best-practical** pick (the cost/performance balance).
+- **Meta code** — the best-practical pipeline's shape in short pseudocode.
+- **Real code** — a complete, runnable-shaped implementation of that pick,
+  with an inline comment on **every line** explaining what it does. It is
+  illustrative teaching code; library and message names drift between
+  versions, so re-verify before relying on it.
 
 ## The learned upgrade path (VLAs)
 

@@ -257,6 +257,99 @@ when the lab needs **generalization** — many vial types, novel labware,
 spoken instructions — which is exactly the later milestone this stack
 defers learned methods to.
 
+## Meta code
+
+The best-practical pick wraps the analytical pinch in **MoveIt Task
+Constructor** stages. The heart of the "close gripper" stage is the
+**two-witness "did we get it?"** check: close the jaws, then read the
+gripper's own servo feedback (#4 — jaw width + effort) to decide
+*held* vs *empty* before the lift fires.
+
+```text
+# command the gripper to close on the vial             (the analytical pinch pose)
+# read the gripper's servo feedback                    (sensor #4: joint state + effort)
+#     jaw width  = how far apart the jaws ended up      (position of the gripper joint)
+#     effort     = how hard the motor is pushing        (current/torque on that joint)
+# decide held vs empty from a band:
+#     if jaws closed all the way (width ~0):            (nothing between them)
+#         -> EMPTY: the pinch missed                     (-> branch to retry)
+#     if jaws stopped at ~vial width AND effort is high: (glass is resisting the squeeze)
+#         -> HELD: a vial is in the jaws                  (-> lift stage may fire)
+#     otherwise (too wide, or no resistance):           (slipped / wrong object)
+#         -> EMPTY: do not trust the grasp               (-> branch to retry)
+# (the wrist camera #3 is the second witness; both must agree before lifting)
+```
+
+## Real code
+
+A minimal but complete ROS 2 (`rclpy`) node for the grasp-verification
+witness — the analytical pinch is sequenced by **MoveIt Task
+Constructor**, and this node reads **`ros2_control`** gripper feedback
+(sensor #4) to confirm the catch. This is **illustrative teaching
+code**: library and message names drift between versions, so re-verify
+before relying on it. Every line carries an inline comment.
+
+```python
+import rclpy                                      # ROS 2 Python client library (the robot framework)
+from rclpy.node import Node                       # base class every ROS 2 program ("node") builds on
+from sensor_msgs.msg import JointState            # message carrying each joint's position + effort
+from std_msgs.msg import String                   # simple text message we use to report held / empty
+
+# --- known facts about the gripper and the 2 mL vial it pinches ---
+GRIPPER_JOINT = "gripper_finger_joint"             # the joint whose position = how far the jaws are open
+CLOSED_WIDTH = 0.002                                # jaws this closed (~2 mm) mean they met: nothing held
+VIAL_WIDTH_LO = 0.010                               # a gripped ~12 mm vial leaves the jaws at least this open
+VIAL_WIDTH_HI = 0.014                               # ...and at most this open: the expected jaw-width band
+HOLD_EFFORT = 0.5                                   # this much motor effort (N·m-ish) means glass is resisting
+
+
+class GraspWitness(Node):                          # our grasp-verification node, built on the ROS 2 Node class
+    def __init__(self):                            # set-up that runs once, when the node is created
+        super().__init__("grasp_witness")          # register on the ROS 2 graph under the name "grasp_witness"
+        self.sub = self.create_subscription(       # start listening to the gripper's feedback (sensor #4)
+            JointState, "/joint_states",           # message type, then the topic ros2_control publishes on
+            self.on_joints, 10)                     # call self.on_joints per update; 10 = inbox queue depth
+        self.pub = self.create_publisher(          # open an outgoing channel to report the verdict
+            String, "/grasp/held", 10)             # type, topic the MTC "close" stage reads, queue depth
+
+    def on_joints(self, msg):                       # runs automatically each time joint feedback arrives
+        if GRIPPER_JOINT not in msg.name:          # does this update even mention the gripper joint?
+            return                                  # no -> ignore it (it was about the arm joints)
+        i = msg.name.index(GRIPPER_JOINT)          # find where the gripper joint sits in the parallel lists
+        width = msg.position[i]                    # jaw opening right now, in metres (how far apart the jaws)
+        effort = abs(msg.effort[i])                # how hard the gripper motor is pushing (its current/torque)
+        verdict = self.classify(width, effort)     # turn those two numbers into "held" or "empty"
+        self.pub.publish(String(data=verdict))     # send the verdict out for the MTC sequence to act on
+        self.get_logger().info(                     # print a tidy status line for sanity
+            f"{verdict}: width={width:.3f} m effort={effort:.2f}")  # show the numbers behind the call
+
+    def classify(self, width, effort):              # the two-witness band: held vs empty from #4 alone
+        if width <= CLOSED_WIDTH:                  # did the jaws shut all the way to nearly touching?
+            return "empty"                          # yes -> nothing was between them: the pinch missed
+        gripping = VIAL_WIDTH_LO <= width <= VIAL_WIDTH_HI  # did the jaws stop in the vial-width band?
+        if gripping and effort >= HOLD_EFFORT:     # AND is the motor straining against the glass?
+            return "held"                           # yes to both -> a vial is genuinely in the jaws
+        return "empty"                              # otherwise: too wide, or no resistance -> don't trust it
+
+
+def main():                                        # the standard ROS 2 program entry point
+    rclpy.init()                                    # start up the ROS 2 client library (must come first)
+    node = GraspWitness()                           # build our node, which runs its __init__ set-up
+    rclpy.spin(node)                                # keep handling gripper feedback until you press Ctrl-C
+    node.destroy_node()                             # remove the node from the graph on shutdown
+    rclpy.shutdown()                                # close the ROS 2 client library cleanly
+
+
+if __name__ == "__main__":                          # only run if this file is launched directly
+    main()                                          # ...then start everything above
+```
+
+This node is only the *first* of the two witnesses. The MTC "close
+gripper" stage waits for a `held` here **and** a wrist-camera glance
+(#3) before firing the lift; either one dissenting branches to a retry.
+See [`../sensor-suite.md`](../sensor-suite.md) for the full two-witness
+habit.
+
 ## See also
 
 - [`README.md`](README.md) — the only-code layer guide and the other

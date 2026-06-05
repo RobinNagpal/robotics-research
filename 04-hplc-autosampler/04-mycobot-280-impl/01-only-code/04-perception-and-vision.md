@@ -195,6 +195,106 @@ only if a specific 3-D algorithm you need lives only there.
   the simulator, and stays easy to debug. Defer YOLO to a later milestone
   when variety demands it.
 
+## Meta code
+
+The shape of the best-practical pipeline (OpenCV + AprilTag for the
+fiducial pose, Open3D for the depth cross-check), before any
+library-specific detail:
+
+```text
+# subscribe to the simulator's overhead RGB image topic   (sensor #1)
+# subscribe to the matching depth / point-cloud topic       (optional)
+# on every camera frame:
+#     detect AprilTag markers in the RGB image            (fiducial -> id + corners)
+#     for the tag id stuck on the tray:
+#         solve the tag's 6-DoF pose relative to the camera (PnP from its corners)
+#         transform that pose into the world frame          (known camera mount)
+#         (depth) fit the tray plane / vial cylinders        (confirm height, presence)
+#         if the marker pose and the depth fit agree:        (two-witness check)
+#             publish one PoseStamped for the object         (-> Layer 03 reaches it)
+```
+
+## Real code
+
+A minimal but complete ROS 2 (`rclpy`) node implementing that pipeline.
+This is **illustrative teaching code**: library and message names drift
+between versions, so re-verify before relying on it. Every line carries
+an inline comment explaining exactly what it does.
+
+```python
+import rclpy                                    # ROS 2 Python client library (the robot framework)
+from rclpy.node import Node                     # base class every ROS 2 program ("node") builds on
+from sensor_msgs.msg import Image               # the message type a camera publishes one frame as
+from geometry_msgs.msg import PoseStamped       # a 6-DoF pose + which frame + what time it is for
+from cv_bridge import CvBridge                  # converts a ROS Image message <-> an OpenCV array
+import cv2                                       # OpenCV: 2-D image processing and camera geometry
+import numpy as np                               # arrays + linear algebra, used for the camera matrix
+from pupil_apriltags import Detector            # the AprilTag detector that finds the printed markers
+
+# --- fixed, known facts about the simulated camera and the marker ---
+CAMERA_MATRIX = np.array([[600.0,   0.0, 320.0],  # fx, 0, cx: x focal length and image-centre column
+                          [  0.0, 600.0, 240.0],  # 0, fy, cy: y focal length and image-centre row
+                          [  0.0,   0.0,   1.0]])  # bottom row of the standard pinhole camera matrix
+TAG_SIZE_M = 0.03                                  # the AprilTag is 3 cm wide (its real printed size)
+TRAY_TAG_ID = 0                                     # the specific tag id we stuck on the sample tray
+
+
+class TrayPoseNode(Node):                          # our perception node, built on the ROS 2 Node class
+    def __init__(self):                            # set-up that runs once, when the node is created
+        super().__init__("tray_pose")              # register on the ROS 2 graph under the name "tray_pose"
+        self.bridge = CvBridge()                   # build the one image converter we reuse every frame
+        self.detector = Detector(families="tag36h11")  # the AprilTag family our markers are printed in
+        self.sub = self.create_subscription(       # start listening to the overhead camera (sensor #1)
+            Image, "/overhead/image_raw",          # message type, then the topic name the sim publishes on
+            self.on_frame, 10)                      # call self.on_frame per frame; 10 = inbox queue depth
+        self.pub = self.create_publisher(          # open an outgoing channel for the tray's pose
+            PoseStamped, "/tray/pose", 10)         # type, topic name Layer 03 will read, queue depth
+
+    def on_frame(self, msg):                        # runs automatically each time a camera frame arrives
+        gray = self.bridge.imgmsg_to_cv2(msg, "mono8")  # ROS Image -> a grayscale OpenCV image array
+        fx, fy = CAMERA_MATRIX[0, 0], CAMERA_MATRIX[1, 1]  # read the two focal lengths from the matrix
+        cx, cy = CAMERA_MATRIX[0, 2], CAMERA_MATRIX[1, 2]  # read the image-centre point from the matrix
+        tags = self.detector.detect(               # run AprilTag detection on this grayscale frame
+            gray, estimate_tag_pose=True,          # also solve each found tag's full 6-DoF pose
+            camera_params=(fx, fy, cx, cy),        # the camera intrinsics the pose solver needs
+            tag_size=TAG_SIZE_M)                    # plus the marker's real size, to recover true scale
+        for tag in tags:                            # walk through every marker found in this frame
+            if tag.tag_id != TRAY_TAG_ID:          # is this the tag we care about (the tray's)?
+                continue                            # no -> ignore it and check the next detected tag
+            self.publish_pose(tag, msg.header)     # yes -> turn this detection into a published pose
+
+    def publish_pose(self, tag, header):            # convert one detected tag into a PoseStamped message
+        out = PoseStamped()                         # make the empty message we are about to fill in
+        out.header = header                         # copy the frame id + timestamp from the source image
+        out.pose.position.x = float(tag.pose_t[0])  # tag centre, left-right vs camera, in metres
+        out.pose.position.y = float(tag.pose_t[1])  # tag centre, up-down vs camera, in metres
+        out.pose.position.z = float(tag.pose_t[2])  # tag centre, distance from camera, in metres
+        out.pose.orientation.w = 1.0                # leave orientation as "no rotation" for this sketch
+        self.pub.publish(out)                       # send the finished pose out on /tray/pose
+        self.get_logger().info(                     # print a tidy, time-stamped status line
+            f"tray seen at z={out.pose.position.z:.3f} m")  # show the measured distance for sanity
+
+
+def main():                                         # the standard ROS 2 program entry point
+    rclpy.init()                                    # start up the ROS 2 client library (must come first)
+    node = TrayPoseNode()                           # build our node, which runs its __init__ set-up
+    rclpy.spin(node)                                # keep handling camera frames until you press Ctrl-C
+    node.destroy_node()                             # remove the node from the graph on shutdown
+    rclpy.shutdown()                                # close the ROS 2 client library cleanly
+
+
+if __name__ == "__main__":                          # only run if this file is launched directly
+    main()                                          # ...then start everything above
+```
+
+The depth cross-check named in the meta code is a few extra lines of
+Open3D — load the depth topic as a point cloud, call
+`segment_plane(...)` to fit the tray surface, and confirm the marker's
+height matches the fitted plane before trusting the pose. It is left out
+of the node above to keep the one published path clear, but it is the
+second of the **two witnesses** [`../sensor-suite.md`](../sensor-suite.md)
+asks for.
+
 ## See also
 
 - [`README.md`](README.md) — the only-code folder overview and the full

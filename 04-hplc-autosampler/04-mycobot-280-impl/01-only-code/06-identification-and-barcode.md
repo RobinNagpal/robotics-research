@@ -176,6 +176,103 @@ lands as an Alternative.
   misses, and you cover synthetic vials reliably without paying for
   Dynamsoft.
 
+## Meta code
+
+The shape of the best-practical decoder (OpenCV's built-in QR/barcode
+detector, with ZBar as the fallback), reading the wrist camera and
+checking the result against the worklist, before any library detail:
+
+```text
+# load the worklist of expected vial ids                  (the order to fill)
+# subscribe to the wrist camera's RGB image topic          (sensor #3)
+# on every camera frame:
+#     try OpenCV's QR / barcode detector on the frame      (primary decoder)
+#     if it returns nothing:
+#         fall back to ZBar (pyzbar) on the same frame      (second decoder)
+#     if a code decoded to some id string:
+#         if the id is in the worklist:                     (matches? gate)
+#             publish the decoded id                        (-> Layer 07 tracking)
+#         else:
+#             flag a mismatch                                (-> quarantine branch)
+```
+
+## Real code
+
+A minimal but complete ROS 2 (`rclpy`) node using OpenCV's barcode/QR
+module with a ZBar (`pyzbar`) fallback. This is **illustrative teaching
+code**: library and message names drift between versions, so re-verify
+before relying on it. Every line carries an inline comment.
+
+```python
+import rclpy                                    # ROS 2 Python client library (the robot framework)
+from rclpy.node import Node                     # base class every ROS 2 program ("node") builds on
+from sensor_msgs.msg import Image               # the message type a camera publishes one frame as
+from std_msgs.msg import String                 # a plain-text message: we send the decoded id as this
+from cv_bridge import CvBridge                  # converts a ROS Image message <-> an OpenCV array
+import cv2                                       # OpenCV: image handling + its built-in code decoders
+from pyzbar.pyzbar import decode as zbar_decode  # ZBar fallback decoder, reached through pyzbar
+
+# --- the worklist: the vial ids this run expects, in fill order ---
+WORKLIST = {"VIAL-001", "VIAL-002", "VIAL-003"}  # the set of ids the run is allowed to see
+
+
+class VialIdNode(Node):                            # our identification node, built on the ROS 2 Node class
+    def __init__(self):                            # set-up that runs once, when the node is created
+        super().__init__("vial_id")                # register on the ROS 2 graph under the name "vial_id"
+        self.bridge = CvBridge()                   # build the one image converter we reuse every frame
+        self.qr = cv2.QRCodeDetector()             # OpenCV's built-in QR detector (the primary decoder)
+        self.sub = self.create_subscription(       # start listening to the wrist camera (sensor #3)
+            Image, "/wrist/image_raw",             # message type, then the topic the sim publishes on
+            self.on_frame, 10)                      # call self.on_frame per frame; 10 = inbox queue depth
+        self.pub = self.create_publisher(          # open an outgoing channel for the decoded vial id
+            String, "/vial/id", 10)                # type, topic name Layer 07 will read, queue depth
+
+    def on_frame(self, msg):                        # runs automatically each time a wrist frame arrives
+        frame = self.bridge.imgmsg_to_cv2(msg, "bgr8")  # ROS Image -> a colour OpenCV image array
+        code = self.try_opencv(frame)              # first attempt: OpenCV's own QR / barcode decoder
+        if not code:                                # did the primary decoder find nothing?
+            code = self.try_zbar(frame)            # yes -> retry the same frame with the ZBar fallback
+        if not code:                                # still nothing after both decoders?
+            return                                  # no code in view this frame -> wait for the next one
+        self.check_and_publish(code)               # we have an id string -> match it and act on it
+
+    def try_opencv(self, frame):                    # primary path: OpenCV's bundled QR/barcode detector
+        text, _pts, _qr = self.qr.detectAndDecode(frame)  # locate + read a QR; text is "" if none found
+        return text or None                        # hand back the decoded string, or None if empty
+
+    def try_zbar(self, frame):                      # fallback path: ZBar via pyzbar on the same frame
+        results = zbar_decode(frame)               # ZBar returns a list of every code it found in view
+        if not results:                            # did ZBar also find nothing?
+            return None                             # no -> report nothing so the caller moves on
+        return results[0].data.decode("utf-8")     # yes -> take the first code's bytes as a text string
+
+    def check_and_publish(self, code):              # decide whether a decoded id is expected, then act
+        if code in WORKLIST:                        # is this id one the worklist told us to expect?
+            self.pub.publish(String(data=code))    # yes -> publish it for Layer 07 to track the vial
+            self.get_logger().info(                # print a tidy, time-stamped status line
+                f"vial id {code} matches worklist")  # confirm the happy-path match for sanity
+        else:                                       # the code decoded, but it is not on the worklist
+            self.get_logger().warn(                # raise a warning rather than trusting the vial
+                f"vial id {code} NOT on worklist -> quarantine")  # Layer 07 routes it to quarantine
+
+
+def main():                                        # the standard ROS 2 program entry point
+    rclpy.init()                                    # start up the ROS 2 client library (must come first)
+    node = VialIdNode()                             # build our node, which runs its __init__ set-up
+    rclpy.spin(node)                                # keep handling wrist frames until you press Ctrl-C
+    node.destroy_node()                             # remove the node from the graph on shutdown
+    rclpy.shutdown()                                # close the ROS 2 client library cleanly
+
+
+if __name__ == "__main__":                          # only run if this file is launched directly
+    main()                                          # ...then start everything above
+```
+
+The decoded id here is one of the **two witnesses** the cell asks for:
+"this is the right vial" is confirmed by the barcode match *and*, where
+it matters, an overhead-camera slot check — never by vision alone (see
+[`../sensor-suite.md`](../sensor-suite.md)).
+
 ## See also
 
 - Folder overview: [`README.md`](README.md)

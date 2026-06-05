@@ -240,6 +240,88 @@ at hardware bring-up:
   real architecture proven in Gazebo at zero hardware cost; moving to
   hardware swaps a single plugin and nothing above it changes.
 
+## Meta code
+
+The shape of the best-practical layer (ROS 2 + `ros2_control`, wired
+into Gazebo by the `gz_ros2_control` plugin, plus a mock station node
+that exposes a device as a *service* and streams a sensor *topic*),
+before any library-specific detail:
+
+```text
+# (in the URDF) declare the gz_ros2_control plugin + the arm's joints     (the sim hardware_interface)
+# (in YAML) configure the controller_manager + a joint_trajectory_controller
+# on start-up the controller_manager loads and activates that controller  (now the arm accepts paths)
+# a mock station node (here the balance, sensor #6) does two things:
+#     it offers a service "weigh"           -> request/reply: "give me a mass reading now"
+#     it publishes a topic /balance/mass    -> continuous stream of the current reading
+# orchestration (Layer 07) calls the service before trusting a fill        (two-witness with the level)
+# everything talks ROS 2 topics/services, identical to what real HW shows
+```
+
+## Real code
+
+The best-practical pick is **ROS 2 + `ros2_control` with
+`gz_ros2_control`**; the snippet below shows the *mock station* side of
+it — a `rclpy` node that exposes a device as a service and streams a
+sensor topic, the pattern every simulated station follows. This is
+**illustrative teaching code**: client-library and message/service
+names drift between versions, so re-verify before relying on it. Every
+line carries an inline comment explaining exactly what it does.
+
+```python
+import rclpy                                          # ROS 2 Python client library (the robot framework)
+from rclpy.node import Node                           # base class every ROS 2 program ("node") builds on
+from std_msgs.msg import Float64                      # the message type we use for a single mass reading
+from std_srvs.srv import Trigger                      # a ready-made request/reply: ask, get success + text
+import random                                          # used only to fake a slightly noisy mass in sim
+
+
+class MockBalance(Node):                              # the simulated analytical balance (sensor #6)
+    def __init__(self):                               # set-up that runs once, when the node is created
+        super().__init__("mock_balance")              # register on the ROS 2 graph as "mock_balance"
+        self.mass_g = 0.0                             # the current reading in grams; updated each tick
+        self.pub = self.create_publisher(             # open an outgoing channel for the live mass stream
+            Float64, "/balance/mass", 10)             # type, topic name others read, inbox queue depth
+        self.timer = self.create_timer(               # arrange to run a function on a fixed schedule
+            0.1, self.tick)                           # every 0.1 s (10 Hz) call self.tick to refresh+publish
+        self.srv = self.create_service(               # offer a request/reply service others can call
+            Trigger, "weigh", self.on_weigh)          # service type, its name, the handler to run per call
+
+    def tick(self):                                    # runs ten times a second, on the timer above
+        self.mass_g = 12.50 + random.uniform(-0.01, 0.01)  # fake a ~12.5 g vial with tiny sim noise
+        msg = Float64()                               # make the empty message we are about to fill in
+        msg.data = self.mass_g                        # put the current mass into the message
+        self.pub.publish(msg)                         # send it out on /balance/mass for anyone listening
+
+    def on_weigh(self, request, response):             # runs whenever another node calls the "weigh" service
+        response.success = True                       # report that the weighing completed without error
+        response.message = f"{self.mass_g:.3f} g"     # return the latest mass as text in the reply
+        self.get_logger().info(                       # print a tidy, time-stamped status line
+            f"weigh requested -> {response.message}")  # show what reading we just reported
+        return response                               # hand the filled reply back to the caller
+
+
+def main():                                            # the standard ROS 2 program entry point
+    rclpy.init()                                       # start up the ROS 2 client library (must come first)
+    node = MockBalance()                               # build our node, which runs its __init__ set-up
+    rclpy.spin(node)                                   # keep serving the topic + service until Ctrl-C
+    node.destroy_node()                                # remove the node from the graph on shutdown
+    rclpy.shutdown()                                   # close the ROS 2 client library cleanly
+
+
+if __name__ == "__main__":                             # only run if this file is launched directly
+    main()                                             # ...then start everything above
+```
+
+The arm half of this layer is configuration, not code: the
+`gz_ros2_control` plugin is declared in the myCobot URDF (so Gazebo
+plays the `hardware_interface`), and a `joint_trajectory_controller` is
+spelled out in a controller YAML the `controller_manager` loads at
+start-up. Those files are what let a planned path become timed joint
+commands; the mock-station node above shows the *other* thing this layer
+carries — a device exposed as a service plus a sensor streamed as a
+topic, exactly as [`../sensor-suite.md`](../sensor-suite.md) describes.
+
 ## See also
 
 - Folder overview: [`README.md`](README.md)

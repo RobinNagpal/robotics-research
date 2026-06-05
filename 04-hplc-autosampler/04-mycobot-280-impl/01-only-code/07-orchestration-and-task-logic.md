@@ -209,6 +209,122 @@ lineage is clear; it should not be chosen for this project.
   unchanged to the hardware mode. (Reach for py_trees when speed of
   iteration matters more than runtime performance.)
 
+## Meta code
+
+The shape of the best-practical per-vial Behavior Tree — the same tree
+you would author in BehaviorTree.CPP's XML — whose condition nodes are
+sensor gates that branch to retry / quarantine / stop on `Failure`:
+
+```text
+# the per-vial subtree, ticked top-to-bottom on a fixed heartbeat:
+# Sequence "process one vial":
+#     Condition  safe?   ← /light_curtain_clear AND /door_closed AND NOT /estop  (#10/#11)
+#                          on FAILURE: stop the whole run                          (safe-stop)
+#     Action     pick the vial                                                    (-> Layer 03)
+#     Fallback "confirm held":                                                    (retry wrapper)
+#         Condition  held?  ← gripper feedback (#4)                               (grasp success)
+#         Action     re-pick once, then re-check held?                            (retry branch)
+#         Action     quarantine this vial and move on                            (give-up branch)
+#     Action     decap / dispense / recap / scan / place                         (-> lower layers)
+# safe? is re-checked every tick, so it can pre-empt any running step
+```
+
+## Real code
+
+A minimal but complete ROS 2 (`rclpy`) per-vial tree built with
+**py_trees** — the pure-Python Behavior Tree library that expresses the
+same best-practical tree you would later author in BehaviorTree.CPP.
+This is **illustrative teaching code**: library and message names drift
+between versions, so re-verify before relying on it. Every line carries
+an inline comment.
+
+```python
+import rclpy                                    # ROS 2 Python client library (the robot framework)
+from rclpy.node import Node                     # base class every ROS 2 program ("node") builds on
+from std_msgs.msg import Bool                   # a true/false message: each safety topic publishes this
+import py_trees                                  # the pure-Python Behavior Tree library (tree engine)
+
+
+class SafeGate(py_trees.behaviour.Behaviour):    # CONDITION node: "is it safe to move right now?"
+    def __init__(self, node):                    # built once, handed the ROS node so it can subscribe
+        super().__init__("safe?")                # name this leaf "safe?" as it appears in the tree
+        self.curtain = False                     # latest /light_curtain_clear reading (start unsafe)
+        self.door = False                        # latest /door_closed reading (start unsafe)
+        self.estop = True                        # latest /estop reading (start as "pressed" = unsafe)
+        node.create_subscription(                # subscribe to the light curtain (sensor #10)
+            Bool, "/light_curtain_clear",        # message type and topic name from the sensor suite
+            lambda m: setattr(self, "curtain", m.data), 10)  # store every new reading on self.curtain
+        node.create_subscription(                # subscribe to the door interlock (sensor #11)
+            Bool, "/door_closed",                # message type and topic name from the sensor suite
+            lambda m: setattr(self, "door", m.data), 10)     # store every new reading on self.door
+        node.create_subscription(                # subscribe to the emergency stop (sensor #11)
+            Bool, "/estop",                      # message type and topic name from the sensor suite
+            lambda m: setattr(self, "estop", m.data), 10)    # store every new reading on self.estop
+
+    def update(self):                            # runs on every tick; returns Success or Failure
+        safe = self.curtain and self.door and not self.estop  # two-witness AND: all three must agree
+        if safe:                                  # is the work zone clear, door shut, e-stop released?
+            return py_trees.common.Status.SUCCESS  # yes -> let the sequence proceed to the next step
+        return py_trees.common.Status.FAILURE     # no -> FAIL pre-empts the run (safe-stop branch)
+
+
+class HeldGate(py_trees.behaviour.Behaviour):    # CONDITION node: "is the vial actually in the grip?"
+    def __init__(self, node):                    # built once, handed the ROS node so it can subscribe
+        super().__init__("held?")                # name this leaf "held?" as it appears in the tree
+        self.held = False                        # latest grasp-success reading (start: nothing held)
+        node.create_subscription(                # subscribe to gripper feedback (sensor #4)
+            Bool, "/gripper/holding",            # message type and topic the grasp layer publishes
+            lambda m: setattr(self, "held", m.data), 10)     # store every new reading on self.held
+
+    def update(self):                            # runs on every tick; returns Success or Failure
+        if self.held:                             # does the gripper report a vial is held?
+            return py_trees.common.Status.SUCCESS  # yes -> grasp confirmed, sequence continues
+        return py_trees.common.Status.FAILURE     # no -> FAIL drops into the retry / quarantine branch
+
+
+def make_vial_tree(node):                         # assemble the per-vial subtree from the gates above
+    safe = SafeGate(node)                        # the safety condition, re-ticked every heartbeat
+    held = HeldGate(node)                        # the grasp-success condition for the pick step
+    retry = py_trees.decorators.Retry(           # wrap "held?" so a failed pick is retried, not fatal
+        name="retry pick", child=held, num_failures=2)  # allow up to 2 re-picks before giving up
+    root = py_trees.composites.Sequence(         # a Sequence: every child must succeed, left to right
+        name="process one vial", memory=True)    # memory=True resumes where it left off between ticks
+    root.add_children([safe, retry])             # gate on safety first, then confirm (and retry) the grasp
+    return py_trees.trees.BehaviourTree(root)    # wrap the root in a ticking tree the engine drives
+
+
+class OrchestratorNode(Node):                      # the ROS 2 node that owns and ticks the tree
+    def __init__(self):                            # set-up that runs once, when the node is created
+        super().__init__("orchestrator")          # register on the ROS 2 graph as "orchestrator"
+        self.tree = make_vial_tree(self)          # build the per-vial Behavior Tree, wired to our topics
+        self.create_timer(0.5, self.tick)         # tick the tree on a fixed 0.5 s heartbeat (2 Hz)
+
+    def tick(self):                               # called by the timer; advances the tree one tick
+        self.tree.tick()                          # evaluate the whole tree once, top-to-bottom
+        status = self.tree.root.status            # read what the root returned on this tick
+        self.get_logger().info(f"tree -> {status}")  # print the result so the run is watchable
+
+
+def main():                                        # the standard ROS 2 program entry point
+    rclpy.init()                                    # start up the ROS 2 client library (must come first)
+    node = OrchestratorNode()                       # build our node, which builds and starts the tree
+    rclpy.spin(node)                                # keep ticking until you press Ctrl-C
+    node.destroy_node()                             # remove the node from the graph on shutdown
+    rclpy.shutdown()                                # close the ROS 2 client library cleanly
+
+
+if __name__ == "__main__":                          # only run if this file is launched directly
+    main()                                          # ...then start everything above
+```
+
+Each condition node above is one **sensor → gate** from the canonical
+map in [`../sensor-suite.md`](../sensor-suite.md): `safe?` fuses the
+safety topics (#10/#11) and `held?` reads gripper feedback (#4). In
+only-code mode those topics come from mock publishers, so you can
+**inject faults** — drop `/light_curtain_clear` to `false`, or fake a
+slipped grip — and watch the tree fall into its safe-stop, retry, and
+quarantine branches with no bench time.
+
 ## See also
 
 - Folder overview: [`README.md`](README.md)

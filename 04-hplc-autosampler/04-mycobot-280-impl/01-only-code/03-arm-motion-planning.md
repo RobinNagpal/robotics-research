@@ -221,6 +221,101 @@ Drake's heavier optimization until the cell actually demands it.
 > Note: tool maturity, speed claims, and ecosystem support drift over
 > time — re-check before quoting any of the above as fact.
 
+## Meta code
+
+The shape of the best-practical pick (MoveIt 2, driven from Python
+through `pymoveit2`): keep the planning scene honest about obstacles,
+then plan and execute a collision-free move to a target pose.
+
+```text
+# subscribe to the target pose for the gripper            (e.g. a vial from Layer 04)
+# tell MoveIt about the world the arm must avoid:
+#     add the bench, the HPLC rack, and the tray as obstacles  (planning-scene boxes)
+#     keep these updated as fixtures move or appear            (scene stays honest)
+# on a new target pose:
+#     ask MoveIt to plan a path from "here" to the target  (IK + collision-aware planner)
+#     if no collision-free path is found:                  (planner returned nothing)
+#         report failure and stop                           (-> orchestration retries)
+#     otherwise execute the planned trajectory             (sim follows it, joint by joint)
+#     wait until the motion reports done                   (then the next layer may grasp)
+```
+
+## Real code
+
+A minimal but complete ROS 2 (`rclpy`) node using **MoveIt 2** via the
+**`pymoveit2`** helper. This is **illustrative teaching code**: library
+and message names drift between versions, so re-verify before relying on
+it. Every line carries an inline comment explaining what it does.
+
+```python
+import rclpy                                      # ROS 2 Python client library (the robot framework)
+from rclpy.node import Node                       # base class every ROS 2 program ("node") builds on
+from geometry_msgs.msg import PoseStamped         # a 6-DoF pose + which frame + what time it is for
+from pymoveit2 import MoveIt2                     # thin Python wrapper that drives MoveIt 2 planning
+from pymoveit2.robots import mycobot280           # joint + link names for the myCobot 280 arm
+
+# --- fixed, known facts about the cell the arm must not hit ---
+RACK_BOX = ([0.20, 0.0, 0.10], [0.10, 0.30, 0.20])  # HPLC rack: centre (x,y,z) then size (dx,dy,dz), metres
+BENCH_BOX = ([0.0, 0.0, -0.02], [1.00, 1.00, 0.04])  # the benchtop the arm stands on: centre then size, metres
+
+
+class ArmMover(Node):                              # our motion-planning node, built on the ROS 2 Node class
+    def __init__(self):                            # set-up that runs once, when the node is created
+        super().__init__("arm_mover")              # register on the ROS 2 graph under the name "arm_mover"
+        self.moveit2 = MoveIt2(                    # build the MoveIt 2 driver we will plan and execute with
+            node=self,                             # let it publish/subscribe on this node's behalf
+            joint_names=mycobot280.joint_names(),  # the six joints of the 280, in MoveIt's expected order
+            base_link_name=mycobot280.base_link_name(),   # the fixed frame the arm is measured from
+            end_effector_name=mycobot280.end_effector_name(),  # the gripper frame we want to place at a pose
+            group_name=mycobot280.MOVE_GROUP_ARM)  # the planning group = just the arm (not the gripper)
+        self.add_obstacle("rack", *RACK_BOX)       # tell MoveIt about the rack so plans steer clear of it
+        self.add_obstacle("bench", *BENCH_BOX)     # tell MoveIt about the bench so plans steer clear of it
+        self.sub = self.create_subscription(       # listen for a target gripper pose to move to
+            PoseStamped, "/arm/target_pose",       # message type, then the topic Layer 04 publishes on
+            self.on_target, 10)                     # call self.on_target per pose; 10 = inbox queue depth
+
+    def add_obstacle(self, name, centre, size):    # register one box in MoveIt's planning scene
+        self.moveit2.add_collision_box(            # push a collision box the planner must avoid
+            id=name,                               # a unique name so we can move or remove it later
+            position=centre,                       # where the box centre sits, in the base frame, metres
+            size=size)                             # the box's full width/depth/height, in metres
+        self.get_logger().info(f"scene: added {name}")  # log that the scene now knows about this obstacle
+
+    def on_target(self, msg):                       # runs automatically each time a target pose arrives
+        self.get_logger().info("planning to target")  # announce that we are about to plan a move
+        self.moveit2.move_to_pose(                  # ask MoveIt to plan AND execute a path to this pose
+            position=[msg.pose.position.x,         # target gripper position: left-right, metres
+                      msg.pose.position.y,         # target gripper position: forward-back, metres
+                      msg.pose.position.z],        # target gripper position: up-down, metres
+            quat_xyzw=[msg.pose.orientation.x,     # target gripper orientation, as a quaternion (x...
+                       msg.pose.orientation.y,     # ...y...
+                       msg.pose.orientation.z,     # ...z...
+                       msg.pose.orientation.w])    # ...w): which way the hand should point
+        success = self.moveit2.wait_until_executed()  # block until the trajectory finishes; True if it ran
+        if success:                                 # did MoveIt find a collision-free path and run it?
+            self.get_logger().info("reached target")  # yes -> report success (Layer 05 may now grasp)
+        else:                                       # no path, or execution was rejected
+            self.get_logger().warn("plan/exec failed")  # warn so orchestration can retry or stop
+
+
+def main():                                        # the standard ROS 2 program entry point
+    rclpy.init()                                    # start up the ROS 2 client library (must come first)
+    node = ArmMover()                               # build our node, which runs its __init__ set-up
+    rclpy.spin(node)                                # keep handling target poses until you press Ctrl-C
+    node.destroy_node()                             # remove the node from the graph on shutdown
+    rclpy.shutdown()                                # close the ROS 2 client library cleanly
+
+
+if __name__ == "__main__":                          # only run if this file is launched directly
+    main()                                          # ...then start everything above
+```
+
+The single planning-scene box added above is the minimum; a real cell
+keeps adding and updating boxes (tray, decapper, neighbouring vials) as
+fixtures move, so every plan is checked against the *current* world. When
+Layer 05 attaches a vial to the gripper it also updates this same scene,
+so later moves know the arm is now carrying something.
+
 ## See also
 
 - Folder overview: [`README.md`](README.md)

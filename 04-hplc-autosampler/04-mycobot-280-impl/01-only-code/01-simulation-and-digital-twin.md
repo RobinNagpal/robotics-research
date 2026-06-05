@@ -172,6 +172,95 @@ why it lands as an Alternative rather than the practical pick.
   fidelity and cost while staying one short step from real hardware —
   the right backbone for the only-code twin.
 
+## Meta code
+
+The shape of the best-practical twin (Gazebo Harmonic loaded from a
+world file, the myCobot URDF spawned into it, plus the sensor plugins
+that make each sensor appear as a ROS 2 topic), before any
+library-specific detail:
+
+```text
+# launch Gazebo Harmonic with a world file describing the cell      (bench, lighting, physics)
+# in that world, place the static furniture                          (rack, tray, decap/dispense stations)
+# spawn the myCobot 280 from its URDF at a known bench pose          (the digital twin of the arm)
+# attach sensor plugins so each sensor publishes a ROS 2 topic:
+#     overhead depth_camera plugin     -> /overhead/image_raw + points (sensor #1)
+#     station camera plugin            -> /station/image_raw           (sensor #2)
+#     wrist camera plugin on the flange-> /wrist/image_raw             (sensor #3)
+#     force-torque plugin on cap joint -> /decapper/wrench             (sensor #5)
+#     base imu plugin                  -> /imu                         (sensor #12)
+# start the ros_gz bridge so those gz topics cross into ROS 2         (one bridge per topic)
+# mock the safety sensors as plain ROS 2 Bool topics                  (/estop, /door_closed, /light_curtain_clear)
+# from then on every upper layer talks to topics, not to the simulator
+```
+
+## Real code
+
+The best-practical pick is **Gazebo Harmonic** driven from a ROS 2
+launch file via `ros_gz`. This is **illustrative teaching code**:
+launch APIs, plugin names, and message names drift between versions, so
+re-verify before relying on it. Every line carries an inline comment
+explaining exactly what it does.
+
+```python
+import os                                            # read environment + build file paths to assets
+from launch import LaunchDescription                 # the object a ROS 2 launch file must return
+from launch.actions import IncludeLaunchDescription  # lets us start Gazebo's own launch file inside ours
+from launch.launch_description_sources import PythonLaunchDescriptionSource  # how to load that .launch file
+from launch_ros.actions import Node                  # an action that starts one ROS 2 node (a program)
+from ament_index_python.packages import get_package_share_directory  # finds an installed package's files
+
+# --- fixed, known facts about the cell and where its files live ---
+WORLD = "hplc_cell.sdf"                               # the world file describing bench, lights, stations
+ROBOT_URDF = "mycobot_280.urdf"                       # the arm description Gazebo spawns as the twin
+SPAWN_XYZ = ["0", "0", "0.75"]                        # where on the bench to place the arm base (metres)
+
+
+def generate_launch_description():                    # the function ROS 2 calls to get what to start
+    pkg = get_package_share_directory("hplc_sim")     # locate our simulation package's installed files
+    world_path = os.path.join(pkg, "worlds", WORLD)   # full path to the world file inside that package
+    urdf_path = os.path.join(pkg, "urdf", ROBOT_URDF) # full path to the arm's URDF inside that package
+
+    ros_gz = get_package_share_directory("ros_gz_sim")  # locate the ros_gz bridge/launch helper package
+    gazebo = IncludeLaunchDescription(                # start Gazebo Harmonic by including its own launcher
+        PythonLaunchDescriptionSource(                # tell ROS 2 the included file is a Python launch file
+            os.path.join(ros_gz, "launch", "gz_sim.launch.py")),  # path to that stock launcher
+        launch_arguments={"gz_args": f"-r {world_path}"}.items())  # -r = run immediately, with our world
+
+    spawn = Node(                                      # a node that injects the arm into the running world
+        package="ros_gz_sim", executable="create",    # ros_gz's "create" tool spawns a model into Gazebo
+        arguments=["-file", urdf_path,                # the URDF file describing the model to spawn
+                   "-name", "mycobot_280",            # the name the spawned arm will have in the world
+                   "-x", SPAWN_XYZ[0],                # x position on the bench, in metres
+                   "-y", SPAWN_XYZ[1],                # y position on the bench, in metres
+                   "-z", SPAWN_XYZ[2]],               # z height (bench top), in metres
+        output="screen")                              # print this node's logs to the terminal
+
+    bridge = Node(                                     # the ros_gz bridge: copies gz topics into ROS 2
+        package="ros_gz_bridge", executable="parameter_bridge",  # the standard topic-bridge executable
+        arguments=[                                    # one entry per topic, with gz<->ros type mapping:
+            "/overhead/image_raw@sensor_msgs/msg/Image[gz.msgs.Image",      # overhead camera (sensor #1)
+            "/station/image_raw@sensor_msgs/msg/Image[gz.msgs.Image",       # station camera (sensor #2)
+            "/wrist/image_raw@sensor_msgs/msg/Image[gz.msgs.Image",         # wrist camera (sensor #3)
+            "/decapper/wrench@geometry_msgs/msg/WrenchStamped[gz.msgs.Wrench",  # cap force-torque (#5)
+            "/imu@sensor_msgs/msg/Imu[gz.msgs.IMU"],   # base IMU reading (sensor #12)
+        output="screen")                              # print the bridge's logs to the terminal
+
+    # mock the safety sensors: plain Bool topics no real device backs yet (sensors #10/#11)
+    estop = Node(package="hplc_sim", executable="mock_safety",  # a tiny node we wrote to fake safety state
+                 name="mock_safety", output="screen")           # name it and show its logs on screen
+
+    return LaunchDescription([gazebo, spawn, bridge, estop])  # hand ROS 2 the full list of things to start
+```
+
+The world file (`hplc_cell.sdf`) is where the sensor plugins actually
+live — each camera, the force-torque sensor on the cap joint, and the
+base IMU are `<sensor>` blocks in that SDF, which is what makes the
+topics above exist. It is left out here to keep the launch file
+readable, but it is the other half of the twin: the launch file *runs*
+the world, the world *defines* the sensors that
+[`../sensor-suite.md`](../sensor-suite.md) lists.
+
 ## See also
 
 - Folder overview: [`README.md`](README.md)

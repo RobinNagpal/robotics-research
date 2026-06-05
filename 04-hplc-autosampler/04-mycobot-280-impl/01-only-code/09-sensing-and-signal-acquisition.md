@@ -1,0 +1,340 @@
+# Layer 09 — Sensing & signal acquisition (only-code)
+
+> **Job:** Make every sensor in the cell's suite *exist* — as a ROS 2
+> (Robot Operating System 2) topic publishing the same data a real
+> sensor would — and read each one reliably, entirely in simulation,
+> with zero hardware purchased.
+
+In "only-code" mode there is no physical sensor anywhere. Each one is
+either a **Gazebo plugin** (a piece of the simulator that renders or
+computes sensor data from the synthetic world) or a **mock ROS 2 topic**
+(a small program that simply publishes plausible values). Either way the
+rule is the same: the simulated sensor publishes on the **exact topic
+name a real sensor would** — `/overhead/image_raw`, `/light_curtain_clear`,
+`/balance/mass`, and so on — so every layer above it cannot tell, and
+must not care, whether the bytes came from hardware or from a plugin.
+That is the whole point of this layer: it is the *seam* the rest of the
+cell is built on top of, proven in software first.
+
+"Acquisition" here means two distinct things, and this layer owns both.
+First, **making the sensor exist**: standing up the plugin or the mock
+publisher so the topic appears on the ROS 2 graph at all. Second,
+**reading it reliably**: subscribing to that topic, handling the case
+where it is stale or silent, and handing a clean, current value to the
+gate logic. A camera that publishes RGB-D (a colour image where every
+pixel also carries a *depth* — how far it is from the camera) frames, an
+IMU (Inertial Measurement Unit — the chip that reports tilt and
+vibration) that publishes orientation, an e-stop button that publishes a
+single true/false — all of them become, after this layer, just topics
+you can read.
+
+The canonical list of what must exist — all **12 sensors**, their topic
+names, their simulation stand-ins, and rough costs — lives in
+[`../sensor-suite.md`](../sensor-suite.md), and this layer is the code
+that brings that list to life. Note especially the **two-witness habit**
+from that doc: wherever a fact matters, it is confirmed by *two
+independent sensors* before the workflow trusts it (e.g. "vial is held" =
+gripper feedback **and** a wrist-camera glance). This layer's job is only
+to deliver each witness as a readable topic; the *fusing* of two
+witnesses into one verdict is the next layer,
+[`10-sensor-fusion-and-gating.md`](10-sensor-fusion-and-gating.md).
+
+## The five at a glance
+
+| Framework | Role | Tier | One-liner |
+|---|---|---|---|
+| Gazebo sensor plugins (camera / depth / imu / force_torque / contact / logical_camera) | Render sensor data from the synthetic world | **Best-practical** | Free, physics-accurate sim sensors for cameras, base IMU, decap torque, presence — the bulk of the suite for `~$0`. |
+| ros2_control (joint state + effort interfaces) | Joint feedback for gripper #4 and limit switches #9 | Recommended | The standard way to read joint position/effort; gives grip width, motor current, and home/end-stop state straight from the model. |
+| Custom rclpy mock publishers (safety #10/#11, level #8, balance #6) | Fake the sensors that have no natural plugin | **Cheapest** | A few lines of Python publishing plausible values on the real topic names — for safety, level, and balance. |
+| micro-ROS | Bridge a real microcontroller's sensors onto topics | **Best-in-class** | The genuine real-hardware acquisition path for tiny sensors; in only-code you stub it, but it is what you grow into. |
+| ros_gz_bridge / sensor_msgs standard types | Carry sim sensor data into ROS 2 in standard message types | Alternative | The plumbing under everything else — translates Gazebo topics into ROS 2 `sensor_msgs` the rest of the stack expects. |
+
+A **topic** is a named channel on the ROS 2 graph that one program
+publishes to and any number read from; a **message type** (e.g.
+`sensor_msgs/Image`, `std_msgs/Bool`) is the agreed shape of the data on
+that channel. Sensing is, in the end, just choosing the right channel
+name and message type for each of the twelve and filling it.
+
+## Gazebo sensor plugins (camera / depth / imu / force_torque / contact / logical_camera)
+
+Gazebo ships built-in **sensor plugins** that compute realistic sensor
+output from the simulated world: a `camera` and `depth_camera` plugin
+render RGB and RGB-D frames, an `imu` plugin reports the base link's
+orientation and acceleration, a `force_torque` plugin reports the
+wrench (force + torque) across a joint, a `contact` plugin fires when two
+bodies touch, and a `logical_camera` reports which named models fall in a
+view frustum. These cover, with no extra code, the *physical* sensors of
+the suite — cameras **#1–#3**, the decapper torque sense **#5**, station
+presence **#7**, the gripper grasp-contact half of **#4**, and the base
+IMU **#12**.
+
+Their strength over the other four options is **fidelity for free**.
+Because the plugin reads the actual simulated geometry and physics, the
+depth image genuinely reflects the modelled scene, the force-torque
+reading genuinely reflects the modelled decap resistance, and the
+logical-camera genuinely reflects whether a vial model is staged. A mock
+rclpy publisher can only emit numbers you scripted; a Gazebo plugin emits
+numbers the *world* produced, so it can surprise you in useful ways
+(occlusion, a tipped vial, a missed contact) — exactly the cross-checks
+the two-witness gates need. And it is `~$0`: every one is part of the
+open-source simulator already chosen in Layer 01.
+
+Its weakness, versus the others, is that a plugin only exists for sensors
+that have a *physical analogue the simulator models*. There is no Gazebo
+plugin for "is the safety light curtain clear?", "is the enclosure door
+shut?", "is the e-stop pressed?", or "what mass does the analytical
+balance read?" — those (#8, #10, #11, and the gravimetric side of #6)
+have no natural geometry to render, so they fall to mock publishers
+instead. Plugins are also bound to the simulator's update loop and
+message conventions, so you still need the `ros_gz_bridge` plumbing below
+to get their output into clean ROS 2 `sensor_msgs`. They are the
+backbone of this layer, but not the whole skeleton.
+
+## ros2_control (joint state + effort interfaces)
+
+`ros2_control` is the standard ROS 2 framework for talking to a robot's
+joints through a uniform set of **interfaces** — `position`, `velocity`,
+and `effort` (the torque or current at a joint). In simulation it runs
+against the model's joints exactly as it would against real servos,
+publishing a `JointState` message that reports, per joint, where it is
+and how much effort it is exerting. For sensing, that single stream is
+what turns the **gripper** into a sensor: the jaw-width joint gives grasp
+width, and the effort interface gives motor current — together the
+"grasp success / grip force / slip" signal that is sensor **#4**.
+
+Its strength here is that it reads feedback **the arm is already
+producing**, with no separate sensor model to build. The same
+`ros2_control` stack that *commands* the arm in Layer 02 also *reports*
+joint state, so gripper feedback and the **homing / limit-switch** state
+of sensor **#9** (is the arm at home? is a rail at its end-stop?) come
+for free as joint-limit readings off the same bus. It is also the most
+faithful of the five to how the real cell will work: on hardware this is
+genuinely how you would read the gripper and the limit switches, so the
+only-code code transfers almost unchanged.
+
+Its weakness, against the Gazebo plugins, is that it only sees **joints**
+— it knows nothing about cameras, the safety perimeter, liquid level, or
+the balance, so it covers just two of the twelve sensors. And against a
+plain mock publisher it is heavier: you must configure a controller
+manager, a hardware (or simulation) interface, and a controller, which is
+more moving parts than a six-line script that publishes a number. It is
+the right tool for the joint-derived sensors and the wrong tool for
+everything else — a precise, recommended *component*, not the backbone.
+
+## Custom rclpy mock publishers (safety #10/#11, level #8, balance #6)
+
+A custom **mock publisher** is the simplest possible sensor: a small
+`rclpy` (the ROS 2 Python client library) node that, on a timer,
+publishes a chosen value on the real sensor's topic. There is no plugin,
+no physics, no model — just `create_publisher`, a timer, and a value.
+This is how the sensors with *no natural simulator analogue* are stood
+up: the safety **light curtain** and **laser scanner** (`/light_curtain_clear`,
+sensor **#10**), the **door interlock + e-stop** (`/door_closed`,
+`/estop`, sensor **#11**), the **liquid-level** reading (`/level`, sensor
+**#8**), and the gravimetric **balance** mass (`/balance/mass`, sensor
+**#6**, which the suite says reads the Part 04 fill-volume scalar as a
+mass).
+
+Its strength is being the **cheapest** and most controllable option by a
+wide margin. A mock publisher is a few lines anyone can write and read,
+costs `~$0`, runs on any machine, and — crucially for testing — lets you
+*script the exact scenario* you want to prove: drop `/estop` to true at a
+chosen moment and watch the gate logic halt; ramp `/level` past its limit
+and watch the overfill branch fire; set `/balance/mass` to a wrong value
+and confirm the two-witness fill check catches it. No plugin gives you
+that on-demand control over a fault you want to rehearse.
+
+Its weakness, versus the Gazebo plugins, is that the values are exactly
+as smart as the script behind them — a mock publisher cannot *discover*
+that a vial is tipped or that a hand crossed the perimeter, because it
+has no view of the world; it only repeats what you told it. So for any
+sensor that *does* have a physical analogue (the cameras, the IMU, the
+force-torque), a plugin is strictly more honest and a mock is a
+regression. Mock publishers are the right answer **only** for the four
+sensors with no geometry to render, and lean on the discipline of also
+feeding them ground truth from the sim where possible (e.g. driving
+`/level` from the real fill scalar rather than a hand-typed constant).
+
+## micro-ROS
+
+**micro-ROS** is a port of ROS 2 that runs on **microcontrollers** — the
+small, cheap chips (an ESP32, an STM32, a Teensy) that sit next to a
+physical sensor and read its raw electrical signal. It lets such a chip
+join the ROS 2 graph directly and **publish its sensor as a topic**, with
+the same message types the rest of the stack uses, over a thin serial or
+network link through a host-side **agent**. In the real cell this is the
+genuine acquisition path for the small, off-the-shelf sensors — the
+capacitive liquid-level probe, the photoelectric proximity switches, the
+load-cell amplifier behind the decapper torque sense, an e-stop line.
+
+It is **best-in-class** because it is the *real thing*, not a stand-in:
+where a mock publisher only pretends sensor #8 or #11 exists, micro-ROS
+is how that sensor will *actually* reach a topic once hardware arrives,
+turning a millivolt off a capacitive probe into a `Float64` on `/level`
+with proper timing and no PC in the tight loop. Designing the only-code
+topics to match what a micro-ROS node will eventually publish means the
+fusion and gate logic above never has to change when the stub becomes
+silicon — the seam holds.
+
+Its weakness in *only-code* is simply that there is no microcontroller to
+run it on, so here it can only be **stubbed**: you mimic the topic a
+micro-ROS node would publish (which is just a mock publisher again, under
+a different banner) or run a software micro-ROS node with no real sensor
+behind it. It also carries real-world fiddliness — agent setup, serial
+transports, constrained memory on the chip — that buys you nothing until
+hardware exists. So in this folder micro-ROS is the **direction**, not
+the day-one tool: you build the mocks to *look like* its output, and swap
+in the actual chips in the code-plus-hardware sibling.
+
+## ros_gz_bridge / sensor_msgs standard types
+
+`ros_gz_bridge` is the **bridge** that connects the Gazebo simulator's
+internal transport to the ROS 2 graph: it translates a Gazebo sensor
+topic into a standard ROS 2 topic carrying a standard **`sensor_msgs`**
+message — `sensor_msgs/Image` for a camera, `sensor_msgs/Imu` for the
+IMU, `sensor_msgs/PointCloud2` for depth, `geometry_msgs/WrenchStamped`
+for force-torque. It is less a *source* of sensing than the *plumbing*
+that carries the Gazebo plugins' output into the form the rest of the
+stack expects to read.
+
+Its strength is that it makes the whole layer **honest about message
+types**. Because everything arrives as a standard `sensor_msgs` (or
+`std_msgs`/`geometry_msgs`) type, the perception code in
+[`04-perception-and-vision.md`](04-perception-and-vision.md), the fusion
+in Layer 10, and the eventual hardware drivers all speak the same
+language — a `sensor_msgs/Image` from a Gazebo camera and from a real
+RealSense are the same shape, so code written against the sim runs
+against the camera unchanged. It is the piece that lets only-code work
+*transfer*.
+
+Its weakness is that it is **only plumbing**: on its own it produces no
+sensor data at all — point it at nothing and nothing flows. It also adds
+a configuration surface (a YAML list of which topics to bridge, and in
+which direction) and a small latency and naming-mismatch hazard: a
+mistyped topic or message type here silently starves a gate upstream. So
+it is an **Alternative** in the sense that it is not an acquisition
+*strategy* you choose between — it is the connective tissue the Gazebo
+plugins require and the mock publishers (which already speak native ROS
+2) do not. Necessary, but never the answer by itself.
+
+## Verdict
+
+- **Best-in-class:** **micro-ROS** — the real acquisition path that turns
+  a physical sensor on a microcontroller into a ROS 2 topic. In only-code
+  you can only stub it, but every topic you design should match what it
+  will eventually publish, so the swap to hardware is seamless.
+- **Cheapest:** **pure rclpy mock publishers** — a handful of lines per
+  sensor, `~$0`, and they let you script the exact fault you want to
+  rehearse. The right tool for the four sensors (safety #10/#11, level
+  #8, balance #6) that have no natural simulator analogue.
+- **Best-practical:** **Gazebo sensor plugins + ros2_control + a few
+  rclpy mock publishers** — plugins render the cameras (#1–#3), IMU
+  (#12), torque (#5), presence (#7) and grasp contact for free;
+  `ros2_control` reads the gripper (#4) and limit switches (#9) off the
+  joints; and a small set of mock publishers fills the safety, level, and
+  balance gaps. Bridged into standard `sensor_msgs`, this stands up all
+  twelve for `~$0` and transfers cleanly to hardware later.
+
+## Meta code
+
+The shape of "stand up every sensor as a topic," before any
+library-specific detail:
+
+```text
+# start the sim world with its sensor plugins enabled        (cameras, imu, force_torque, contact, logical_camera)
+# run the ros_gz_bridge to carry those plugin topics into ROS 2   (-> standard sensor_msgs)
+# launch ros2_control so the arm publishes joint state + effort   (-> gripper #4, limit switches #9)
+# run the mock publishers for the sensors with no plugin:
+#     /light_curtain_clear, /door_closed, /estop                  (safety #10, #11)
+#     /level   (driven from the fill scalar where possible)        (level #8)
+#     /balance/mass (the fill scalar read as a mass)               (balance #6)
+# now EVERY sensor in the suite is a live ROS 2 topic:
+#     the gate logic (Layer 10) can subscribe and read each one    (no code knows or cares it is simulated)
+```
+
+## Real code
+
+A minimal **mock sensor stand-in** node for the non-camera sensors that
+have no Gazebo plugin (the camera, IMU, and force-torque come from Gazebo
+plugins instead). This is **illustrative teaching code**: library and
+message names drift between versions, so re-verify before relying on it.
+Every line carries an inline comment explaining exactly what it does.
+
+```python
+import rclpy                                       # ROS 2 Python client library (the robot framework)
+from rclpy.node import Node                        # base class every ROS 2 program ("node") builds on
+from std_msgs.msg import Bool, Float64             # simple message types: a true/false, and a number
+
+# --- which topic each sensor publishes on (must match sensor-suite.md) ---
+T_CURTAIN = "/light_curtain_clear"                 # safety #10: is the work-zone light curtain clear?
+T_DOOR    = "/door_closed"                          # safety #11: is the enclosure door shut?
+T_ESTOP   = "/estop"                                # safety #11: is the emergency-stop pressed?
+T_MASS    = "/balance/mass"                         # balance #6: mass the analytical balance reads (grams)
+T_LEVEL   = "/level"                                # level #8: liquid level / fill reading (a fraction)
+
+PUBLISH_HZ = 10.0                                   # how many times per second to publish each value
+
+
+class MockSensors(Node):                            # our mock-sensor node, built on the ROS 2 Node class
+    def __init__(self):                             # set-up that runs once, when the node is created
+        super().__init__("mock_sensors")            # register on the ROS 2 graph under the name "mock_sensors"
+        self.curtain = self.create_publisher(Bool, T_CURTAIN, 10)   # channel for the light-curtain state
+        self.door    = self.create_publisher(Bool, T_DOOR, 10)      # channel for the door-closed state
+        self.estop   = self.create_publisher(Bool, T_ESTOP, 10)     # channel for the e-stop state
+        self.mass    = self.create_publisher(Float64, T_MASS, 10)   # channel for the balance mass reading
+        self.level   = self.create_publisher(Float64, T_LEVEL, 10)  # channel for the liquid-level reading
+        self.fill = 0.0                             # current fill fraction (0.0 empty .. 1.0 full), starts empty
+        period = 1.0 / PUBLISH_HZ                   # seconds between ticks, from the chosen rate above
+        self.create_timer(period, self.on_tick)     # call self.on_tick on a steady clock, forever
+
+    def on_tick(self):                              # runs automatically every timer period
+        self.curtain.publish(Bool(data=True))       # report the work zone is clear (no hand in the curtain)
+        self.door.publish(Bool(data=True))          # report the enclosure door is closed
+        self.estop.publish(Bool(data=False))        # report the e-stop is NOT pressed (False = not triggered)
+        self.fill = min(1.0, self.fill + 0.01)      # creep the fill up a little, capped at full, to mimic dispensing
+        self.level.publish(Float64(data=self.fill)) # publish that fill fraction as the liquid-level reading
+        grams = self.fill * 20.0                     # turn the fill fraction into a mass (~20 g when full)
+        self.mass.publish(Float64(data=grams))      # publish that as the balance's gravimetric reading
+
+    # NOTE: cameras #1-#3, base IMU #12, and decap force-torque #5 are NOT mocked here --
+    #       they come from Gazebo sensor plugins, bridged into ROS 2 via ros_gz_bridge.
+    #       The gripper #4 and limit switches #9 come from ros2_control joint feedback.
+
+
+def main():                                         # the standard ROS 2 program entry point
+    rclpy.init()                                    # start up the ROS 2 client library (must come first)
+    node = MockSensors()                            # build our node, which runs its __init__ set-up
+    rclpy.spin(node)                                # keep publishing on the timer until you press Ctrl-C
+    node.destroy_node()                             # remove the node from the graph on shutdown
+    rclpy.shutdown()                                # close the ROS 2 client library cleanly
+
+
+if __name__ == "__main__":                          # only run if this file is launched directly
+    main()                                          # ...then start everything above
+```
+
+Driving `/level` and `/balance/mass` from the *same* simulated fill
+scalar (rather than two hand-typed constants) is what keeps the
+**two-witness** fill check honest — both witnesses move with the real
+underlying state, so the gate in Layer 10 can catch a genuine
+disagreement instead of two constants that always agree. The safety
+booleans are published steadily so a gate can detect not only a *false*
+reading but also a topic that has gone **silent** (stale), which is
+itself a fault.
+
+## See also
+
+- [`README.md`](README.md) — the only-code folder overview and the full
+  list of development layers.
+- [`../sensor-suite.md`](../sensor-suite.md) — the canonical 12-sensor
+  list, topic names, sim stand-ins, costs, and the two-witness habit this
+  layer brings to life.
+- [`04-perception-and-vision.md`](04-perception-and-vision.md) — the
+  camera sensors (#1–#3) turned into poses; the perception half of what
+  this acquisition layer feeds.
+- [`10-sensor-fusion-and-gating.md`](10-sensor-fusion-and-gating.md) —
+  the next layer, which *fuses* the topics stood up here into the
+  two-witness gates that open or block each motion.
+- [`../02-code-plus-hardware/02-middleware-and-control.md`](../02-code-plus-hardware/02-middleware-and-control.md)
+  — the same plumbing once **real sensors** (via micro-ROS, camera SDKs,
+  load-cell amplifiers) publish these topics from hardware.

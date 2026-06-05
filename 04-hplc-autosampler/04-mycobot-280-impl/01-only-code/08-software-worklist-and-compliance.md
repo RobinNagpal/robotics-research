@@ -251,6 +251,132 @@ stack as the destination you grow into.
 > compliance and integrity claims with a quality owner before
 > quoting them or relying on them.
 
+## Meta code
+
+The shape of the best-practical pick (FastAPI controller, SQLite
+store, a SiLA 2 mock for instruments) — an append-only, hash-chained
+audit trail where every row records the **sensor reading that gated
+the step**, before any library-specific detail:
+
+```text
+# load the worklist (which vials, in what order) into the SQLite store
+# expose GET  /worklist        -> the ordered steps still to run
+# expose POST /event           -> record that one step happened
+# on POST /event {step, sensor_name, sensor_value, decision}:
+#     refuse to act unless the gating sensor reading is acceptable   (sensor-gated)
+#     read the previous audit row's hash                              (the chain so far)
+#     build this row: time, step, sensor_name=value, decision, user  (who/what/why)
+#     hash = SHA-256(previous_hash + this row's contents)            (tamper-evident link)
+#     append the row to the audit table (never update, never delete) (append-only)
+#     return the new row so the caller can see it was logged          (-> proof on file)
+# any later edit/deletion breaks the hash chain and is detectable     (two-witness habit:
+#                                                                       sensor + signed log)
+```
+
+## Real code
+
+A minimal but complete **FastAPI + SQLite** service implementing that
+flow (the SiLA 2 mock is the swap-in named in the Verdict; here the
+instrument call is a stub). This is **illustrative teaching code**:
+library and API names drift between versions, so re-verify before
+relying on it. Every line carries an inline comment explaining exactly
+what it does.
+
+```python
+import hashlib                                  # SHA-256, used to chain each audit row to the last
+import json                                      # turns a row dict into the exact bytes we hash
+import sqlite3                                   # tiny file-based database; no server to run
+from datetime import datetime, timezone         # UTC time-stamps for every recorded event
+from fastapi import FastAPI, HTTPException       # the web framework + its "reject this request" error
+from pydantic import BaseModel                   # validates the JSON body of an incoming POST /event
+
+DB = "audit.db"                                  # the single SQLite file that holds everything
+GATES = {                                        # the minimum sensor reading each step is allowed at
+    "pick_vial":  ("wrist_force", 5.0),         # grasp only if wrist force-torque (#4/#5) >= 5.0 N
+    "place_slot": ("seat_depth", 2.0),          # release only if overhead cam (#1) sees >= 2.0 mm seating
+}                                                # any step not listed here needs no sensor gate
+
+app = FastAPI()                                  # the application object FastAPI serves over HTTP
+
+
+def db():                                         # open a fresh connection to the SQLite file
+    c = sqlite3.connect(DB)                      # connect (creates the file on first run)
+    c.row_factory = sqlite3.Row                 # let us read columns by name, not just by index
+    return c                                      # hand the connection back to the caller
+
+
+@app.on_event("startup")                          # runs once, when the service first boots
+def setup():                                      # build our two tables if they are not there yet
+    c = db()                                      # get a connection
+    c.execute("CREATE TABLE IF NOT EXISTS worklist("  # the to-do list the lab handed us
+              "pos INTEGER PRIMARY KEY, vial TEXT, step TEXT, done INTEGER DEFAULT 0)")  # one row per step
+    c.execute("CREATE TABLE IF NOT EXISTS audit("     # the append-only, hash-chained trail
+              "id INTEGER PRIMARY KEY AUTOINCREMENT,"  # row number, also the chain order
+              "ts TEXT, step TEXT, sensor TEXT, value REAL,"  # when, which step, which sensor read what
+              "decision TEXT, user TEXT, prev_hash TEXT, hash TEXT)")  # verdict, who, link to prev, this link
+    if not c.execute("SELECT 1 FROM worklist").fetchone():  # is the worklist empty (first ever run)?
+        c.executemany("INSERT INTO worklist(pos,vial,step) VALUES(?,?,?)",  # seed a tiny demo worklist
+                      [(1, "V-001", "pick_vial"), (2, "V-001", "place_slot")])  # two ordered steps
+    c.commit()                                    # save the schema + seed data to disk
+    c.close()                                     # release the connection
+
+
+class Event(BaseModel):                            # the shape of a valid POST /event body
+    step: str                                     # which worklist step this event is for
+    sensor_value: float                           # the live reading of that step's gating sensor
+    user: str                                     # who authorised the step (for the audit trail)
+
+
+@app.get("/worklist")                              # GET /worklist -> the steps still to do
+def worklist():                                    # called when a client asks for remaining work
+    c = db()                                       # open the store
+    rows = c.execute("SELECT pos, vial, step FROM worklist "  # read the unfinished steps
+                     "WHERE done=0 ORDER BY pos").fetchall()   # in their intended order
+    c.close()                                       # done reading
+    return [dict(r) for r in rows]                 # return them as plain JSON objects
+
+
+@app.post("/event")                                # POST /event -> log that one step happened
+def event(ev: Event):                              # FastAPI validates the body into an Event for us
+    sensor, threshold = GATES.get(ev.step, (None, None))  # look up this step's gating sensor + minimum
+    if sensor and ev.sensor_value < threshold:     # is the step gated, and did the sensor read too low?
+        raise HTTPException(409,                    # 409 = "refused": the gate is not satisfied
+                            f"{sensor}={ev.sensor_value} below {threshold}")  # say why we refused
+    decision = "allowed"                            # the gate passed (or there was no gate)
+    c = db()                                        # open the store to append the audit row
+    last = c.execute("SELECT hash FROM audit ORDER BY id DESC LIMIT 1").fetchone()  # the chain's last hash
+    prev_hash = last["hash"] if last else "GENESIS"  # first ever row links to a fixed seed value
+    row = {                                          # the exact, immutable contents we will hash
+        "ts": datetime.now(timezone.utc).isoformat(),  # UTC time-stamp of this event
+        "step": ev.step,                            # which step this records
+        "sensor": sensor or "none",                 # the sensor that gated it (or "none")
+        "value": ev.sensor_value,                   # ITS READING -- the proof the step was allowed
+        "decision": decision,                       # the verdict we reached above
+        "user": ev.user,                            # who authorised it
+        "prev_hash": prev_hash,                     # the link to the row before this one
+    }
+    digest = hashlib.sha256(                         # chain this row to the previous one...
+        (prev_hash + json.dumps(row, sort_keys=True)).encode()).hexdigest()  # ...hash(prev + this row)
+    c.execute("INSERT INTO audit(ts,step,sensor,value,decision,user,prev_hash,hash) "  # append only --
+              "VALUES(?,?,?,?,?,?,?,?)",            # we never UPDATE or DELETE an audit row
+              (row["ts"], row["step"], row["sensor"], row["value"],  # the gating sensor + its reading
+               row["decision"], row["user"], prev_hash, digest))     # verdict, user, and the two hashes
+    c.execute("UPDATE worklist SET done=1 WHERE step=? AND done=0", (ev.step,))  # tick the step off
+    c.commit()                                       # save the new audit row + the tick to disk
+    c.close()                                        # release the connection
+    return {"step": ev.step, "sensor": sensor,       # echo back proof the event is on the record
+            "value": ev.sensor_value, "hash": digest}  # including the chain hash, so the caller has it
+
+
+# run with:  uvicorn worklist_service:app          # uvicorn is the web server that hosts the FastAPI app
+```
+
+A real build swaps the stubbed gate for a **SiLA 2 mock** call (so the
+instrument interface is production-shaped, per the Verdict) and the
+sensor values for live readings off the topics in
+[`../sensor-suite.md`](../sensor-suite.md) — but the append-only,
+sensor-stamped, hash-chained shape of the trail stays exactly as above.
+
 ## See also
 
 - Folder overview: [`README.md`](README.md)
