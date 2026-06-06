@@ -186,25 +186,129 @@ getting right once.
 
 ## What a single bench looks like
 
-Zooming back from the market to one person: a lab analyst typically runs
-**1–3 instruments** and personally owns **a handful of methods or
-projects** at a time (for example: *"assay for Product A,"* *"impurity
-test for Product B,"* *"stability study for Product C"*). In a day they
-might prepare and inject **anywhere from ~50 to a few hundred vials**
-across those projects.
+Zoom all the way back from the market to one person at one bench. This is
+where the requirements for the robot actually come from, so it is worth
+getting concrete. (Throughput and timing numbers below are typical
+industry figures and vary by lab and method — treat them as `~`.)
 
-A simple picture:
+### The analyst and their workload
 
-- A QC analyst arrives, picks up the day's three batches, and spends the
-  **morning at the bench** preparing ~80 vials — measure, dilute, cap,
-  label, load — then starts an overnight run.
-- A research analyst developing a new method might run **5–10 smaller
-  experiments a day**, each a tray of standards plus a few samples,
-  tweaking the recipe between runs.
+A lab analyst is a trained chemist — usually a B.Sc. or M.Sc. — who
+**owns a handful of methods at once**. A *method* is a fixed, validated
+recipe for one test on one product: it spells out exactly how much sample
+to weigh, what solvent to add, what dilution to hit, and how to run it. A
+realistic personal load looks like:
 
-Either way, the bottleneck is the same: a skilled person spending hours
-doing the same five hand motions, hundreds of times, before the clever
-instrument ever turns on. That is the hour we're trying to give back.
+- *"Assay for Product A"* — how much active ingredient each tablet holds
+  (e.g. "is this a true 200 mg ibuprofen tablet?").
+- *"Related substances for Product B"* — which impurities are present and
+  at what level (the safety-critical test).
+- *"Stability study for Product C"* — the same tests repeated on samples
+  pulled from storage at 1, 3, 6, 12… months to prove shelf life.
+
+They typically tend **1–3 instruments** and, across those projects,
+prepare and inject **~50 to a few hundred vials a day**. Crucially, the
+instruments run largely **unattended — often overnight** — so the
+analyst's real day is spent at the **bench preparing samples**, not
+watching the machine.
+
+### Why a "simple" test is never one vial
+
+Here is the part outsiders miss. A request to "assay one batch" never
+means one vial. Regulated methods — the pharmacopoeia standards such as
+**USP <621>** — force a whole supporting cast into every tray before a
+single real result is allowed to count:
+
+- **A blank** — solvent only, to prove the prep itself isn't
+  contaminating the signal.
+- **System-suitability standards** — typically **5–6 injections of the
+  same reference standard**, whose peak areas must agree to within
+  **~2% RSD** (modern methods tighten this to under ~1%) *before* the
+  instrument is trusted to read anything.
+- **Calibration / bracketing standards** — known concentrations run at
+  the start, and often again in the middle and at the end, to prove the
+  instrument didn't drift over a long run.
+- **The actual samples**, usually prepared and injected **in duplicate**
+  (two independent preparations), sometimes more.
+- **QC check standards** sprinkled through the sequence as periodic
+  re-proof.
+
+So a single product batch easily becomes **20–40+ vials** before you
+count a second batch. Multiply by the two or three batches an analyst
+handles in a day and the tray fills to **dozens, often 100+, vials** —
+exactly the packed tray from the earlier section, now explained.
+
+### The clock: prep is the bottleneck, not the run
+
+Run time per injection is real but modest — a **single injection commonly
+takes ~10–60 minutes**, and the analyst does not sit and watch it.
+Counted end to end on one instrument:
+
+| Method style | Time per sample (run) | Samples/day, one instrument |
+|---|---|---|
+| Classical HPLC | ~75 min incl. equilibration + cleaning | ~6 |
+| Modern UHPLC | <6 min | ~90 |
+| High-throughput (dual pump, column switching) | — | up to ~600 |
+
+But those are *machine* numbers, and they are only reached by **batching
+everything into one long unattended sequence**. The human number is
+different, and worse: industry sources consistently find that **sample
+preparation eats the majority of an analyst's hands-on time** and is the
+**single largest source of analytical error**. Sample processing alone
+accounts for at least a third of total method error, operator-generated
+error for roughly another fifth, and **automating the prep can cut a
+method's error by as much as ~50%**.
+
+In short: the machine got fast; the bench did not. The hours a person
+loses are in **measure → dilute → cap → label → load**, repeated
+hundreds of times — and that is precisely the loop this project removes.
+
+### A day in the life — three real shapes
+
+**1. QC analyst, pharma manufacturing (the core case).** She arrives to
+three released batches of a painkiller — say an ibuprofen or
+acetaminophen tablet. For each batch she weighs and crushes a set number
+of tablets, extracts the powder into a measured volume of solvent,
+dilutes to the method's concentration, filters, and fills vials. She also
+weighs and dilutes the reference standard to make the suitability and
+calibration vials. By late morning she has built a sequence of **~80
+vials** in worklist order, slid the tray into the autosampler, and
+started a run that finishes overnight. Her **next** morning is spent
+**reviewing chromatograms and chasing any out-of-spec result** — not more
+pipetting. The bottleneck was the four hours of identical hand motions
+before lunch.
+
+**2. Method-development / R&D analyst (the iteration case).** He is
+*inventing* the recipe, not following it, so he runs **5–10 smaller
+experiments a day**: a few standards plus a couple of samples, changing
+one variable (solvent ratio, column temperature, gradient) between runs
+and reading the result before deciding the next. Fewer vials per tray,
+but far more trips to the bench and far more decisions — a different
+automation shape (frequent small batches, constant changeover) than
+high-volume QC.
+
+**3. Contract / clinical testing lab (the volume case).** An analyst at a
+testing network like **Eurofins** (950+ labs, ~450 million tests a year)
+or a hospital lab runs the **same validated method hundreds of times a
+day** against incoming customer or patient samples. Here throughput is
+everything: trays turn over continuously, and the prep is so repetitive
+that these labs are already the heaviest buyers of liquid-handling
+automation. This is the case where a vial-prep arm pays for itself
+fastest.
+
+### What this tells the robot project
+
+Three requirements fall straight out of the bench:
+
+1. **The unit of work is a *tray*, not a vial** — dozens of vials,
+   prepared in a fixed order, including standards and blanks, not just
+   the samples themselves.
+2. **The win is in prep, not the run** — measure, dilute, cap, label,
+   load. The instrument is already automated; the human hours are not.
+3. **The same five motions generalize** — QC, R&D, and high-volume
+   testing are the same hand motions at different batch sizes, which is
+   why the arm is worth building even though we scope the **first**
+   project to HPLC alone.
 
 ## Where to go next
 
