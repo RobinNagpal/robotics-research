@@ -133,6 +133,79 @@ working a bench of fixed stations, proven in simulation first and then
 transferred to hardware. The instrument keeps doing what it already does
 well: the actual injection and analysis.
 
+## How big is this, and who pays for it?
+
+> **Figures are approximate (`~`), come from market-research summaries,
+> and drift fast — re-check before quoting.**
+
+A robot arm that prepares and loads vials is not a niche toy. The same
+manual bench work it replaces happens in **tens of thousands of labs**
+worldwide, every single day.
+
+**The money in play.** HPLC instruments and consumables alone are a
+**~$4.5–5 billion/year** market. But the arm doesn't care that it's an
+HPLC — it picks, moves, dispenses, and loads. That puts it in the much
+larger **lab-automation** market (**~$7–9 billion/year, growing
+~8–10%/yr**), where liquid-handling and sample-prep robots are already
+the biggest slice. The industries *behind* those labs are bigger still:
+global pharma alone spends **~$280–300 billion/year on R&D**, on top of
+the manufacturing QC that tests every batch it ships.
+
+**Who owns and runs the labs.** Three broad types:
+
+- **In-house QC/R&D labs** at the manufacturers themselves — every
+  pharma, food, cosmetics, and chemical company runs its own.
+- **Contract testing labs (CROs / testing networks)** that other
+  companies pay to run the tests. These are huge: **Eurofins** runs
+  **950+ labs** with ~65,000 staff and does **~450 million tests a
+  year**; **Intertek** runs **1,000+ labs**; **SGS**, **LabCorp**, and
+  **Quest** are comparable.
+- **Public labs** — hospital/clinical, government, regulatory (FDA, EPA),
+  and university research labs.
+
+**Who uses it, and how often:**
+
+| Industry | What they test | How often |
+|---|---|---|
+| Pharma & biotech | drug purity, dose, impurities | **every batch**, daily |
+| Food & beverage | additives, vitamins, contaminants | continuous QC |
+| Clinical / hospital | compounds in blood and urine | millions of tests/yr |
+| Environmental | pesticides, water contaminants | routine monitoring |
+| Cosmetics, agrochem, forensics, cannabis | active ingredients, residues | routine |
+
+**Not just HPLC.** The same arm motions — pick a vial or microplate,
+move it, dispense into it, load it into an instrument — cover a whole
+family of nearby lab jobs: LC-MS / GC-MS sample prep, dissolution
+testing, ELISA and microplate handling, PCR / DNA-sequencing prep,
+microbiology plating, weighing and dispensing. That's why this is worth
+getting right once.
+
+> **Scope for now:** this first project deliberately focuses on **just
+> HPLC vial prep and loading**. Learn one real workflow end to end before
+> trying to generalize to the rest.
+
+## What a single bench looks like
+
+Zooming back from the market to one person: a lab analyst typically runs
+**1–3 instruments** and personally owns **a handful of methods or
+projects** at a time (for example: *"assay for Product A,"* *"impurity
+test for Product B,"* *"stability study for Product C"*). In a day they
+might prepare and inject **anywhere from ~50 to a few hundred vials**
+across those projects.
+
+A simple picture:
+
+- A QC analyst arrives, picks up the day's three batches, and spends the
+  **morning at the bench** preparing ~80 vials — measure, dilute, cap,
+  label, load — then starts an overnight run.
+- A research analyst developing a new method might run **5–10 smaller
+  experiments a day**, each a tray of standards plus a few samples,
+  tweaking the recipe between runs.
+
+Either way, the bottleneck is the same: a skilled person spending hours
+doing the same five hand motions, hundreds of times, before the clever
+instrument ever turns on. That is the hour we're trying to give back.
+
 ## Where to go next
 
 - **[02 — High-level solution](02-high-level-solution/README.md):** the
