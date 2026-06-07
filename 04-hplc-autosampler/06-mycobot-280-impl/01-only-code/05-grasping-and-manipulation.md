@@ -287,6 +287,28 @@ The five above all matter; these three carry the most weight for grasping
 
 ## Force-safe pinch of a glass vial
 
+Handling a 2 mL glass vial is a feel a lab assistant develops without
+thinking — fingers close just enough to hold the slippery glass securely,
+never so hard as to crack it. It is the single most repeated physical act
+of sample prep, and the one most likely to go wrong: drop a vial and you
+lose the sample; squeeze too hard and you shatter it over the bench. This
+use case gives the cell that calibrated touch — closing the gripper to a
+precise, safe force rather than a fixed width.
+
+The bigger experiment is the HPLC batch, every vial of which must be
+picked up, moved, and set down at least once — usually several times,
+through the weigh, dispense, cap, and load steps. A single crushed or
+dropped vial means a lost sample and, in a regulated lab, an
+investigation. Getting the grip force right every time, across normal
+vial-to-vial variation, is what makes the whole automated handoff
+trustworthy.
+
+The assistant performs this grip hundreds of times a day — it is the
+atomic action underlying almost everything else at the bench. The cell
+makes the same force-controlled close on every pick, which is why the safe
+force window is settled carefully in a contact simulator rather than
+guessed.
+
 - **The moment:** the gripper closes on a smooth 2 mL glass vial — too soft
   and it slips, too hard and it cracks.
 - **How, in depth:** an **analytical antipodal pinch** on the cylinder axis
@@ -318,7 +340,29 @@ The five above all matter; these three carry the most weight for grasping
 
 ### Meta code
 
-The shape of the force-limited pinch, before any library detail:
+This meta's central idea is to close the gripper to a target *force*, not
+a target *width*. A fixed jaw position would either crush a slightly
+oversized vial or slip on a slightly undersized one; controlling force
+instead keeps the grip inside the narrow safe band for thin glass across
+normal vial-to-vial variation.
+
+The pipeline begins by reading the vial's parameters — diameter, the
+height on the body to grip, and the safe force — from the worklist,
+because different vial types (screw-cap, crimp-cap) have slightly
+different geometry and safe limits. Those numbers are not guessed: the
+safe force window for each is validated beforehand in a contact-physics
+simulator, so the cell starts from a trustworthy value.
+
+With the vial type known, the gripper is aligned to the vial's cylinder
+axis at the grip height and commanded to close toward the target force.
+The close stops as soon as the measured grip force reaches the safe limit
+— whichever it hits first, position or force — so the glass is never
+over-squeezed.
+
+Finally the pipeline confirms the result by checking that the closed jaw
+width matches the expected vial diameter. Jaws that closed too far have
+closed on air, not glass, which signals an empty or slipped grasp and
+hands off to the slip-and-re-grasp use case. The pinch in pseudocode:
 
 ```text
 # read the vial type from the worklist -> diameter, grip height, safe force (MuJoCo-validated)
@@ -377,6 +421,25 @@ class ForceSafePinch(Node):                             # closes on a vial to a 
 
 ## Slip detection and re-grasp
 
+When a lab assistant reaches for a vial and it shifts, or their fingers
+close on nothing, they feel it instantly and simply try again — no drama,
+no lost sample. This use case engineers that same reflex into the cell:
+after each pick it confirms a vial is actually held, and if not, it
+re-grasps rather than carrying an empty gripper onward.
+
+The bigger experiment is the HPLC batch, where the tray must end up
+correctly filled. A cell that silently failed to pick a vial would carry
+on placing nothing, leaving a gap in the tray and throwing off the
+worklist order — a quiet error that corrupts the run. Catching the miss at
+the moment it happens, and retrying, is what makes the pick reliable
+enough to leave unattended overnight.
+
+For the assistant a misgrab is occasional but routine — a slip or an empty
+grab maybe a handful of times a day across hundreds of picks. The cell
+expects the same: most picks succeed, a few don't, and the retry path is
+exercised regularly, so it is built as a normal branch rather than an
+exceptional one.
+
 - **The moment:** vial 61 shifts on first contact and the pick fails; the
   arm must notice and retry, not carry nothing to the dispenser.
 - **How, in depth:** the gripper `JointState` (jaws closing past the
@@ -405,7 +468,26 @@ class ForceSafePinch(Node):                             # closes on a vial to a 
 
 ### Meta code
 
-The shape of the two-witness slip guard, before any library detail:
+This meta refuses to trust any single sensor to answer "is a vial held?" —
+it requires two independent witnesses to agree. The first is the gripper
+itself: if the jaws closed to roughly the vial's diameter it is plausibly
+holding glass; if they closed much further, they closed on air. The second
+is the wrist camera, which looks for the vial at the gripper line.
+
+Because the two witnesses are separate sensors that can each be fooled in
+different ways — a jammed jaw, a reflection — the pipeline pairs them in
+*time* first, so it compares the gripper and camera describing the same
+instant rather than mismatched moments. Only a time-matched pair is
+judged.
+
+If both witnesses agree a vial is held, the pipeline tells the
+pick-and-place sequencer to proceed to transit. If they disagree, or both
+say empty, it instead commands a re-grasp — re-entering the pick stage to
+try again.
+
+A counter bounds the retries: after a few failed attempts on the same
+vial, instead of looping forever the pipeline flags it for human review
+and moves on. The guard in pseudocode:
 
 ```text
 # after a pinch attempt, gather two witnesses, time-matched:
@@ -469,6 +551,26 @@ if __name__ == "__main__":                              # run directly
 
 ## Anti-rotation hold for decap/recap
 
+Taking a cap off a vial is a two-handed feel: one hand grips the vial body
+so it can't spin, the other twists the cap, and the assistant senses
+through their fingers when a cap is stuck and eases off before something
+snaps. This use case is the cell reproducing that — holding the vial
+firmly against the decapper's twisting torque while watching the torque,
+so a stuck cap triggers a safe stop instead of a shattered vial.
+
+The bigger experiment is the HPLC batch, where many vials arrive capped
+and must be opened for the dispenser to add diluent or internal standard,
+then recapped before loading. If the vial spins in the grip the cap never
+comes off; if a stuck cap is forced, the glass can break inside the cell.
+Holding firmly and monitoring torque is what turns decapping from a blind
+wrench into a controlled, abortable step.
+
+The assistant decaps and recaps essentially every vial that needs
+preparation — a per-vial action, dozens to a hundred-plus times a day,
+with the occasional genuinely stuck cap. The cell engages the same
+monitored hold on every decap, which is why the torque limit and abort are
+built in from the start.
+
 - **The moment:** the decapper applies torque to unscrew a cap; if the vial
   spins in the jaws nothing comes off and the cap may strip.
 - **How, in depth:** a higher-force **hold** grasp mode is engaged, gated
@@ -497,7 +599,27 @@ if __name__ == "__main__":                              # run directly
 
 ### Meta code
 
-The shape of the monitored decap, before any library detail:
+This meta treats decapping as a closed-loop, force-supervised action
+rather than an open-loop twist. It begins by engaging a firmer "hold"
+grasp than the one used for transport, because the vial must resist the
+decapper's torque without spinning in the jaws.
+
+With the vial held, it commands the decapper to begin twisting and then
+watches the force-torque sensor on the cap joint throughout — this
+monitoring is the whole point. The torque signature tells the story of the
+un-cap: it rises as the cap is broken loose, then falls once the cap spins
+freely.
+
+Two outcomes are watched for. If the torque rises and then collapses below
+a low threshold, the cap has come free — a success — and the pipeline
+stops the decapper and releases. If instead the torque climbs past a high
+"stuck" limit, the cap is jammed, and the pipeline stops immediately
+rather than wrenching the vial out of its nest or shattering it, flagging
+the vial instead.
+
+A latch ensures the decision is made once and cleanly, so a single decap
+either succeeds or aborts safely; the same monitored sequence runs in
+reverse for recapping. The decap in pseudocode:
 
 ```text
 # engage the high-force HOLD grasp (firmer than a transport pinch)
