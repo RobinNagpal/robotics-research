@@ -311,139 +311,136 @@ before any MCU exists.
 The five above all matter; these three carry the most weight for
 middleware & control.
 
-## One-plugin sim-to-hardware transfer
+## Timed trajectory execution with preemption
 
-When a lab assistant moves from one autosampler bench to another, their
-trained movements carry over — the hands already know how to grip a vial
-and seat it in a tray; only the surroundings change. This use case is the
-cell's version of that portability. Everything the arm does in simulation
-— every trajectory, every gripper command, every station call — is
-written against one fixed *interface* so that, on the day the real myCobot
-arrives, the same control code drives it unchanged.
+Watch a lab assistant move a vial and you see one continuous, smooth
+motion — pick, carry, place — not a series of jerks. And if something
+changes mid-reach (the vial shifts, they need to adjust), the motion flows
+into the correction rather than stopping and restarting. This use case is
+the cell producing that same smooth, on-time motion: turning a planned
+path into precisely-timed joint commands, and cleanly replacing the motion
+if a new plan arrives partway through.
 
-The bigger experiment is the same HPLC batch the whole cell exists to
-prepare. Whether the arm is simulated or real, it must execute the
-identical sequence — reach the nest, grip the vial, carry it to the
-dispenser, place it in the tray — so the instrument receives a correctly
-built tray. This layer is the conduit those commands and sensor readings
-travel through; getting its boundary right is what lets months of
-simulated prep become real prep without a rewrite.
+The bigger experiment is the HPLC batch, every vial of which requires
+several arm moves — to the nest, to the decapper, to the dispenser, to the
+tray. Each of those moves must be executed smoothly and land on time, and
+any of them might be superseded mid-flight by a corrected target from
+perception. This layer is what actually drives the joints to follow the
+plan, and what lets a new plan take over without a stop-start jerk.
 
-The lab assistant performs the underlying motions this layer carries
-hundreds of times a day, every working day. The sim-to-hardware transfer
-itself happens once — at hardware bring-up — but it is the single most
-consequential moment in the project, because it decides whether all the
-earlier work transfers or has to be rebuilt.
+The assistant makes smooth, adjustable motions continuously — it underlies
+every reach and place, hundreds of times a day. The cell executes a timed
+trajectory for every single arm motion in the loop — several per vial — so
+this is one of the most frequently-exercised paths in the whole system,
+running thousands of times across an overnight batch.
 
-- **The moment:** months of only-code work must run on the real myCobot
-  without a rewrite; the day the arm arrives, the team swaps one plugin
-  and the same controllers drive it.
-- **How, in depth:** the `ros2_control` **hardware_interface** is the
-  seam — `gz_ros2_control` (sim) and the myCobot driver (hardware) are two
-  implementations of it, so the `joint_trajectory_controller`, the action
-  servers, and every node above are byte-for-byte unchanged.
-- **Edge case it survives:** behaviour that passed in sim but hits real
-  timing/latency — the boundary is identical, so only the *plugin* is
-  re-validated, isolating the hardware risk to one component.
-- **Walkthrough:** (1) write the controllers and YAML against the
-  `gz_ros2_control` hardware_interface; (2) prove the trajectory loop in
-  Gazebo; (3) on hardware day swap that plugin for the myCobot driver;
-  (4) re-run the same controllers unchanged and re-validate only the
-  plugin.
-- **In the scene:** nothing visibly moves — this is the plumbing — but a
-  single line in a config file is the hinge the whole project swings on.
-  The same trajectory commands that drove a Gazebo arm a minute ago now
-  flow, unchanged, toward a real motor driver, the seam invisible to every
-  node above it.
-- **Why it's done this way:** the whole only-code strategy only pays off
-  if the code carries to hardware; without the hardware_interface seam you
-  would rebuild the control layer for the real arm and the months of sim
-  work would be throwaway.
-- **In the full loop:** this is the spine the whole loop rides on — every
-  command from Layers 03/05/07 to the arm, and every sensor reading back,
-  crosses this interface, so the transfer guarantee is what lets the entire
-  proven loop move to hardware intact.
-- **Value:** the only-code investment becomes the production control layer,
-  not a throwaway prototype.
+- **The moment:** a planned path arrives for the arm; halfway through,
+  Layer 03 issues a corrected plan, and the motion must switch to it
+  smoothly.
+- **How, in depth:** the `joint_trajectory_controller` consumes a
+  `FollowJointTrajectory` action, interpolating the waypoints into timed
+  joint commands and accepting a new goal that preempts the old one.
+- **Edge case it survives:** a new goal arriving while the previous one is
+  still executing — preemption cancels the old and blends into the new
+  from the live state, with no stop-start jerk.
+- **Walkthrough:** (1) receive a planned trajectory as an action goal; (2)
+  the controller drives the joints along it on time; (3) a new goal
+  arrives and preempts the current one; (4) the arm continues onto the new
+  trajectory from where it is.
+- **In the scene:** the arm sweeps smoothly toward a nest; mid-sweep a
+  corrected target arrives and the motion bends into it without pausing,
+  the way a hand adjusts mid-reach.
+- **Why it's done this way:** vials must be moved smoothly — jerks slosh
+  liquid — and motions must adapt to live corrections; a controller that
+  couldn't preempt would force a stop-and-restart on every correction.
+- **In the full loop:** this is the execution half of every move Layer 03
+  plans — the actual driving of the joints — so it runs for each of the
+  several arm motions per vial.
+- **Value:** every arm motion is smooth and on-time, and a correction is
+  absorbed mid-flight instead of forcing a stop-start.
 
 ### Meta code
 
-This meta is almost entirely about a *boundary* rather than an algorithm.
-The middleware framework (ROS 2 with `ros2_control`) defines a single
-abstraction — the **hardware_interface** — that sits between the parts of
-the cell that decide what the arm should do (planners, orchestration) and
-the part that actually drives the joints. Everything above the boundary is
-written once and never changes; everything specific to "is this a
-simulated arm or a real one?" lives in one swappable plugin below it.
+This meta lives in a standard controller — the `joint_trajectory_controller`
+from `ros2_control` — whose job is to turn a discrete planned path into a
+continuous stream of timed joint commands. A planned trajectory is a list
+of waypoints, each with target joint positions and a time; the controller
+interpolates between them so the arm passes through each waypoint on
+schedule.
 
-In only-code mode that plugin is `gz_ros2_control`, which makes the Gazebo
-simulator play the part of the motors: when a controller commands a joint
-position, the plugin moves the simulated joint and reports the simulated
-state back. The controllers, the trajectory follower, and the action
-interfaces above all behave exactly as they will on hardware, because they
-are talking to the abstraction, not to Gazebo.
+The path is delivered as an action goal (`FollowJointTrajectory`), which
+matters because actions are preemptable. While a trajectory is executing, a
+new goal can arrive — for instance, Layer 03 replanned because perception
+corrected the target — and the controller accepts it as the new active
+goal.
 
-The whole arrangement is declared in two places — the arm's URDF, where
-the plugin is named, and a controller YAML, where the `controller_manager`
-and the `joint_trajectory_controller` are configured against the joints.
-Crucially, the joint list, the command and state interfaces, and the
-controller configuration are identical for sim and for hardware; only the
-single plugin line differs.
+On preemption the controller cancels the in-flight trajectory and begins
+the new one from the arm's current state, blending the motion rather than
+stopping dead and starting over. This is what makes a live correction look
+like a smooth adjustment instead of a stutter.
 
-So "moving to hardware" reduces to swapping that one plugin for the real
-myCobot driver and re-validating just that component, while every node
-above it is byte-for-byte unchanged. The seam in pseudocode:
+Velocity and acceleration limits in the controller keep the motion within
+safe bounds — gentle enough not to slosh a filled vial — while still
+tracking the schedule. The execution in pseudocode:
 
 ```text
-# define the arm's hardware_interface ONCE, with a swappable backend plugin:
-#     sim:      <plugin>gz_ros2_control/GazeboSimSystem</plugin>     (Gazebo plays the motors)
-#     hardware: <plugin>mycobot_hw/MyCobotSystem</plugin>            (real driver, same interface)
-# configure controllers ONCE in YAML (controller_manager + joint_trajectory_controller)
-# on start-up controller_manager loads + activates the controller    (arm accepts trajectories)
-# everything above (planner, orchestration) talks to the controller, never the plugin
-# -> sim -> hardware = change ONLY the <plugin> line; nothing above is touched
+# the joint_trajectory_controller is loaded + active (see middleware)
+# on a new FollowJointTrajectory goal (a planned path):
+#     if a trajectory is already executing -> preempt it          (cancel the old goal)
+#     start following the new path from the arm's CURRENT state   (smooth blend, no restart)
+#     interpolate waypoints into timed joint commands             (on-schedule motion)
+#     respect velocity / acceleration limits                      (gentle: no slosh)
+#     report success when the final waypoint is reached           (-> the next layer may grasp)
 ```
 
 ### Real code
 
-The transfer lives in config, not Python: one controllers YAML, plus the
-one URDF block whose plugin line is all that changes for hardware.
-**Illustrative teaching code** — re-verify names before relying on it;
-every line is commented.
+A client that sends a planned path as an action goal and preempts a
+previous one. **Illustrative teaching code** — re-verify before use; every
+line is commented.
 
-```yaml
-# controllers.yaml — read by the controller_manager at start-up
-controller_manager:                        # the node that owns and runs all controllers
-  ros__parameters:                         # its ROS parameters block
-    update_rate: 100                        # control-loop frequency in Hz (same sim and hardware)
-    joint_trajectory_controller:            # register a controller by this name...
-      type: joint_trajectory_controller/JointTrajectoryController  # ...of this standard type
+```python
+import rclpy                                            # ROS 2 Python client library
+from rclpy.node import Node                             # base class for a ROS 2 program
+from rclpy.action import ActionClient                   # to send and preempt trajectory goals
+from control_msgs.action import FollowJointTrajectory   # the controller's trajectory action
+from trajectory_msgs.msg import JointTrajectory         # the planned path (waypoints) to follow
 
-joint_trajectory_controller:                # parameters for that controller instance
-  ros__parameters:                          # its ROS parameters block
-    joints:                                 # the six myCobot 280 joints it drives...
-      - joint1                              # ...the identical list in sim and on hardware
-      - joint2
-      - joint3
-      - joint4
-      - joint5
-      - joint6
-    command_interfaces: [position]          # it writes position commands to the hardware_interface
-    state_interfaces: [position, velocity]  # it reads these back from the hardware_interface
-```
+JOINTS = ["joint1", "joint2", "joint3", "joint4", "joint5", "joint6"]  # the six myCobot joints
 
-```xml
-<!-- mycobot_280.urdf.xacro: the ONE block that changes for hardware -->
-<ros2_control name="mycobot_system" type="system">   <!-- declares the arm's hardware_interface -->
-  <hardware>                                          <!-- the swappable backend lives here -->
-    <plugin>gz_ros2_control/GazeboSimSystem</plugin>  <!-- only-code uses this line... -->
-    <!-- <plugin>mycobot_hw/MyCobotSystem</plugin> -->  <!-- ...uncomment on the real arm -->
-  </hardware>
-  <joint name="joint1">                               <!-- one entry per joint (joint2..6 omitted) -->
-    <command_interface name="position"/>              <!-- the controller writes a target here -->
-    <state_interface name="position"/>                <!-- and reads the measured angle back -->
-  </joint>
-</ros2_control>
+
+class TrajectoryRunner(Node):                           # sends planned paths, preempting on a new one
+    def __init__(self):                                 # one-time setup
+        super().__init__("trajectory_runner")           # register on the ROS 2 graph
+        self.client = ActionClient(                     # client to the trajectory controller
+            self, FollowJointTrajectory,
+            "/joint_trajectory_controller/follow_joint_trajectory")
+        self.active = None                              # handle to the goal currently executing
+
+    def run(self, path: JointTrajectory):               # execute a path, preempting any current one
+        self.client.wait_for_server()                   # ensure the controller is up
+        if self.active is not None:                     # a trajectory is already running?
+            self.active.cancel_goal_async()             # preempt it (the new path supersedes it)
+        goal = FollowJointTrajectory.Goal()             # build the action goal
+        goal.trajectory = path                          # the waypoints + their times to follow
+        goal.trajectory.joint_names = JOINTS            # which joints the positions apply to
+        send = self.client.send_goal_async(goal)        # send it without blocking
+        send.add_done_callback(self._accepted)          # remember the handle once accepted
+
+    def _accepted(self, future):                        # runs when the controller accepts the goal
+        self.active = future.result()                   # keep the handle so we can preempt later
+        self.active.get_result_async().add_done_callback(self._done)  # watch for completion
+
+    def _done(self, _future):                           # runs when the trajectory finishes
+        self.active = None                              # clear the handle; the arm is idle again
+
+
+def main():                                             # standard ROS 2 entry point
+    rclpy.init(); rclpy.spin(TrajectoryRunner()); rclpy.shutdown()  # start, run, clean up
+
+
+if __name__ == "__main__":                              # run directly
+    main()
 ```
 
 ## Device-as-service with timeouts
