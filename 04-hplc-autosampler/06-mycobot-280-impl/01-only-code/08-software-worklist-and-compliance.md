@@ -317,6 +317,29 @@ software, worklist & compliance layer — what makes the cell *trustable*.
 
 ## Tamper-evident audit trail (ALCOA+)
 
+A lab assistant in a regulated lab documents everything as they go — every
+weight, every dilution, every step, signed and dated in a notebook or
+electronic record. That record is not paperwork for its own sake; it's the
+evidence that the result can be trusted. This use case is the cell keeping
+that record automatically and making it tamper-evident: every action it
+takes is written into a chained log where any later alteration is
+detectable.
+
+The bigger experiment is the HPLC batch run under GMP, where a result is
+only usable if its full history is provably unaltered. The instrument
+produces a number, but the number means nothing without a trustworthy
+account of how the sample that produced it was prepared. The audit trail
+is what turns the cell's mechanical actions into that account — and
+chaining the entries is what makes "provably unaltered" true rather than
+assumed.
+
+For the assistant, documentation is continuous — it accompanies
+essentially every action, all day, every day. The cell writes an audit
+entry for every step of every per-vial cycle, so the trail grows
+constantly through a run; the verification (re-checking the chain) is run
+whenever the record is reviewed or audited, which in a regulated lab is
+routine.
+
 - **The moment:** an auditor needs proof that the record of last night's
   run wasn't altered after the fact.
 - **How, in depth:** every action and decision is appended to a
@@ -345,7 +368,27 @@ software, worklist & compliance layer — what makes the cell *trustable*.
 
 ### Meta code
 
-The shape of the hash-chained log, before any library detail:
+This meta borrows the idea behind a blockchain, scaled down to a single
+file: make every record depend cryptographically on the one before it, so
+the whole history is locked together. The pipeline keeps a running "chain
+head" — the hash of the most recent entry — starting from a fixed genesis
+value when the log is empty.
+
+To record an action, it builds an entry containing what happened
+(timestamp, actor, action, payload) plus the current chain head as its
+"previous" link. It then computes a SHA-256 hash over the canonical form
+of that entry and appends both the entry and its hash as one line of the
+log, advancing the chain head to the new hash.
+
+Because each entry embeds the previous entry's hash, and each entry's own
+hash covers its full content, the log is a tamper-evident chain: altering
+any past entry changes its hash, which breaks the "previous" link of every
+entry after it.
+
+Verification walks the file from the start, recomputing each entry's hash
+and checking that each entry's "previous" matches the prior line's hash;
+the first mismatch pinpoints exactly where the record was altered. The log
+in pseudocode:
 
 ```text
 # keep the previous entry's hash (the chain head); start from a genesis hash
@@ -411,6 +454,27 @@ class AuditLog:                                         # an append-only, hash-c
 
 ## Electronic review and signature
 
+Before results leave the lab, a second qualified person — not the one who
+prepared the samples — reviews them and signs off, taking formal
+responsibility for releasing them. That second-person review is a
+cornerstone of regulated lab work. This use case is the cell supporting
+that step: presenting the run's results for review and capturing the
+reviewer's electronic signature — who, when, and what the signature means
+— bound to the record.
+
+The bigger experiment is the HPLC batch, whose results can't be acted on
+until they're approved and the flagged or quarantined vials are
+dispositioned. The cell does the mechanical work, but a human still owns
+the release decision; capturing that decision as a proper electronic
+signature on the record — rather than a note in a side spreadsheet — is
+what makes the accountability auditable.
+
+Review-and-sign happens per batch — a handful of times a day in a busy QC
+lab, once the run's data is ready. The reviewer is deliberately a
+different identity from the operator (segregation of duties), so the
+cadence is tied to completed runs rather than to individual vials, and
+each one produces a signed, locked record.
+
 - **The moment:** before results are released, a reviewer must approve them
   and disposition the quarantined and flagged vials under their identity.
 - **How, in depth:** the review step captures **user, timestamp, and the
@@ -438,7 +502,26 @@ class AuditLog:                                         # an append-only, hash-c
 
 ### Meta code
 
-The shape of the e-signature, before any library detail:
+This meta captures not just *that* something was approved but *who*
+approved it, *when*, and *what the approval means* — the elements a
+regulated electronic signature requires. The signature is a small
+structured record: the signer's identity and role, a timestamp, and an
+explicit meaning such as "approved" or "rejected".
+
+Before accepting a signature, the pipeline enforces segregation of duties:
+it refuses a signature from the same person who operated the run, because a
+meaningful review must be performed by someone other than the preparer. A
+signer who is also the operator is rejected outright.
+
+To make the signature inseparable from what it signs, the pipeline
+computes a hash binding the signature and the specific record together.
+That binding means a signature can't later be silently moved to a
+different record, nor the record changed underneath an existing signature,
+without detection.
+
+Finally the signing event is written to the audit trail from the previous
+use case, so the act of signing is itself part of the tamper-evident chain
+— locking the signed record in place. The signature in pseudocode:
 
 ```text
 # present a result record for review (its data + any flags)
@@ -481,6 +564,27 @@ def sign(record, signer, meaning, audit):               # apply an e-signature t
 
 ## Instrument hand-off over a standard interface
 
+The final thing a lab assistant does with a prepared tray is hand it to
+the instrument — sliding the tray into the autosampler and entering or
+confirming the sequence in the instrument's software, then checking it was
+accepted before walking away. This use case is the cell's equivalent:
+passing the verified load order to the HPLC over a standard interface and
+confirming the instrument acknowledged it, rather than assuming.
+
+The bigger experiment is the HPLC batch itself — the run the instrument
+will execute from the tray and sequence the cell hands it. This is the
+boundary where the cell's prep work meets the instrument's own world;
+getting the hand-off right (and checking the instrument's reply) is what
+connects a correctly-built tray to a correctly-run analysis. It is also,
+notoriously, where integration projects stall, so it is built against the
+real interface from the start.
+
+Like loading the autosampler, this hand-off happens once per batch — a
+handful of times a day. It's a low-frequency but high-stakes step: a
+single batch carries dozens of samples, so a silent mismatch between the
+tray and the sequence would corrupt the whole run, which is why the cell
+checks the acknowledgement every time.
+
 - **The moment:** the verified load order must reach the HPLC autosampler —
   today against a mock, tomorrow against the real instrument.
 - **How, in depth:** a **SiLA 2** mock receives the final sequence in
@@ -511,7 +615,26 @@ def sign(record, signer, meaning, audit):               # apply an e-signature t
 
 ### Meta code
 
-The shape of the SiLA 2 hand-off, before any library detail:
+This meta wraps the instrument behind a standard laboratory interface —
+SiLA 2 — so the cell talks to the autosampler the same way whether it is a
+mock today or a real instrument tomorrow. The pipeline assembles the
+verified load order: an ordered list of which slot holds which sample
+under which method.
+
+It sends that order to the instrument's "load sequence" command over the
+SiLA interface. Crucially, the backend behind that command is swappable:
+in only-code it is an in-process mock that mimics a healthy instrument,
+while on hardware the same call goes out over gRPC to the real device —
+the control flow above doesn't change.
+
+The pipeline does not assume the load succeeded. It reads the instrument's
+reply and checks the status: an acceptance returns the instrument's own
+sequence identifier and the hand-off is done; anything else (a rejected or
+re-ordered sequence) is raised as an error the cell handles.
+
+That explicit check is what prevents a silent mismatch between the
+physical tray the cell built and the sequence the instrument believes it
+will run. The hand-off in pseudocode:
 
 ```text
 # assemble the verified load order: ordered [{slot, sample_id, method}]
