@@ -272,7 +272,7 @@ either way.
 The five above all matter; these three carry the most weight for
 orchestration — the cell's conscience for the overnight run.
 
-### React to a verification failure (quarantine)
+## React to a verification failure (quarantine)
 
 - **The moment:** vial 53's barcode mismatches; the loop must isolate it
   and keep going, not crash the run or place a wrong vial.
@@ -300,7 +300,63 @@ orchestration — the cell's conscience for the overnight run.
   one resilient run.
 - **Value:** one bad vial costs one slot, not the night.
 
-### Safe-stop and resume
+### Meta code
+
+The shape of the place-or-quarantine subtree, before any library detail:
+
+```text
+# Selector "place-or-quarantine" (first child to succeed wins):
+#     Sequence "verified place" (all must pass):
+#         Condition  identity OK?   ← Layer 06 verdict == PLACE
+#         Condition  fill OK?       ← Layer 10 fill gate
+#         Action     place the vial in its slot                    (-> Layer 03)
+#     Sequence "quarantine" (runs only if the verified place failed):
+#         Action     move the vial to the reject tray
+#         Action     log an audit event {vial, reason}             (-> Layer 08)
+# the outer loop iterates this subtree over every worklist row
+```
+
+### Real code
+
+A **py_trees** place-or-quarantine subtree (the pure-Python pick; the same
+shape as BehaviorTree.CPP's XML). **Illustrative teaching code** —
+re-verify before use; every line is commented.
+
+```python
+import py_trees                                          # the behavior-tree library (pure Python)
+
+
+class IdentityOK(py_trees.behaviour.Behaviour):         # condition: did the vial pass identity?
+    def __init__(self, bb):                             # share a blackboard with the rest of the tree
+        super().__init__("identity OK"); self.bb = bb   # name the node + keep the blackboard
+    def update(self):                                   # ticked each cycle
+        return (py_trees.common.Status.SUCCESS          # SUCCESS if Layer 06 said PLACE...
+                if self.bb.get("identity") == "PLACE"   # ...for the current vial
+                else py_trees.common.Status.FAILURE)    # else FAILURE -> routes to quarantine
+
+
+class Place(py_trees.behaviour.Behaviour):              # action: place the vial in its slot
+    def update(self):                                   # (calls Layer 03 in a real build)
+        return py_trees.common.Status.SUCCESS           # assume the place succeeds in sim
+
+
+class Quarantine(py_trees.behaviour.Behaviour):         # action: set the vial aside + audit it
+    def __init__(self, bb):                             # share the blackboard
+        super().__init__("quarantine"); self.bb = bb    # name the node + keep the blackboard
+    def update(self):                                   # move to the reject tray + log the reason
+        self.bb.set("audit", f"QUARANTINE {self.bb.get('vial')}")  # write a Layer-08 audit event
+        return py_trees.common.Status.SUCCESS           # quarantining always "succeeds"
+
+
+def per_vial_subtree(bb):                               # build the place-or-quarantine subtree
+    verified = py_trees.composites.Sequence("verified place", memory=True)  # all children must pass
+    verified.add_children([IdentityOK(bb), Place()])    # identity OK? then place
+    root = py_trees.composites.Selector("place-or-quarantine", memory=False)  # first success wins
+    root.add_children([verified, Quarantine(bb)])       # try the verified place, else quarantine
+    return root                                         # the per-vial subtree the loop iterates
+```
+
+## Safe-stop and resume
 
 - **The moment:** an e-stop fires or a door opens during vial 70's
   transfer; the arm must halt safely and resume cleanly once cleared.
@@ -328,7 +384,55 @@ orchestration — the cell's conscience for the overnight run.
 - **Value:** a safety event is a pause, not a ruined tray and a manual
   reset.
 
-### Crash/power-blip recovery with durable state
+### Meta code
+
+The shape of the reactive safety guard, before any library detail:
+
+```text
+# Sequence "guarded run" (re-ticked every heartbeat, memory=False):
+#     Condition  safe?  ← /light_curtain_clear AND /door_closed AND NOT /estop
+#                          FAILURE -> children below STOP immediately            (safe-stop)
+#     Subtree    the per-vial loop                                               (ticks only while safe)
+# because the guard is re-evaluated each tick, an e-stop preempts instantly;
+# when it clears, the guarded subtree resumes from where it paused (idempotent steps)
+```
+
+### Real code
+
+A **py_trees** reactive guard that gates the whole loop on safety.
+**Illustrative teaching code** — re-verify before use; every line is
+commented.
+
+```python
+import py_trees                                          # the behavior-tree library
+
+
+class Safe(py_trees.behaviour.Behaviour):               # reactive condition: is it safe to move?
+    def __init__(self, bb):                             # read the latched safety bits...
+        super().__init__("safe?"); self.bb = bb         # ...from a shared blackboard
+    def update(self):                                   # re-evaluated on EVERY tick (reactive)
+        ok = (self.bb.get("curtain_clear") and          # light curtain clear AND...
+              self.bb.get("door_closed") and            # ...door closed AND...
+              not self.bb.get("estop"))                 # ...e-stop not pressed
+        return (py_trees.common.Status.SUCCESS if ok    # SUCCESS lets the loop below tick...
+                else py_trees.common.Status.FAILURE)    # FAILURE preempts everything below
+
+
+def guarded_loop(loop_subtree, bb):                     # wrap the per-vial loop in a safety guard
+    root = py_trees.composites.Sequence("guarded run", memory=False)  # memory=False re-ticks the guard
+    root.add_children([Safe(bb), loop_subtree])         # Safe must pass before the loop ticks
+    return root                                         # an unsafe state instantly halts the loop
+
+
+if __name__ == "__main__":                              # demo: tick the guarded tree
+    bb = py_trees.blackboard.Client(name="cell")        # a shared blackboard for the safety bits
+    for key in ("curtain_clear", "door_closed", "estop"):  # the keys a sensor bridge writes...
+        bb.register_key(key, access=py_trees.common.Access.READ)  # ...from the safety topics
+    loop = py_trees.behaviours.Running(name="per-vial loop")  # stand-in for the real loop subtree
+    py_trees.trees.BehaviourTree(guarded_loop(loop, bb)).tick()  # one tick: the guard gates the loop
+```
+
+## Crash/power-blip recovery with durable state
 
 - **The moment:** a power blip reboots the controller after vial 84; on
   restart the cell must resume at vial 85, not redo 1–84.
@@ -355,121 +459,58 @@ orchestration — the cell's conscience for the overnight run.
 - **Value:** an unattended run survives an infrastructure hiccup instead of
   silently corrupting the tray.
 
-## Meta code
+### Meta code
 
-The shape of the best-practical per-vial Behavior Tree — the same tree
-you would author in BehaviorTree.CPP's XML — whose condition nodes are
-sensor gates that branch to retry / quarantine / stop on `Failure`:
+The shape of the crash-safe resume, before any library detail:
 
 ```text
-# the per-vial subtree, ticked top-to-bottom on a fixed heartbeat:
-# Sequence "process one vial":
-#     Condition  safe?   ← /light_curtain_clear AND /door_closed AND NOT /estop  (#10/#11)
-#                          on FAILURE: stop the whole run                          (safe-stop)
-#     Action     pick the vial                                                    (-> Layer 03)
-#     Fallback "confirm held":                                                    (retry wrapper)
-#         Condition  held?  ← gripper feedback (#4)                               (grasp success)
-#         Action     re-pick once, then re-check held?                            (retry branch)
-#         Action     quarantine this vial and move on                            (give-up branch)
-#     Action     decap / dispense / recap / scan / place                         (-> lower layers)
-# safe? is re-checked every tick, so it can pre-empt any running step
+# after every vial: atomically persist {placed:[slots], next:row} to disk   (Layer 08)
+# on boot:
+#     read the persisted progress (or start fresh if none)
+#     perceive the ACTUAL tray (filled slots) + gripper (holding a vial?)
+#     reconcile intent vs reality:
+#         "placed" + perception confirms filled -> done, skip
+#         "placed" but perception sees empty    -> redo that vial
+#         gripper holding a vial                 -> finish placing it first
+#     resume the worklist at the first not-yet-done row                       (never double-place)
 ```
 
-## Real code
+### Real code
 
-A minimal but complete ROS 2 (`rclpy`) per-vial tree built with
-**py_trees** — the pure-Python Behavior Tree library that expresses the
-same best-practical tree you would later author in BehaviorTree.CPP.
-This is **illustrative teaching code**: library and message names drift
-between versions, so re-verify before relying on it. Every line carries
-an inline comment.
+A crash-safe progress store and a boot-time reconcile that trusts reality
+over intention. **Illustrative teaching code** — re-verify before use;
+every line is commented.
 
 ```python
-import rclpy                                    # ROS 2 Python client library (the robot framework)
-from rclpy.node import Node                     # base class every ROS 2 program ("node") builds on
-from std_msgs.msg import Bool                   # a true/false message: each safety topic publishes this
-import py_trees                                  # the pure-Python Behavior Tree library (tree engine)
+import json                                              # the durable progress file format
+import os                                                # for the atomic replace + existence check
+
+PROGRESS = "progress.json"                              # {"placed": [slots], "next": row_index}
 
 
-class SafeGate(py_trees.behaviour.Behaviour):    # CONDITION node: "is it safe to move right now?"
-    def __init__(self, node):                    # built once, handed the ROS node so it can subscribe
-        super().__init__("safe?")                # name this leaf "safe?" as it appears in the tree
-        self.curtain = False                     # latest /light_curtain_clear reading (start unsafe)
-        self.door = False                        # latest /door_closed reading (start unsafe)
-        self.estop = True                        # latest /estop reading (start as "pressed" = unsafe)
-        node.create_subscription(                # subscribe to the light curtain (sensor #10)
-            Bool, "/light_curtain_clear",        # message type and topic name from the sensor suite
-            lambda m: setattr(self, "curtain", m.data), 10)  # store every new reading on self.curtain
-        node.create_subscription(                # subscribe to the door interlock (sensor #11)
-            Bool, "/door_closed",                # message type and topic name from the sensor suite
-            lambda m: setattr(self, "door", m.data), 10)     # store every new reading on self.door
-        node.create_subscription(                # subscribe to the emergency stop (sensor #11)
-            Bool, "/estop",                      # message type and topic name from the sensor suite
-            lambda m: setattr(self, "estop", m.data), 10)    # store every new reading on self.estop
-
-    def update(self):                            # runs on every tick; returns Success or Failure
-        safe = self.curtain and self.door and not self.estop  # two-witness AND: all three must agree
-        if safe:                                  # is the work zone clear, door shut, e-stop released?
-            return py_trees.common.Status.SUCCESS  # yes -> let the sequence proceed to the next step
-        return py_trees.common.Status.FAILURE     # no -> FAIL pre-empts the run (safe-stop branch)
+def save_progress(placed, next_row):                    # called after every vial (durable state)
+    tmp = PROGRESS + ".tmp"                              # write to a temp file first...
+    with open(tmp, "w") as fh:                           # ...so a crash never leaves a half file
+        json.dump({"placed": sorted(placed), "next": next_row}, fh)  # the progress snapshot
+    os.replace(tmp, PROGRESS)                            # atomic rename = crash-safe commit
 
 
-class HeldGate(py_trees.behaviour.Behaviour):    # CONDITION node: "is the vial actually in the grip?"
-    def __init__(self, node):                    # built once, handed the ROS node so it can subscribe
-        super().__init__("held?")                # name this leaf "held?" as it appears in the tree
-        self.held = False                        # latest grasp-success reading (start: nothing held)
-        node.create_subscription(                # subscribe to gripper feedback (sensor #4)
-            Bool, "/gripper/holding",            # message type and topic the grasp layer publishes
-            lambda m: setattr(self, "held", m.data), 10)     # store every new reading on self.held
-
-    def update(self):                            # runs on every tick; returns Success or Failure
-        if self.held:                             # does the gripper report a vial is held?
-            return py_trees.common.Status.SUCCESS  # yes -> grasp confirmed, sequence continues
-        return py_trees.common.Status.FAILURE     # no -> FAIL drops into the retry / quarantine branch
-
-
-def make_vial_tree(node):                         # assemble the per-vial subtree from the gates above
-    safe = SafeGate(node)                        # the safety condition, re-ticked every heartbeat
-    held = HeldGate(node)                        # the grasp-success condition for the pick step
-    retry = py_trees.decorators.Retry(           # wrap "held?" so a failed pick is retried, not fatal
-        name="retry pick", child=held, num_failures=2)  # allow up to 2 re-picks before giving up
-    root = py_trees.composites.Sequence(         # a Sequence: every child must succeed, left to right
-        name="process one vial", memory=True)    # memory=True resumes where it left off between ticks
-    root.add_children([safe, retry])             # gate on safety first, then confirm (and retry) the grasp
-    return py_trees.trees.BehaviourTree(root)    # wrap the root in a ticking tree the engine drives
-
-
-class OrchestratorNode(Node):                      # the ROS 2 node that owns and ticks the tree
-    def __init__(self):                            # set-up that runs once, when the node is created
-        super().__init__("orchestrator")          # register on the ROS 2 graph as "orchestrator"
-        self.tree = make_vial_tree(self)          # build the per-vial Behavior Tree, wired to our topics
-        self.create_timer(0.5, self.tick)         # tick the tree on a fixed 0.5 s heartbeat (2 Hz)
-
-    def tick(self):                               # called by the timer; advances the tree one tick
-        self.tree.tick()                          # evaluate the whole tree once, top-to-bottom
-        status = self.tree.root.status            # read what the root returned on this tick
-        self.get_logger().info(f"tree -> {status}")  # print the result so the run is watchable
-
-
-def main():                                        # the standard ROS 2 program entry point
-    rclpy.init()                                    # start up the ROS 2 client library (must come first)
-    node = OrchestratorNode()                       # build our node, which builds and starts the tree
-    rclpy.spin(node)                                # keep ticking until you press Ctrl-C
-    node.destroy_node()                             # remove the node from the graph on shutdown
-    rclpy.shutdown()                                # close the ROS 2 client library cleanly
-
-
-if __name__ == "__main__":                          # only run if this file is launched directly
-    main()                                          # ...then start everything above
+def recover(worklist, tray_filled, gripper_has_vial):   # reconcile saved state with reality on boot
+    if not os.path.exists(PROGRESS):                     # first run, nothing to recover?
+        return 0, set()                                  # start at row 0 with nothing placed
+    with open(PROGRESS) as fh:                           # load what we believed before the crash
+        saved = json.load(fh)                            # {"placed": [...], "next": i}
+    placed = set(saved["placed"])                        # slots we thought were filled
+    for slot in list(placed):                            # trust reality over intention...
+        if slot not in tray_filled:                      # logged placed, but the slot is actually empty
+            placed.discard(slot)                         # -> it wasn't really placed; redo it
+    if gripper_has_vial:                                 # crashed mid-place, vial still in hand?
+        return saved["next"], placed                     # resume by finishing that very vial
+    for i, row in enumerate(worklist):                   # else scan the worklist in order...
+        if row["slot"] not in placed:                    # first slot not confirmed placed
+            return i, placed                              # -> resume here, no double-placing
+    return len(worklist), placed                         # everything done: nothing left to do
 ```
-
-Each condition node above is one **sensor → gate** from the canonical
-map in [`../sensor-suite.md`](../sensor-suite.md): `safe?` fuses the
-safety topics (#10/#11) and `held?` reads gripper feedback (#4). In
-only-code mode those topics come from mock publishers, so you can
-**inject faults** — drop `/light_curtain_clear` to `false`, or fake a
-slipped grip — and watch the tree fall into its safe-stop, retry, and
-quarantine branches with no bench time.
 
 ## See also
 
