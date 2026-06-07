@@ -35,7 +35,7 @@ component.
 
 For a fuller glossary of the terms used across this folder (worklist,
 diluent, internal standard, tray, crimp cap, and so on), the
-[high-level solution](02-high-level-solution/README.md) docs define each
+[high-level solution](03-high-level-solution/README.md) docs define each
 on first use.
 
 ## Where HPLC shows up (everyday examples)
@@ -312,17 +312,20 @@ Three requirements fall straight out of the bench:
 
 ## Where to go next
 
-- **[02 — High-level solution](02-high-level-solution/README.md):** the
+- **[02 — The lab bench, person by person](02-lab-bench.md):** three real
+  lab roles, their whole day, and exactly which tasks the arm can fully
+  automate, assist with, or leave to a human.
+- **[03 — High-level solution](03-high-level-solution/README.md):** the
   scope, the manual workflow we replace, and a per-concern breakdown
   (vial handling, decapping, liquid handling, tray loading, perception,
   orchestration, compliance, hardware).
-- **[03 — Hello-worlds](03-hello-worlds/README.md):** small, runnable
+- **[04 — Hello-worlds](04-hello-worlds/README.md):** small, runnable
   milestones that build the simulated cell one capability at a time.
 - **Arm implementations:**
-  [04 — reBot](04-reBot-implementation/README.md),
-  [05 — myCobot 280](05-mycobot-280-impl/README.md),
-  [06 — AgileX PiPER](06-agile-x-piper-impl/README.md).
-- **[07 — Arms comparison](07-arms-comparison.md):** which arm to
+  [05 — reBot](05-reBot-implementation/README.md),
+  [06 — myCobot 280](06-mycobot-280-impl/README.md),
+  [07 — AgileX PiPER](07-agile-x-piper-impl/README.md).
+- **[08 — Arms comparison](08-arms-comparison.md):** which arm to
   simulate first, before buying.
-- **[08 — Learning checklist](08-learning-checklist.md):** the skills to
+- **[09 — Learning checklist](09-learning-checklist.md):** the skills to
   pick up along the way.
