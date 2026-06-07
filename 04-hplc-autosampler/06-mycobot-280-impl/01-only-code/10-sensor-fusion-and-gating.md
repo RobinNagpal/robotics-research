@@ -291,6 +291,52 @@ before time-correctness matters. Together these close the loop: Layers
 03–09 *act and sense*, and this layer decides, vial by vial, whether each
 action is allowed to proceed.
 
+### Deep dive: the three highest-value use cases
+
+The five above all matter; these three carry the most weight for sensor
+fusion & gating — the cell's conscience, vial by vial.
+
+#### Two-witness grasp gate
+
+- **The moment:** before transit, the cell must be *sure* a vial is held;
+  the wrist camera says "present" but the gripper effort says "jaws fully
+  closed" (empty) — a contradiction.
+- **How, in depth:** `message_filters` syncs the two witnesses to the same
+  instant and a **py_trees gate** returns `Success` only if both agree; the
+  camera/effort disagreement returns `Failure`, blocking the place.
+- **Edge case it survives:** a sensor that lies confidently — neither
+  witness can pass the gate alone, so a single failed sensor can't wave an
+  empty gripper through.
+- **Value:** "never carry nothing, never drop in transit" becomes a
+  mechanical guarantee, not an assumption.
+
+#### Fail-safe safety gate
+
+- **The moment:** the arm may only move if the light curtain *and* the door
+  read clear — but the curtain cleared 2 s ago and no fresh reading has
+  arrived.
+- **How, in depth:** the safety booleans are latched/reliable but carry a
+  **freshness deadline**; a stale or missing reading is treated as
+  **unsafe**, so motion is blocked until a current "clear" arrives.
+- **Edge case it survives:** a dead safety sensor (no messages at all) —
+  silence reads as unsafe, the fail-safe default, rather than as implicit
+  permission.
+- **Value:** the gate fails closed, so a sensor dropout halts the arm
+  instead of letting it move near a hand.
+
+#### Stale-witness rejection
+
+- **The moment:** a gate is about to pass a *fresh* gripper reading against
+  a *stale* camera frame from before the last move.
+- **How, in depth:** the `ApproximateTimeSynchronizer` slop window means
+  out-of-window pairs produce **no decision** (the gate holds) rather than a
+  false pass on mismatched-in-time data.
+- **Edge case it survives:** a momentarily lagging camera — the gate waits
+  for a matching pair instead of trusting an old frame, so a transient delay
+  causes a brief hold, not a wrong action.
+- **Value:** closes the exact gap the cheap latest-value cache leaves open,
+  making fused decisions trustworthy in time as well as value.
+
 ## Meta code
 
 The shape of one best-practical two-witness gate, before any

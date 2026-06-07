@@ -241,6 +241,58 @@ contacts). The layering is deliberate: one free, CPU-friendly twin for
 the system, two specialists swapped in only where their axis is the
 bottleneck.
 
+### Deep dive: the three highest-value use cases
+
+The five above all matter; these three carry the most weight for the
+digital twin, so each is worth unpacking.
+
+#### Reach & collision validation
+
+- **The moment:** before a myCobot is ordered, the twin is asked to touch
+  all 96 nests, the tray, the decapper, and the dispenser for *this*
+  layout; nest D11 comes back unreachable and A1's approach clips the
+  instrument housing.
+- **How, in depth:** a script walks the worklist, solves IK and a short
+  approach for each nest, and Gazebo's collision engine reports any
+  contact with the static instrument/rack meshes — producing a
+  reachability map of the bench, not a guess.
+- **Edge case it survives:** a nest reachable empty-handed but *not* with
+  a capped vial in the gripper — the test grasps a vial model first, so
+  reach is checked with the payload that actually flies.
+- **Value:** a bad geometry costs a relaunch, not a bent arm and a
+  re-ordered fixture.
+
+#### Synthetic perception data
+
+- **The moment:** Layer 04 needs labelled images but no real photos exist
+  yet; the twin renders thousands of rack frames under varied light, fill
+  levels, and pose jitter, each auto-labelled with ground truth.
+- **How, in depth:** the camera plugins publish the same image/point-cloud
+  topics a real camera would, while a domain-randomization loop varies
+  lighting and which nests are filled; the simulator already knows every
+  pose, so each frame ships a perfect label for free (Isaac Sim for
+  photoreal glass).
+- **Edge case it survives:** meniscus glare that fools a detector —
+  randomizing light angle *generates* the glare cases, training against
+  the failure that would otherwise appear only on the bench.
+- **Value:** a dataset worth weeks of staged photography and hand-labelling
+  appears overnight, covering corners real data rarely catches.
+
+#### Fault-injection rehearsal
+
+- **The moment:** the team must know the loop survives a dropped vial, a
+  missing vial, a stuck cap, and an e-stop mid-motion — none of which a
+  real arm will do on cue.
+- **How, in depth:** each fault is scripted — a missing vial is a deleted
+  model, a drop is a timed detach, a stuck cap is a torque the mock
+  publisher emits, an e-stop is `mock_safety` flipping `/estop` — fired at
+  an exact cycle point, repeatedly and identically.
+- **Edge case it survives:** the *combination* (an e-stop in the same
+  200 ms a vial is released) is reproducible on demand, so Layer 07's
+  recovery is proven against the rare nasty interleavings.
+- **Value:** every recovery path is regression-locked before hardware, so
+  the first real fault is one the cell has handled a hundred times.
+
 ## Meta code
 
 The shape of the best-practical twin (Gazebo Harmonic loaded from a

@@ -294,6 +294,51 @@ the *real* acquisition path for use case 5 — stubbed here, swapped in at
 hardware — while the pure-mock route stays the cheapest way to rehearse
 the exact faults of use case 3.
 
+### Deep dive: the three highest-value use cases
+
+The five above all matter; these three carry the most weight for sensing
+& signal acquisition — the cell's nervous system.
+
+#### Scriptable fault rehearsal
+
+- **The moment:** the gates in Layer 10 must be tested against a gradual
+  under-fill, a torque spike, a curtain blip, and creeping gripper effort —
+  none of which a clean sim produces on its own.
+- **How, in depth:** the **rclpy mock publishers** drive exact value
+  timelines for the four non-simulatable sensors (safety #10/#11, level #8,
+  balance #6), so any fault is reproduced precisely and repeatably.
+- **Edge case it survives:** a *slow drift* rather than a sharp fault — the
+  mock can ramp the level reading down over many vials, exercising the
+  trend logic a single bad reading wouldn't trigger.
+- **Value:** every gate is proven against the exact signal that should trip
+  it, before any sensor is bought.
+
+#### Cross-sensor time synchronization
+
+- **The moment:** Layer 10 must line up the decapper torque spike with the
+  gripper-effort creep at the *same instant* to decide they're one event.
+- **How, in depth:** every message carries a stamp from the shared ROS clock
+  (sim `/clock`), so `message_filters` can align readings within a slop
+  window rather than comparing a fresh value to a stale one.
+- **Edge case it survives:** sensors publishing at different rates (camera
+  10 Hz, torque fast) — time-stamping, not arrival order, governs pairing,
+  so the slow camera frame is matched to the right torque sample.
+- **Value:** fused decisions rest on a coherent snapshot of the cell, not a
+  smear across time.
+
+#### Hardware-faithful contracts
+
+- **The moment:** the day real sensors arrive, nothing above this layer
+  should change.
+- **How, in depth:** every topic is designed now to the **micro-ROS /
+  `sensor_msgs`** shape the real device will publish, so a mock and a real
+  sensor are interchangeable from the consumer's side.
+- **Edge case it survives:** a real sensor with extra fields or different
+  units — pinning to the standard message type forces the conversion into
+  the driver, keeping perception and gating untouched.
+- **Value:** sensor bring-up swaps a publisher; it doesn't ripple a rewrite
+  through the stack.
+
 ## Meta code
 
 The shape of "stand up every sensor as a topic," before any

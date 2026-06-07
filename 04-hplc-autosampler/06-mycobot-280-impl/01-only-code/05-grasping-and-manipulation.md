@@ -280,6 +280,51 @@ use case 5 — is when **Contact-GraspNet** (best-in-class) or a **VLA
 policy** earns its GPU and demonstrations, which is the upgrade path the
 next section lays out.
 
+### Deep dive: the three highest-value use cases
+
+The five above all matter; these three carry the most weight for grasping
+& manipulation — the layer that physically touches the glass.
+
+#### Force-safe pinch of a glass vial
+
+- **The moment:** the gripper closes on a smooth 2 mL glass vial — too soft
+  and it slips, too hard and it cracks.
+- **How, in depth:** an **analytical antipodal pinch** on the cylinder axis
+  closes with a **force limit** inside the safe glass window; that window
+  is validated in **MuJoCo** (best contacts) before it ever runs, so the
+  number isn't guessed.
+- **Edge case it survives:** a vial slightly larger or smaller than nominal
+  — the force target, not a fixed jaw width, governs the close, so a vial
+  at the edge of tolerance is still held safely.
+- **Value:** the most failure-prone touch in the loop is made repeatable,
+  removing the drop-or-crack risk a human babysits.
+
+#### Slip detection and re-grasp
+
+- **The moment:** vial 61 shifts on first contact and the pick fails; the
+  arm must notice and retry, not carry nothing to the dispenser.
+- **How, in depth:** the gripper `JointState` (jaws closing past the
+  expected vial width ⇒ empty/slip) is **two-witnessed** with the wrist
+  camera; on disagreement MoveIt Task Constructor re-enters the pick stage.
+- **Edge case it survives:** a *partial* grasp that holds at first then
+  slips in transit — the wrist-camera witness is re-checked before the
+  place, catching a vial lost en route.
+- **Value:** a failed pick becomes a retry, not a dropped sample and a
+  halted run.
+
+#### Anti-rotation hold for decap/recap
+
+- **The moment:** the decapper applies torque to unscrew a cap; if the vial
+  spins in the jaws nothing comes off and the cap may strip.
+- **How, in depth:** a higher-force **hold** grasp mode is engaged, gated
+  by the **force-torque** witness on the cap joint (sensor #5), while
+  orchestration sequences hold → twist → release.
+- **Edge case it survives:** a stuck cap whose torque spikes past normal —
+  the force-torque reading trips a limit, so the cell stops and flags
+  rather than wrenching the vial out of the nest.
+- **Value:** decapping becomes a controlled, monitored action instead of a
+  blind twist that risks shattering glass.
+
 ## The learned upgrade path — VLA / generalist policies
 
 The five above are the **v1 toolbox**. Beyond them sits the frontier:

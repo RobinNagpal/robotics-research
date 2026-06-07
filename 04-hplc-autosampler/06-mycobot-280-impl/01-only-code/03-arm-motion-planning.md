@@ -287,6 +287,52 @@ constrained transfer (use case 5) is the trigger for **Drake**. The v1
 cell needs none of those escalations — MoveIt 2 on a sparse scene is the
 right tool.
 
+### Deep dive: the three highest-value use cases
+
+The five above all matter; these three carry the most weight for arm
+motion planning.
+
+#### Collision-free pick/place across a crowded bench
+
+- **The moment:** an operator slid a tall waste bin onto the bench
+  overnight; the planner must still move vial A7 to slot 12 without
+  striking it, the racks, the instrument, or the decapper.
+- **How, in depth:** MoveIt 2 holds a **planning scene** of those obstacles
+  and runs a collision-aware sampling planner; a path that can't clear the
+  bin returns *no plan*, handed to orchestration to retry or flag rather
+  than executed into a crash.
+- **Edge case it survives:** an obstacle that *appears* mid-run — the scene
+  is updated from perception, so the next plan accounts for the bin even
+  though it wasn't in the CAD.
+- **Value:** the arm adapts to a bench that changed since yesterday instead
+  of demanding a frozen world.
+
+#### Cartesian straight-line approach and retreat
+
+- **The moment:** the gripper must drop vertically into a 16 mm-clearance
+  nest and lift straight out; any lateral swing knocks the neighbours.
+- **How, in depth:** `compute_cartesian_path` generates a pure-translation
+  segment for the final approach and retreat, kept separate from the
+  free-space transit move so only the delicate part is constrained.
+- **Edge case it survives:** a Cartesian path that can't reach full depth
+  (singularity/limit) returns a fraction-completed flag, so the cell aborts
+  the entry cleanly rather than forcing a skewed insert.
+- **Value:** tight nests are entered and exited without disturbing 95 other
+  vials.
+
+#### Replanning on a perception correction
+
+- **The moment:** perception reports vial A7 is actually 8 mm off the nest
+  centre after the rack shifted; the in-flight motion must adapt.
+- **How, in depth:** the corrected pose becomes a new planning goal; MoveIt
+  plans from the *live* joint state and the new trajectory **preempts** the
+  old one through the Layer 02 action interface — no stop-start jerk.
+- **Edge case it survives:** corrections arriving faster than plans
+  complete — preemption means the newest goal always wins, so the arm
+  tracks the latest estimate instead of chasing a stale one.
+- **Value:** small real-world misalignments are absorbed live, not turned
+  into missed grasps.
+
 ## Meta code
 
 The shape of the best-practical pick (MoveIt 2, driven from Python

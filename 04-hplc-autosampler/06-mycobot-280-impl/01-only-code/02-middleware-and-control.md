@@ -306,6 +306,56 @@ nothing above it" promise holds. The silent dispenser is the stand-in for
 real **micro-ROS** station firmware, mocked now so the contract is proven
 before any MCU exists.
 
+### Deep dive: the three highest-value use cases
+
+The five above all matter; these three carry the most weight for
+middleware & control.
+
+#### One-plugin sim-to-hardware transfer
+
+- **The moment:** months of only-code work must run on the real myCobot
+  without a rewrite; the day the arm arrives, the team swaps one plugin
+  and the same controllers drive it.
+- **How, in depth:** the `ros2_control` **hardware_interface** is the
+  seam — `gz_ros2_control` (sim) and the myCobot driver (hardware) are two
+  implementations of it, so the `joint_trajectory_controller`, the action
+  servers, and every node above are byte-for-byte unchanged.
+- **Edge case it survives:** behaviour that passed in sim but hits real
+  timing/latency — the boundary is identical, so only the *plugin* is
+  re-validated, isolating the hardware risk to one component.
+- **Value:** the only-code investment becomes the production control layer,
+  not a throwaway prototype.
+
+#### Device-as-service with timeouts
+
+- **The moment:** orchestration calls `weigh` and reads `/balance/mass`;
+  mid-run the dispenser controller goes silent for 2 s and the loop must
+  not freeze.
+- **How, in depth:** each station exposes a **service** (request/reply) for
+  actions and a **topic** for its stream; calls carry timeouts and topics
+  carry **QoS deadlines**, so a silent station returns a failed call, not a
+  hang.
+- **Edge case it survives:** a station that answers *slowly* rather than
+  not at all — the deadline still fires, and the gate logic treats a late
+  reply as a miss instead of trusting stale data.
+- **Value:** one flaky device degrades to a handled exception, never a
+  deadlocked cell.
+
+#### Graceful degradation on a lost node or e-stop
+
+- **The moment:** a station node crashes or `/estop` fires mid-trajectory;
+  the arm must hold/stop safely and the graph must recover when the node
+  returns.
+- **How, in depth:** **lifecycle-managed** nodes plus the
+  `controller_manager` let a controller be deactivated/held on fault and
+  reactivated on recovery, while DDS auto-discovery re-attaches the
+  returning node without a restart.
+- **Edge case it survives:** the node returning *mid-cycle* — because the
+  topic/service contracts are unchanged, orchestration resumes from its own
+  state rather than re-initialising the whole graph.
+- **Value:** a single dead process is survivable and self-healing, not a
+  night's run lost.
+
 ## Meta code
 
 The shape of the best-practical layer (ROS 2 + `ros2_control`, wired

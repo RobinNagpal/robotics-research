@@ -267,6 +267,50 @@ of iterating* the tree against mocks rather than runtime performance,
 **py_trees** is the lighter pure-Python swap; the tree's logic is the same
 either way.
 
+### Deep dive: the three highest-value use cases
+
+The five above all matter; these three carry the most weight for
+orchestration — the cell's conscience for the overnight run.
+
+#### React to a verification failure (quarantine)
+
+- **The moment:** vial 53's barcode mismatches; the loop must isolate it
+  and keep going, not crash the run or place a wrong vial.
+- **How, in depth:** **condition nodes** gate each action, so a failed
+  identity or fill check routes that vial to a "quarantine + log" branch
+  instead of the place action, while the per-vial subtree continues to
+  vial 54.
+- **Edge case it survives:** several failures in one tray — each is
+  quarantined independently, so a bad batch yields a list of flagged vials
+  and a still-valid run for the good ones.
+- **Value:** one bad vial costs one slot, not the night.
+
+#### Safe-stop and resume
+
+- **The moment:** an e-stop fires or a door opens during vial 70's
+  transfer; the arm must halt safely and resume cleanly once cleared.
+- **How, in depth:** a high-priority **reactive guard** subtree watches
+  `/estop` and the Layer 10 gates and preempts everything below; when the
+  gate reopens the tree resumes ticking from where it paused.
+- **Edge case it survives:** an e-stop *mid-grasp* — because steps are
+  designed idempotent, the resume re-checks whether the vial is held and
+  either completes or re-picks, never dropping or double-placing.
+- **Value:** a safety event is a pause, not a ruined tray and a manual
+  reset.
+
+#### Crash/power-blip recovery with durable state
+
+- **The moment:** a power blip reboots the controller after vial 84; on
+  restart the cell must resume at vial 85, not redo 1–84.
+- **How, in depth:** worklist progress is **persisted** (Layer 08); on boot
+  the cell reconciles the *actual* tray and gripper state via perception
+  before resuming, so it trusts reality over its last intention.
+- **Edge case it survives:** a crash *during* a place — reconciliation sees
+  the vial already in the slot and advances, avoiding a double-place into
+  an occupied nest.
+- **Value:** an unattended run survives an infrastructure hiccup instead of
+  silently corrupting the tray.
+
 ## Meta code
 
 The shape of the best-practical per-vial Behavior Tree — the same tree

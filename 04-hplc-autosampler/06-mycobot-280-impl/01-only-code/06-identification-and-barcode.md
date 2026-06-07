@@ -231,6 +231,50 @@ print quality and throughput — heavily degraded or warped labels at speed,
 an extreme of use case 3 — does the paid **Dynamsoft** reader become worth
 its licence.
 
+### Deep dive: the three highest-value use cases
+
+The five above all matter; these three carry the most weight for
+identification — the cell's chain-of-custody check.
+
+#### Decode a label on a curved vial
+
+- **The moment:** the barcode is wrapped around a 2 mL cylinder, so only a
+  narrow strip faces the camera head-on.
+- **How, in depth:** the OpenCV barcode/QR module decodes the flat strip;
+  if it fails, the arm **rotates the vial** in the gripper to present a
+  better face and re-reads across several frames.
+- **Edge case it survives:** a code that spans the curve so no single frame
+  sees it whole — multi-frame reads from different rotations are combined
+  until the full code is recovered.
+- **Value:** curvature, the most common lab-label problem, is handled by
+  motion the cell already has, not a special scanner.
+
+#### No-read recovery
+
+- **The moment:** a label is smudged, glared, or half-hidden by the jaw and
+  the first decode returns nothing.
+- **How, in depth:** the pipeline leads with OpenCV, falls back to **ZBar**,
+  then re-presents the vial at a dedicated scan pose for up to *N* attempts
+  before flagging — never guessing an ID.
+- **Edge case it survives:** a genuinely unreadable label — after the
+  attempt budget the vial is parked for human review, so a bad label stops
+  *that* vial without stalling the tray.
+- **Value:** transient read failures self-heal; only the truly unreadable
+  reach a human, keeping throughput up.
+
+#### Identity verification against the worklist — mismatch halt
+
+- **The moment:** vial 53 decodes to an ID the worklist doesn't expect in
+  that slot — a sample mix-up.
+- **How, in depth:** orchestration compares the decoded string to the
+  worklist row; a mismatch **halts that vial and raises an audit event**
+  (Layer 08) before the place action ever runs.
+- **Edge case it survives:** two vials accidentally swapped between nests —
+  each fails its own slot check, so *both* are caught rather than silently
+  injected in the wrong order.
+- **Value:** the highest-cost lab error — wrong sample, wrong result — is
+  caught mechanically, the core reason a regulated lab would trust the cell.
+
 ## Meta code
 
 The shape of the best-practical decoder (OpenCV's built-in QR/barcode

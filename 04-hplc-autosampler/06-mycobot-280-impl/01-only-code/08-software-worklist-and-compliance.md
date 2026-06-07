@@ -310,6 +310,50 @@ over PostgreSQL/asyncua** — is the destination for use cases 2–4 once the
 lab is validating for real; the cheapest CSV/JSONL stack is the scaffold
 you start on.
 
+### Deep dive: the three highest-value use cases
+
+The five above all matter; these three carry the most weight for the
+software, worklist & compliance layer — what makes the cell *trustable*.
+
+#### Tamper-evident audit trail (ALCOA+)
+
+- **The moment:** an auditor needs proof that the record of last night's
+  run wasn't altered after the fact.
+- **How, in depth:** every action and decision is appended to a
+  **hash-chained JSONL** log where each entry hashes the previous one, so
+  any edit or deletion breaks the chain and is detectable on verification.
+- **Edge case it survives:** an attempt to quietly "fix" vial 53's record —
+  the recomputed chain hash no longer matches, exposing the change rather
+  than hiding it.
+- **Value:** the cell's actions become a defensible, *Original and Accurate*
+  record — the precondition for a regulated lab using it at all.
+
+#### Electronic review and signature
+
+- **The moment:** before results are released, a reviewer must approve them
+  and disposition the quarantined and flagged vials under their identity.
+- **How, in depth:** the review step captures **user, timestamp, and the
+  meaning of the signature** on the record — the shape 21 CFR Part 11
+  expects — and locks the signed record against silent edits.
+- **Edge case it survives:** a reviewer who is not the operator (segregation
+  of duties) — distinct identities are recorded for prepare vs approve, so
+  the trail shows who did what.
+- **Value:** accountability is built into the data, not bolted on in a
+  spreadsheet afterwards.
+
+#### Instrument hand-off over a standard interface
+
+- **The moment:** the verified load order must reach the HPLC autosampler —
+  today against a mock, tomorrow against the real instrument.
+- **How, in depth:** a **SiLA 2** mock receives the final sequence in
+  only-code; because it speaks the production interface, swapping in the
+  real instrument later changes the backend, not the control flow above.
+- **Edge case it survives:** an instrument that rejects or re-orders a row —
+  the SiLA reply is checked, so a refused load surfaces as an error the
+  cell handles instead of a silent mismatch between tray and sequence.
+- **Value:** the integration that usually blocks deployment is designed and
+  proven before the instrument is even connected.
+
 ## Meta code
 
 The shape of the best-practical pick (FastAPI controller, SQLite

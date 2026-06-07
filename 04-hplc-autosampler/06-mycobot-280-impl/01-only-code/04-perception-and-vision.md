@@ -259,6 +259,53 @@ and 5) does the learned **Ultralytics YOLO** path earn its GPU and
 dataset, trained on the synthetic frames the digital twin already
 generates.
 
+### Deep dive: the three highest-value use cases
+
+The five above all matter; these three carry the most weight for
+perception & vision.
+
+#### Known-pose localization of tray and vials
+
+- **The moment:** an operator nudged the rack 5 mm and rotated it 2°; the
+  arm must still reach each nest centre exactly.
+- **How, in depth:** an **AprilTag** on the tray gives a full 6-DoF pose
+  via PnP, and every nest is a fixed offset from it, so the whole grid
+  moves with the tag — a shift/rotation is absorbed with no re-teaching.
+- **Edge case it survives:** a partially occluded tag — the detector
+  rejects a low-confidence read and waits for a clean frame rather than
+  publishing a wrong pose the arm would act on.
+- **Value:** the cell tolerates a hand-placed rack instead of demanding
+  micron-perfect fixturing.
+
+#### Presence/absence and fill verification
+
+- **The moment:** two nests are empty and one vial is under-filled; the arm
+  must skip the empties and flag the low one *before* wasting a move.
+- **How, in depth:** **Open3D** fits vial cylinders and meniscus height in
+  the depth cloud — a missing cylinder is an empty nest, a low meniscus is
+  under-filled — and the result feeds the Layer 10 fill gate.
+- **Edge case it survives:** a clear-liquid meniscus that's hard to see —
+  the depth/geometry fit doesn't depend on liquid colour, so water-clear
+  diluent is measured as reliably as a tinted sample.
+- **Value:** the cell never picks an empty nest or loads an under-filled
+  vial, catching prep errors a human would miss at 2 a.m.
+
+#### Hand-eye calibration and its verification
+
+- **The moment:** if the camera-to-arm transform is off by 3 mm, every
+  reach inherits the error; the cell must establish *and check* the
+  calibration.
+- **How, in depth:** the arm is driven to several known tag poses and
+  `calibrateHandEye` solves the camera↔arm transform; in only-code the
+  truth is known, so a deliberate 3 mm offset is injected to prove the
+  depth cross-check flags the disagreement.
+- **Edge case it survives:** calibration drift over time — the periodic
+  re-check against the depth witness catches a slowly creeping offset
+  before it causes a missed grasp.
+- **Value:** the calibration *procedure* is proven in sim and transfers to
+  hardware, where it's the difference between reaching the vial and
+  reaching past it.
+
 ## Meta code
 
 The shape of the best-practical pipeline (OpenCV + AprilTag for the
