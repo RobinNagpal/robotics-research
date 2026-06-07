@@ -251,6 +251,65 @@ stack as the destination you grow into.
 > compliance and integrity claims with a quality owner before
 > quoting them or relying on them.
 
+## Realistic scenario & use cases
+
+> **Why this matters for automation.** This layer is what makes the cell
+> *trustable* rather than merely functional: it ingests the worklist,
+> records who/what/when/why for every vial, takes electronic signatures,
+> and hands the verified order to the instrument. Its automation value is
+> turning the arm's actions into a **defensible record** — without it, a
+> regulated lab can't use the cell at all, no matter how well it grips.
+
+**The scenario.** An auditor reviews last night's run. The cell ingested
+a 96-row worklist, but **vial 53 was quarantined** (barcode mismatch) and
+**vial 61 flagged** (two grasp slips). Mid-run an operator **inserted 4
+priority STAT samples**. The auditor must be able to see an **immutable,
+tamper-evident** account of every action and decision per vial, an
+**electronic signature** on the review and the disposition of the two bad
+vials, the exact **load order sent to the HPLC**, and proof that the STAT
+insert didn't corrupt any of it. The whole point of the cell rests on
+being able to answer "prove it."
+
+The layer must therefore serve several **distinct use cases**:
+
+1. **Ingest and validate a worklist.** Read the worklist (CSV / LIMS /
+   SiLA) and bind each row to a tray slot, sample ID, and method.
+   - *How the solution handles it:* a FastAPI endpoint parses the worklist
+     into validated **SQLite** rows; malformed or duplicate rows are
+     rejected up front rather than discovered mid-run.
+
+2. **Tamper-evident audit trail (ALCOA+).** Record every action and
+   decision per vial so the record is *Original* and *Accurate*.
+   - *How:* a **hash-chained JSONL** audit log — each entry hashes the
+     previous one — so any after-the-fact edit breaks the chain and is
+     detectable, which is exactly what the auditor checks.
+
+3. **Electronic review and signature.** A reviewer approves results and
+   dispositions the flagged vials under their own identity.
+   - *How:* a review step captures **user, timestamp, and meaning of
+     signature** on the record (the shape 21 CFR Part 11 expects — though
+     certification is a quality-owner matter, per the note above).
+
+4. **Instrument hand-off over a standard interface.** Pass the verified
+   load order to the HPLC autosampler.
+   - *How:* a **SiLA 2 mock** receives the final sequence in the
+     only-code phase; because it is production-shaped, swapping in the
+     real instrument later changes the backend, not the control flow.
+
+5. **Mid-run worklist amendment.** Absorb the 4 STAT inserts without
+   corrupting state or the trail.
+   - *How:* the worklist is **append-only and versioned**; the amendment
+     is itself an audited event, and orchestration (Layer 07) re-reads the
+     new rows — so the history stays intact and explains itself.
+
+**Where the pick flexes.** FastAPI + SQLite + a SiLA 2 mock
+(best-practical) gives the real control flow and a tamper-evident trail at
+near-zero infrastructure, covering all five use cases in only-code. The
+move to a **validatable production stack** — full **SiLA 2 (sila_python)
+over PostgreSQL/asyncua** — is the destination for use cases 2–4 once the
+lab is validating for real; the cheapest CSV/JSONL stack is the scaffold
+you start on.
+
 ## Meta code
 
 The shape of the best-practical pick (FastAPI controller, SQLite
