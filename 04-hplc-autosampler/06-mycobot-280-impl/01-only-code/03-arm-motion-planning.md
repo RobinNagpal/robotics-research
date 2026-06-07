@@ -294,6 +294,27 @@ motion planning.
 
 ## Collision-free pick/place across a crowded bench
 
+A lab bench is a crowded, ever-changing place — racks, beakers, a waste
+bin, a colleague's tray, and the instrument itself all share the same few
+square feet. A lab assistant threads a vial through that clutter without
+thinking, adjusting the path on the fly to avoid knocking anything over.
+This use case is the cell doing the same: planning a collision-free route
+for the arm from a rack nest to a tray slot, around whatever happens to be
+on the bench today.
+
+The bigger experiment is the HPLC batch, in which every one of the tray's
+60–100 vials has to be carried from its rack to its slot, with stops at the
+dispenser and cap station along the way. Each of those transfers is a
+chance to clip a neighbour or strike the instrument; planning around the
+actual obstacle layout is what turns "move the vial" into a safe,
+repeatable motion rather than a gamble.
+
+The assistant performs this navigate-and-place motion for essentially
+every vial, plus every reagent and tool they reposition — easily a few
+hundred times a day. The cell plans a fresh route just as often, on every
+transfer, because the bench is never guaranteed to be exactly as it was a
+minute ago.
+
 - **The moment:** an operator slid a tall waste bin onto the bench
   overnight; the planner must still move vial A7 to slot 12 without
   striking it, the racks, the instrument, or the decapper.
@@ -324,7 +345,30 @@ motion planning.
 
 ### Meta code
 
-The shape of the crowded-bench planner, before any library detail:
+This meta hands the hard problem — "find a path that doesn't hit
+anything" — to a dedicated motion planner (MoveIt 2) and concentrates on
+feeding it an honest picture of the world. The planner can only avoid
+obstacles it knows about, so the pipeline's first job is to keep a
+*planning scene* that mirrors the real bench: the rack, the instrument
+body, the decapper, the tray, and any extra obstacle like the newly-added
+waste bin, each represented as a simple collision shape.
+
+Critically, that scene is not static. Perception feeds obstacle updates in
+as the bench changes, so when an operator slides a bin onto the workspace
+overnight, the next plan accounts for it even though it was never in the
+CAD model. This is what lets the cell adapt to a bench that changed since
+yesterday rather than demanding a frozen, fully-specified world.
+
+On a pick-or-place request, the pipeline sets the goal pose for the
+gripper and asks the planner for a collision-aware path from the arm's
+current configuration. The planner samples and checks candidate motions
+against the scene; if it can find a clean route it returns a trajectory to
+execute, and if every route is blocked it returns *nothing*.
+
+That "no plan" outcome is a feature, not a crash: it is handed back to
+orchestration, which can retry, wait, or flag the vial — so a blocked path
+becomes a handled decision instead of a collision. The planner in
+pseudocode:
 
 ```text
 # build a planning scene: add rack, instrument, decapper, tray as collision boxes
@@ -386,6 +430,25 @@ class CrowdedBenchPlanner(Node):                        # plans collision-free p
 
 ## Cartesian straight-line approach and retreat
 
+Picking a 2 mL vial out of a packed rack is a precise, vertical motion — a
+lab assistant lowers two fingers straight down into the nest, grips, and
+lifts straight up, never swinging sideways into the vials packed
+millimetres away. This use case captures exactly that: a controlled
+straight-line descent into a nest and a straight-line lift out, kept
+separate from the looser motion of carrying the vial across the bench.
+
+The bigger experiment is the HPLC batch, where vials sit in dense racks
+and in the autosampler tray with only millimetres of clearance between
+them. A sideways nudge on the way in or out doesn't just risk the target
+vial — it can topple a neighbour, spilling or contaminating a sample that
+was already prepared. The straight-line entry and exit is what protects
+the other 95 vials every time the arm services one.
+
+The assistant makes this vertical pick-or-place motion on every vial they
+handle — at least twice per vial, in and out — so hundreds of times a day.
+The cell reuses the same constrained approach for every nest entry and
+every tray placement, the most repeated precise motion in the loop.
+
 - **The moment:** the gripper must drop vertically into a 16 mm-clearance
   nest and lift straight out; any lateral swing knocks the neighbours.
 - **How, in depth:** `compute_cartesian_path` generates a pure-translation
@@ -414,7 +477,30 @@ class CrowdedBenchPlanner(Node):                        # plans collision-free p
 
 ### Meta code
 
-The shape of the straight-line entry, before any library detail:
+This meta splits a single "put the vial in the nest" motion into two very
+different pieces, because they have different requirements. The long,
+free-space part — carrying the vial across the bench to a point just above
+the target nest — only needs to avoid obstacles, and is handled by the
+ordinary collision-aware planner. The short, final part — dropping into
+the nest and lifting back out — needs to be a perfectly straight vertical
+line, and is handled differently.
+
+For that final segment the pipeline asks MoveIt for a *Cartesian path*:
+rather than letting the planner choose any joint motion, it specifies the
+exact straight line the gripper tip must follow — same X and Y, only Z
+changing — and the solver interpolates a trajectory that keeps the tool on
+that line. This is what guarantees no sideways drift into the neighbouring
+vials during the most delicate moment.
+
+The Cartesian solver also reports how much of the requested line it could
+actually achieve, as a fraction from zero to one. A descent that can't
+reach full depth — because it would hit a joint limit or pass through a
+singularity — comes back with a fraction below one, and the pipeline
+treats that as a reason to abort the entry cleanly rather than force a
+skewed, partial insertion.
+
+The retreat is simply the mirror image: a straight pure-Z lift back out
+before the next free-space transit begins. The entry in pseudocode:
 
 ```text
 # free-space transit to the nest-top pose (just above the vial)       (collision-aware)
@@ -474,6 +560,27 @@ class CartesianEntry(Node):                             # builds straight-down a
 
 ## Replanning on a perception correction
 
+A lab assistant constantly makes tiny corrections without noticing —
+reaching for a vial, seeing it sits a little off from where they expected,
+and adjusting their hand mid-reach to land on it cleanly. This use case is
+the cell's version of that live correction: when the camera reports a vial
+is a few millimetres from where the plan assumed, the arm bends its path
+to the new position mid-motion instead of committing to the stale one and
+missing the grip.
+
+The bigger experiment is the HPLC batch, prepared from racks that humans
+place by hand and that shift slightly over a long run. Those small
+misalignments are normal, not errors; a cell that could only reach
+exactly-predicted positions would fumble constantly. Tracking the camera's
+latest estimate is what lets the arm grip a real, slightly-moved vial as
+reliably as a perfectly-placed one.
+
+For the assistant, these micro-adjustments happen on a large fraction of
+reaches — many times an hour, all day. The cell replans on a correction
+whenever perception refines a target, which over a full tray is routine
+rather than exceptional, so the motion has to absorb the change smoothly
+every time.
+
 - **The moment:** perception reports vial A7 is actually 8 mm off the nest
   centre after the rack shifted; the in-flight motion must adapt.
 - **How, in depth:** the corrected pose becomes a new planning goal; MoveIt
@@ -502,7 +609,28 @@ class CartesianEntry(Node):                             # builds straight-down a
 
 ### Meta code
 
-The shape of the live re-planner, before any library detail:
+The re-planner's meta is about always acting on the freshest truth without
+thrashing. It keeps two things in hand: the pose it is currently driving
+the arm toward, and a handle on the trajectory the arm is actively
+executing. When perception publishes a corrected target, the pipeline
+compares it to the current goal.
+
+If the correction is tiny — within a few millimetres — it is ignored,
+because replanning for every sub-millimetre jitter would make the arm
+hesitant and waste compute. Only a meaningful change triggers action,
+which keeps the motion smooth while still honouring real corrections.
+
+For a meaningful correction, the pipeline preempts rather than stops: it
+cancels the in-flight trajectory goal and immediately plans a new one
+*from the arm's live joint state* to the corrected pose. Planning from
+where the arm actually is — not from where the old plan assumed it would
+be — is what makes the new motion continue seamlessly instead of jerking
+back to a start.
+
+The new trajectory is then sent as the active goal, superseding the old
+one through the controller's action interface, so the newest estimate
+always wins; corrections arriving faster than plans complete simply chain,
+each new goal replacing the last. The re-planner in pseudocode:
 
 ```text
 # track the current target pose + the in-flight trajectory goal handle
