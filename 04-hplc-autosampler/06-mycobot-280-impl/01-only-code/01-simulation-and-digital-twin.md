@@ -172,6 +172,75 @@ why it lands as an Alternative rather than the practical pick.
   fidelity and cost while staying one short step from real hardware —
   the right backbone for the only-code twin.
 
+## Realistic scenario & use cases
+
+> **Why this matters for automation.** The digital twin is where the
+> cell's value is *proven before a cent is spent on hardware*. Every
+> mis-reached nest, every gripper crash, every bad bench layout the twin
+> catches in software is cost and risk removed from the real build. This
+> section makes that concrete: one complex scenario, then the distinct
+> jobs this layer must do to serve it.
+
+**The scenario.** A contract lab wants the cell to run an **overnight
+96-vial worklist** that mixes **2 mL screw-cap and 11 mm crimp-cap vials**
+across two rack types, with the dispenser station **12 cm further** from
+the arm base than the previous layout. Two vials are deliberately
+under-filled and one nest is left empty, to mimic a real tray. Before
+buying a single myCobot, the team must answer: *does the arm reach every
+nest, does it ever collide with the instrument, how long is the cycle,
+and does the loop survive a vial that isn't where it should be?* All of
+that is answered in the twin.
+
+The twin must therefore serve several **distinct use cases**:
+
+1. **Reach & collision validation.** Prove the arm can reach all 96 rack
+   nests, the tray, the decapper, and the dispenser without
+   self-collision or hitting the (static) instrument body, for *this*
+   bench layout.
+   - *How the solution handles it:* Gazebo Harmonic loads the myCobot
+     URDF and the `hplc_cell.sdf` world, and a script commands each nest
+     pose; Gazebo's collision engine flags any contact with the
+     instrument mesh, so a bad layout shows up as a failed pose, not a
+     bent arm.
+
+2. **What-if layout planning.** Re-validate the whole cycle after moving
+   the dispenser 12 cm — without rebuilding a physical bench.
+   - *How:* the station pose is a single transform in the world SDF; edit
+     it, relaunch, re-run the reach script. Iterating bench geometry
+     costs seconds, not a workshop afternoon.
+
+3. **Synthetic perception data.** Produce labelled RGB-D frames of vials
+   in racks under varied lighting and fill levels to feed Layer 04.
+   - *How:* the camera `<sensor>` plugins publish the same
+     `/overhead/image_raw` + points topics a real camera would; for
+     geometry-only labels Gazebo suffices, and when photoreal glass
+     reflections matter the same scene swaps to **Isaac Sim** (the
+     best-in-class pick) for domain-randomized frames.
+
+4. **Fault-injection rehearsal.** Deliberately stage the empty nest, the
+   two under-filled vials, a dropped vial mid-transfer, and an e-stop
+   during a move, to prove orchestration + gates react correctly.
+   - *How:* missing/under-filled vials are edits to the world's model
+     list; a dropped vial is a scripted detach; the e-stop is the
+     `mock_safety` node flipping `/estop`. Every fault is reproducible on
+     demand — something no real bench can promise.
+
+5. **Headless regression twin (CI).** Run the full prep → load loop
+   automatically on every code change to catch breakages before they
+   reach hardware.
+   - *How:* Gazebo Harmonic runs **headless** (no GUI) in CI; a scripted
+     worklist drives the loop and asserts the tray ends correctly loaded,
+     turning the twin into a regression test the whole team relies on.
+
+**Where the pick flexes.** The best-practical backbone (Gazebo Harmonic)
+covers use cases 1, 2, 4, and 5 directly and cheaply. Only use case 3, at
+its most demanding (photoreal glass), reaches for **Isaac Sim**; and the
+one tricky grasp in the scenario — holding the under-filled, off-balance
+vial without slip — is the moment you might validate in **MuJoCo** (best
+contacts). The layering is deliberate: one free, CPU-friendly twin for
+the system, two specialists swapped in only where their axis is the
+bottleneck.
+
 ## Meta code
 
 The shape of the best-practical twin (Gazebo Harmonic loaded from a
