@@ -246,7 +246,7 @@ bottleneck.
 The five above all matter; these three carry the most weight for the
 digital twin, so each is worth unpacking.
 
-### Reach & collision validation
+## Reach & collision validation
 
 - **The moment:** before a myCobot is ordered, the twin is asked to touch
   all 96 nests, the tray, the decapper, and the dispenser for *this*
@@ -282,7 +282,73 @@ digital twin, so each is worth unpacking.
 - **Value:** a bad geometry costs a relaunch, not a bent arm and a
   re-ordered fixture.
 
-### Synthetic perception data
+### Meta code
+
+The shape of the reach/collision sweep, before any library detail:
+
+```text
+# load the cell world + the myCobot URDF into the physics sim          (the twin)
+# attach a capped-vial model to the gripper so reach includes the payload
+# for each nest/station pose in the bench layout:
+#     solve inverse kinematics for the gripper to reach that pose       (joint angles)
+#     if no IK solution exists -> mark the nest UNREACHABLE             (out of envelope)
+#     else snap the joints there and step the physics                  (move the twin)
+#         read the collision engine for arm<->instrument/rack contacts  (geometry check)
+#         contact -> mark COLLISION, else -> mark OK
+# write {nest: status} to a reachability map                           (feeds the worklist)
+```
+
+### Real code
+
+A complete **PyBullet** reach-and-collision checker (PyBullet is this
+layer's cheapest pick, ideal for IK/collision sweeps). **Illustrative
+teaching code** — re-verify APIs before relying on it; every line is
+commented.
+
+```python
+import pybullet as p                                   # the Bullet physics engine's Python API
+import pybullet_data                                   # ships sample URDFs + a ground plane
+import json                                            # to dump the reachability map at the end
+
+ARM_URDF = "mycobot_280.urdf"                          # the twin's description (links + joints)
+VIAL_URDF = "capped_vial.urdf"                         # a 2 mL vial model attached to the gripper
+EEF_LINK = 6                                            # index of the gripper/flange link in the URDF
+NESTS = {"A1": [0.18, 0.10, 0.08],                     # nest centres as [x, y, z] gripper targets...
+         "D11": [0.26, -0.14, 0.08]}                   # ...(only two shown; populated for all 96)
+
+
+def main():                                            # run the whole reach/collision sweep
+    p.connect(p.DIRECT)                                # headless physics (no GUI) for a batch check
+    p.setAdditionalSearchPath(pybullet_data.getDataPath())  # so plane.urdf etc. are findable
+    p.loadURDF("plane.urdf")                           # a floor so nothing falls to infinity
+    arm = p.loadURDF(ARM_URDF, [0, 0, 0.75], useFixedBase=True)   # the arm, bolted to the bench
+    inst = p.loadURDF("instrument.urdf", [0.3, 0, 0.75], useFixedBase=True)  # the obstacle body
+    vial = p.loadURDF(VIAL_URDF, [0, 0, 1.0])          # the payload, spawned then welded below
+    p.createConstraint(arm, EEF_LINK, vial, -1,        # weld the vial to the gripper link so...
+                       p.JOINT_FIXED, [0, 0, 0], [0, 0, 0.02], [0, 0, 0])  # ...reach includes it
+
+    reach_map = {}                                     # nest -> "OK" | "UNREACHABLE" | "COLLISION"
+    for name, target in NESTS.items():                 # test every nest in the layout
+        joints = p.calculateInverseKinematics(arm, EEF_LINK, target)  # IK: angles to reach the nest
+        if joints is None:                             # some IK backends return None on failure
+            reach_map[name] = "UNREACHABLE"            # nest is outside the 280's envelope
+            continue                                   # nothing to step; on to the next nest
+        for j, angle in enumerate(joints):             # apply the IK solution joint by joint
+            p.resetJointState(arm, j, angle)           # snap the twin into the reaching pose
+        p.stepSimulation()                             # refresh contacts for the new configuration
+        hits = p.getContactPoints(arm, inst)           # any arm<->instrument contact in this pose?
+        reach_map[name] = "COLLISION" if hits else "OK"  # record the verdict for this nest
+
+    with open("reach_map.json", "w") as fh:            # persist the result for the worklist builder
+        json.dump(reach_map, fh, indent=2)             # human-readable map of nest -> status
+    p.disconnect()                                     # tear down the physics server
+
+
+if __name__ == "__main__":                             # run only when invoked directly
+    main()                                             # ...do the sweep
+```
+
+## Synthetic perception data
 
 - **The moment:** Layer 04 needs labelled images but no real photos exist
   yet; the twin renders thousands of rack frames under varied light, fill
@@ -318,7 +384,73 @@ digital twin, so each is worth unpacking.
 - **Value:** a dataset worth weeks of staged photography and hand-labelling
   appears overnight, covering corners real data rarely catches.
 
-### Fault-injection rehearsal
+### Meta code
+
+The shape of the synthetic-data generator, before any library detail:
+
+```text
+# for each frame we want to generate:
+#     randomize the scene:
+#         pick a random light direction + intensity                    (domain randomization)
+#         choose which nests hold a vial and each vial's fill level     (presence + meniscus)
+#         jitter the tray pose a few mm/deg                            (real racks aren't exact)
+#     render an RGB image + a depth image from the overhead camera     (sensor #1 viewpoint)
+#     read each spawned vial's true pose + fill from the simulator      (ground truth, free)
+#     write the images + a label file {poses, fills}                    (one labelled sample)
+# stop after N samples -> a labelled dataset for Layer 04               (no photography needed)
+```
+
+### Real code
+
+A complete **PyBullet** domain-randomized dataset generator. **Illustrative
+teaching code** — re-verify before use; every line is commented.
+
+```python
+import pybullet as p                                   # physics + a built-in camera renderer
+import pybullet_data                                   # sample assets (plane, etc.)
+import numpy as np                                     # arrays for the rendered images
+import random, json, os                                # randomization, label files, paths
+
+VIAL_URDF = "capped_vial.urdf"                         # the vial model placed into nests
+NEST_XY = {"A1": (0.18, 0.10), "A2": (0.20, 0.10)}     # nest centres (x, y); ...all 96 in practice
+OUT = "synthetic/"                                     # folder the dataset is written into
+
+
+def render_one(i):                                     # build, render, and label a single frame
+    p.resetSimulation()                                # clear the previous frame's scene
+    p.loadURDF("plane.urdf")                           # neutral floor
+    light = [random.uniform(-1, 1) for _ in range(3)]  # random light direction (randomization)
+    labels = {}                                        # nest -> {pose, fill} ground truth
+    for nest, (x, y) in NEST_XY.items():               # decide each nest independently
+        if random.random() < 0.2:                      # ~20% of nests left empty (realistic tray)
+            continue                                   # no vial here -> simply absent from the label
+        p.loadURDF(VIAL_URDF, [x, y, 0.80])            # drop a vial into this nest
+        fill = round(random.uniform(0.3, 1.0), 2)      # random fill (low = under-filled case)
+        labels[nest] = {"pose": [x, y, 0.80], "fill": fill}  # record the ground truth
+    view = p.computeViewMatrix([0.2, 0, 1.3], [0.2, 0, 0.8], [1, 0, 0])  # overhead camera pose
+    proj = p.computeProjectionMatrixFOV(60, 1.0, 0.1, 2.0)  # 60 deg FOV, square frame
+    _, _, rgb, depth, _ = p.getCameraImage(            # render the scene from that camera...
+        640, 640, view, proj, lightDirection=light)    # ...640x640 RGB + depth with our light
+    np.save(os.path.join(OUT, f"{i}_rgb.npy"), rgb)    # save the RGB frame (image input)
+    np.save(os.path.join(OUT, f"{i}_depth.npy"), depth)  # save the depth frame (geometry input)
+    with open(os.path.join(OUT, f"{i}.json"), "w") as fh:  # save the matching label file
+        json.dump(labels, fh)                          # ground-truth poses + fills for this frame
+
+
+def main():                                            # generate the whole dataset
+    p.connect(p.DIRECT)                                # headless; we only need rendered pixels
+    p.setAdditionalSearchPath(pybullet_data.getDataPath())  # find plane.urdf
+    os.makedirs(OUT, exist_ok=True)                    # ensure the output folder exists
+    for i in range(10000):                             # 10k labelled frames overnight
+        render_one(i)                                  # ...one randomized, labelled sample each
+    p.disconnect()                                     # done
+
+
+if __name__ == "__main__":                             # run directly to build the dataset
+    main()
+```
+
+## Fault-injection rehearsal
 
 - **The moment:** the team must know the loop survives a dropped vial, a
   missing vial, a stuck cap, and an e-stop mid-motion — none of which a
@@ -351,94 +483,72 @@ digital twin, so each is worth unpacking.
 - **Value:** every recovery path is regression-locked before hardware, so
   the first real fault is one the cell has handled a hundred times.
 
-## Meta code
+### Meta code
 
-The shape of the best-practical twin (Gazebo Harmonic loaded from a
-world file, the myCobot URDF spawned into it, plus the sensor plugins
-that make each sensor appear as a ROS 2 topic), before any
-library-specific detail:
+The shape of the fault injector, before any library detail:
 
 ```text
-# launch Gazebo Harmonic with a world file describing the cell      (bench, lighting, physics)
-# in that world, place the static furniture                          (rack, tray, decap/dispense stations)
-# spawn the myCobot 280 from its URDF at a known bench pose          (the digital twin of the arm)
-# attach sensor plugins so each sensor publishes a ROS 2 topic:
-#     overhead depth_camera plugin     -> /overhead/image_raw + points (sensor #1)
-#     station camera plugin            -> /station/image_raw           (sensor #2)
-#     wrist camera plugin on the flange-> /wrist/image_raw             (sensor #3)
-#     force-torque plugin on cap joint -> /decapper/wrench             (sensor #5)
-#     base imu plugin                  -> /imu                         (sensor #12)
-# start the ros_gz bridge so those gz topics cross into ROS 2         (one bridge per topic)
-# mock the safety sensors as plain ROS 2 Bool topics                  (/estop, /door_closed, /light_curtain_clear)
-# from then on every upper layer talks to topics, not to the simulator
+# subscribe to the running loop's state (which vial, which phase)
+# define a catalogue of faults, each a function that perturbs the twin:
+#     drop_vial   -> delete the constraint welding vial to gripper       (a drop)
+#     remove_vial -> delete a vial model from a nest                     (a missing vial)
+#     stuck_cap   -> publish a high torque on /decapper/wrench           (a jammed cap)
+#     trip_estop  -> publish False on /estop                             (an emergency stop)
+# at a scripted (vial, phase) trigger -> fire the chosen fault           (exact, repeatable)
+# observe orchestration's response, then assert the expected recovery    (a locked regression)
 ```
 
-## Real code
+### Real code
 
-The best-practical pick is **Gazebo Harmonic** driven from a ROS 2
-launch file via `ros_gz`. This is **illustrative teaching code**:
-launch APIs, plugin names, and message names drift between versions, so
-re-verify before relying on it. Every line carries an inline comment
-explaining exactly what it does.
+A complete ROS 2 (`rclpy`) fault-injector node that fires scripted faults
+into the running twin. **Illustrative teaching code** — re-verify before
+use; every line is commented.
 
 ```python
-import os                                            # read environment + build file paths to assets
-from launch import LaunchDescription                 # the object a ROS 2 launch file must return
-from launch.actions import IncludeLaunchDescription  # lets us start Gazebo's own launch file inside ours
-from launch.launch_description_sources import PythonLaunchDescriptionSource  # how to load that .launch file
-from launch_ros.actions import Node                  # an action that starts one ROS 2 node (a program)
-from ament_index_python.packages import get_package_share_directory  # finds an installed package's files
-
-# --- fixed, known facts about the cell and where its files live ---
-WORLD = "hplc_cell.sdf"                               # the world file describing bench, lights, stations
-ROBOT_URDF = "mycobot_280.urdf"                       # the arm description Gazebo spawns as the twin
-SPAWN_XYZ = ["0", "0", "0.75"]                        # where on the bench to place the arm base (metres)
+import rclpy                                            # ROS 2 Python client library
+from rclpy.node import Node                             # base class for a ROS 2 program
+from std_msgs.msg import Bool, String                   # /estop (Bool) and the loop phase (String)
+from geometry_msgs.msg import WrenchStamped             # the cap force-torque message type
 
 
-def generate_launch_description():                    # the function ROS 2 calls to get what to start
-    pkg = get_package_share_directory("hplc_sim")     # locate our simulation package's installed files
-    world_path = os.path.join(pkg, "worlds", WORLD)   # full path to the world file inside that package
-    urdf_path = os.path.join(pkg, "urdf", ROBOT_URDF) # full path to the arm's URDF inside that package
+class FaultInjector(Node):                              # fires scripted faults into the running twin
+    def __init__(self):                                 # one-time setup
+        super().__init__("fault_injector")              # register on the ROS 2 graph
+        self.estop = self.create_publisher(Bool, "/estop", 10)   # to flip the safety line
+        self.wrench = self.create_publisher(            # to fake the decapper's torque reading
+            WrenchStamped, "/decapper/wrench", 10)      # same topic the real sensor would use
+        self.script = {("V70", "transit"): self.trip_estop,   # e-stop mid-transfer of vial 70
+                       ("V61", "decap"): self.stuck_cap}      # jammed cap while decapping vial 61
+        self.fired = set()                              # triggers already fired (each fires once)
+        self.create_subscription(                       # watch the loop announce its state...
+            String, "/loop/phase", self.on_phase, 10)   # ..."V70:transit" style messages
 
-    ros_gz = get_package_share_directory("ros_gz_sim")  # locate the ros_gz bridge/launch helper package
-    gazebo = IncludeLaunchDescription(                # start Gazebo Harmonic by including its own launcher
-        PythonLaunchDescriptionSource(                # tell ROS 2 the included file is a Python launch file
-            os.path.join(ros_gz, "launch", "gz_sim.launch.py")),  # path to that stock launcher
-        launch_arguments={"gz_args": f"-r {world_path}"}.items())  # -r = run immediately, with our world
+    def on_phase(self, msg):                            # runs each time the loop reports its phase
+        vial, phase = msg.data.split(":")               # "V70:transit" -> ("V70", "transit")
+        key = (vial, phase)                             # the trigger key to look up in the script
+        if key in self.script and key not in self.fired:  # a scripted, not-yet-fired fault?
+            self.get_logger().warn(f"injecting fault at {key}")  # log it for the test record
+            self.script[key]()                          # ...fire the matching fault function
+            self.fired.add(key)                         # mark it fired so it happens only once
 
-    spawn = Node(                                      # a node that injects the arm into the running world
-        package="ros_gz_sim", executable="create",    # ros_gz's "create" tool spawns a model into Gazebo
-        arguments=["-file", urdf_path,                # the URDF file describing the model to spawn
-                   "-name", "mycobot_280",            # the name the spawned arm will have in the world
-                   "-x", SPAWN_XYZ[0],                # x position on the bench, in metres
-                   "-y", SPAWN_XYZ[1],                # y position on the bench, in metres
-                   "-z", SPAWN_XYZ[2]],               # z height (bench top), in metres
-        output="screen")                              # print this node's logs to the terminal
+    def trip_estop(self):                               # the emergency-stop fault
+        self.estop.publish(Bool(data=False))            # False = NOT clear -> gates must block motion
 
-    bridge = Node(                                     # the ros_gz bridge: copies gz topics into ROS 2
-        package="ros_gz_bridge", executable="parameter_bridge",  # the standard topic-bridge executable
-        arguments=[                                    # one entry per topic, with gz<->ros type mapping:
-            "/overhead/image_raw@sensor_msgs/msg/Image[gz.msgs.Image",      # overhead camera (sensor #1)
-            "/station/image_raw@sensor_msgs/msg/Image[gz.msgs.Image",       # station camera (sensor #2)
-            "/wrist/image_raw@sensor_msgs/msg/Image[gz.msgs.Image",         # wrist camera (sensor #3)
-            "/decapper/wrench@geometry_msgs/msg/WrenchStamped[gz.msgs.Wrench",  # cap force-torque (#5)
-            "/imu@sensor_msgs/msg/Imu[gz.msgs.IMU"],   # base IMU reading (sensor #12)
-        output="screen")                              # print the bridge's logs to the terminal
+    def stuck_cap(self):                                # the jammed-cap fault
+        w = WrenchStamped()                             # build an empty wrench message
+        w.wrench.torque.z = 5.0                         # an abnormally high un-cap torque (N*m)
+        self.wrench.publish(w)                          # publish so the grasp layer trips its limit
 
-    # mock the safety sensors: plain Bool topics no real device backs yet (sensors #10/#11)
-    estop = Node(package="hplc_sim", executable="mock_safety",  # a tiny node we wrote to fake safety state
-                 name="mock_safety", output="screen")           # name it and show its logs on screen
 
-    return LaunchDescription([gazebo, spawn, bridge, estop])  # hand ROS 2 the full list of things to start
+def main():                                             # standard ROS 2 entry point
+    rclpy.init()                                         # start the client library
+    rclpy.spin(FaultInjector())                         # run the injector until Ctrl-C
+    rclpy.shutdown()                                     # clean shutdown
+
+
+if __name__ == "__main__":                              # run directly
+    main()
 ```
-
-The world file (`hplc_cell.sdf`) is where the sensor plugins actually
-live — each camera, the force-torque sensor on the cap joint, and the
-base IMU are `<sensor>` blocks in that SDF, which is what makes the
-topics above exist. It is left out here to keep the launch file
-readable, but it is the other half of the twin: the launch file *runs*
-the world, the world *defines* the sensors that
-[`../sensor-suite.md`](../sensor-suite.md) lists.
 
 ## See also
 
