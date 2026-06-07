@@ -195,6 +195,70 @@ only if a specific 3-D algorithm you need lives only there.
   the simulator, and stays easy to debug. Defer YOLO to a later milestone
   when variety demands it.
 
+## Realistic scenario & use cases
+
+> **Why this matters for automation.** Perception is the cell's eyes:
+> it turns camera pixels into the **6-DoF poses** the arm reaches for and
+> the **yes/no checks** that stop the arm wasting a move on an empty nest.
+> Its automation value is letting the cell cope with a bench that is never
+> *exactly* where the CAD said — a nudged rack, a missing vial, a glare —
+> instead of demanding a perfectly fixtured world.
+
+**The scenario.** The overhead camera must locate the tray and the vials
+in a rack that an operator **nudged 5 mm and rotated 2°** while a blind
+was opened, **changing the lighting**. Two nests are empty, one vial is
+**under-filled** (a low meniscus), and another shows a **curved glass
+reflection** that could fool a naive detector. The arm must only reach
+real, full vials; the **wrist camera** must confirm each vial is actually
+in the gripper before transit; and all of this rests on the **camera-to-
+arm (hand-eye) calibration** being right — a 3 mm calibration error would
+silently bias every reach. Perception has to hold all of that together.
+
+The layer must therefore serve several **distinct use cases**:
+
+1. **Known-pose localization of tray and vials.** Give Layer 03 the
+   6-DoF pose of the tray and each nest, even after the rack shifts and
+   rotates.
+   - *How the solution handles it:* an **AprilTag** fiducial on the tray
+     yields a full 6-DoF pose via PnP, and the nests are fixed offsets
+     from it — so a 5 mm/2° move is absorbed automatically, no re-teaching.
+
+2. **Presence / absence and fill verification.** Spot the two empty nests
+   and the under-filled vial *before* the arm moves.
+   - *How:* **Open3D** fits vial cylinders and meniscus height in the
+     depth cloud — a missing cylinder means an empty nest, a low meniscus
+     means under-filled — and the result feeds the Layer 10 gate.
+
+3. **Grasp confirmation from the wrist camera.** Confirm a vial is truly
+   in the jaws before retreat and transit.
+   - *How:* the wrist camera checks for the vial's edge/tag at the gripper
+     line; this is the visual half of a two-witness check with the gripper
+     `JointState` from Layer 05.
+
+4. **Hand-eye / workcell calibration and its verification.** Establish and
+   *check* the camera↔arm↔bench transforms so a detected pose is correct
+   in the arm's frame.
+   - *How:* in only-code the transforms are known, but the **calibration
+     procedure** (drive the arm to several known tag poses, solve
+     `calibrateHandEye`) is rehearsed here so it transfers to hardware; a
+     deliberate 3 mm offset is injected to prove the depth cross-check
+     flags the disagreement rather than reaching blindly.
+
+5. **Lighting and reflection robustness.** Keep detection stable when the
+   light changes and glass glares.
+   - *How:* AprilTag is high-contrast and robust; the **two-witness**
+     depth cross-check rejects a spurious RGB hit; and when variety grows,
+     Layer 01's domain-randomized (Isaac Sim) frames harden the learned
+     **YOLO** path.
+
+**Where the pick flexes.** OpenCV + Open3D + AprilTag (best-practical)
+covers use cases 1–4 and the geometry side of 5 with no GPU and no
+training data — the v1 "known-pose first" rule. Only when vials, labels,
+or racks become genuinely varied or unlabelled (an extreme of use cases 2
+and 5) does the learned **Ultralytics YOLO** path earn its GPU and
+dataset, trained on the synthetic frames the digital twin already
+generates.
+
 ## Meta code
 
 The shape of the best-practical pipeline (OpenCV + AprilTag for the
