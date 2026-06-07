@@ -230,6 +230,67 @@ here would ever stop a motion.
   cheapest option leaves open and lands the gate exactly where
   orchestration consumes it — no glue, no duplication.
 
+## Realistic scenario & use cases
+
+> **Why this matters for automation.** This is the integration layer: it
+> fuses the Layer 09 signals into the **two-witness gates** that open or
+> block every motion in the per-vial loop. Its automation value is the
+> cell's *conscience* — it is what lets the arm act on what it senses
+> instead of blindly, and what makes "never place an unverified vial" a
+> mechanical guarantee rather than a hope.
+
+**The scenario.** At the moment of placing vial 78, four facts must each
+be confirmed by **two independent witnesses**: *is a vial actually
+grasped?* (gripper effort + wrist camera), *is it filled correctly?*
+(level + balance), *is it safe to move?* (light curtain + door), and *is
+the base level and still?* (IMU). Two traps lurk: the wrist camera says
+"vial present" while the gripper effort reads "jaws fully closed" (empty)
+— a **disagreement that must block the place** — and the light curtain
+**cleared 2 s ago but no fresh reading has arrived**, which must *not* be
+treated as safe. Getting either wrong drops a vial or moves into a hand.
+
+The layer must therefore serve several **distinct use cases**:
+
+1. **Two-witness grasp gate.** Allow transit/place only if the wrist
+   camera **and** the gripper agree a vial is held; block on disagreement.
+   - *How the solution handles it:* `message_filters` syncs the two
+     witnesses to the same instant and a **py_trees gate** returns
+     `Failure` unless both agree — the empty-jaws/"present" conflict stops
+     the place.
+
+2. **Fill-verification gate.** Confirm fill with level **and** balance
+   before recap and place.
+   - *How:* the two readings are time-synced and the gate passes only when
+     **both sit in band and agree**, so a single drifting sensor can't
+     wave a bad vial through.
+
+3. **Fail-safe safety gate.** Block all motion unless light curtain **and**
+   door read clear — *and* the readings are fresh.
+   - *How:* latched booleans plus a **freshness deadline**; a stale or
+     missing safety reading is treated as **unsafe**, closing the
+     2-seconds-old-curtain trap.
+
+4. **Continuous "level and still" estimate.** Fuse IMU and odometry into
+   one trustworthy estimate that the base is stable before fine motions.
+   - *How:* this is the cell's one genuinely continuous fact, so it uses
+     the **`robot_localization` EKF** (best-in-class) rather than a boolean
+     gate.
+
+5. **Stale-witness rejection / time alignment.** Never pair a fresh
+   witness with a stale one when forming a gate.
+   - *How:* the `ApproximateTimeSynchronizer` slop window means
+     out-of-window pairs produce **no decision** (the gate holds) instead
+     of a false pass — the gap the cheapest latest-value cache leaves open.
+
+**Where the pick flexes.** `message_filters` + py_trees gates
+(best-practical) handle the four boolean two-witness gates that dominate
+the cell (use cases 1–3, 5) and drop straight into the Layer 07 tree. The
+**EKF** is reserved for the single continuous estimate of use case 4; the
+plain latest-value cache stays the cheapest way to spike a gate early,
+before time-correctness matters. Together these close the loop: Layers
+03–09 *act and sense*, and this layer decides, vial by vial, whether each
+action is allowed to proceed.
+
 ## Meta code
 
 The shape of one best-practical two-witness gate, before any
