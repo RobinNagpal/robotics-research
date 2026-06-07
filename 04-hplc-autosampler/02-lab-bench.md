@@ -154,6 +154,11 @@ dilution stages — to land in the method's working range. Each transfer
 uses Class A volumetric pipettes or calibrated micropipettes, and each
 one is a chance to introduce error.
 
+In plain terms: this is the test that catches a batch of vitamin D
+tablets accidentally pressed at triple strength, or a painkiller that is
+quietly under-dosed — but it only catches them if every dilution here is
+exact, which is precisely why a tired hand at the bench is a risk.
+
 > **Automation: Human-assisted, trending Full-auto.** The **fixed-volume
 > liquid transfers** — aliquot this, add that much diluent, mix — are
 > exactly what a liquid-handling arm does best and most repeatably. The
@@ -347,6 +352,12 @@ and elute the trapped analytes with solvent, or shake-and-separate in a
 **liquid-liquid extraction**. Some of this is already semi-automated with
 SPE manifolds and dedicated extractor robots.
 
+This is the step behind a headline like *"lead found in school drinking
+water"* or *"pesticide residues on imported grapes"*: the contaminant is
+present in vanishingly small amounts, so it first has to be pulled out of
+litres of water or grams of soil and concentrated before any instrument
+can see it. No extraction, no headline — and no warning.
+
 > **Automation: Human-assisted.** Cartridge SPE on a fixed manifold is
 > partly automatable and a good arm-feeding job; judging a **phase
 > separation** in liquid-liquid extraction (where's the interface?) is a
@@ -477,6 +488,12 @@ To prove a method is stability-indicating she **stresses** the drug:
 acid, base, hydrogen peroxide, heat, and UV light, each for a controlled
 time, then **neutralizes** and dilutes to concentration. Conditions
 vary every time; the timing matters.
+
+This is why your medicine carries an expiry date and a *"store below
+25 °C, keep out of direct sunlight"* line. Sarah deliberately ages and
+abuses the drug — bakes it, soaks it in acid, leaves it under a lamp — to
+learn how it breaks down, so the label can warn you before it happens in
+your bathroom cabinet.
 
 > **Automation: Human-assisted.** Setting the stress conditions is
 > judgment, but the **timed neutralization and dilution** — and getting
