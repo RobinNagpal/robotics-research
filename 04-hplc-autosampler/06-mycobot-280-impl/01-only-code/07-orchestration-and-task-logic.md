@@ -512,125 +512,130 @@ if __name__ == "__main__":                              # demo: tick the guarded
     py_trees.trees.BehaviourTree(guarded_loop(loop, bb)).tick()  # one tick: the guard gates the loop
 ```
 
-## Crash/power-blip recovery with durable state
+## Drive the per-vial loop deterministically
 
-A lab assistant called away mid-batch — a phone call, a shift change —
-comes back and picks up exactly where they left off: they check the tray
-to see what's already done and continue from the next empty slot, without
-redoing finished work or accidentally double-filling one. This use case is
-the cell surviving the equivalent of being yanked away mid-run: after a
-crash or power blip, it resumes at the right vial rather than starting
-over.
+The backbone of a lab assistant's day is a fixed routine repeated for
+every sample: measure, dilute, cap, label, place — the same ordered steps,
+vial after vial, without skipping or reordering. This use case is the
+cell's equivalent: driving the same fixed sequence of steps for each vial
+— perceive, pick, decap, dispense, recap, scan, verify, place — in order,
+for every row of the worklist.
 
-The bigger experiment is the unattended overnight HPLC batch, which can
-run for many hours with no one watching. Over that span a power blip or a
-controller reboot is a real possibility, and the value of automating prep
-evaporates if a hiccup silently corrupts the tray. Persisting progress and
-reconciling it against the real tray on restart is what lets the lab trust
-a run no one was watching.
+The bigger experiment is the HPLC batch, which is nothing more than this
+per-vial routine run 60–100 times to build the tray. Every other layer is
+a tool the routine calls at the right moment; orchestration is what
+actually sequences them, vial after vial, turning ten capable layers into
+one repeatable loop. Getting that sequence right — every step, every vial,
+same order — is the core of the cell doing its job.
 
-For the assistant, an interruption mid-batch is occasional but normal — a
-few times a week, more around shift changes. The cell faces the software
-equivalent rarely, but because an unattended run can't tolerate even one
-silent corruption, the recovery is built to be correct every time rather
-than treated as a once-in-a-while concern.
+For the assistant, this fixed routine is the single most repeated thing
+they do — it *is* the job, run on every vial, hundreds of times a day. The
+cell runs the per-vial sequence once for every worklist row, so across an
+overnight batch it executes thousands of times. It is, by definition, the
+most frequent flow in the whole system.
 
-- **The moment:** a power blip reboots the controller after vial 84; on
-  restart the cell must resume at vial 85, not redo 1–84.
-- **How, in depth:** worklist progress is **persisted** (Layer 08); on boot
-  the cell reconciles the *actual* tray and gripper state via perception
-  before resuming, so it trusts reality over its last intention.
-- **Edge case it survives:** a crash *during* a place — reconciliation sees
-  the vial already in the slot and advances, avoiding a double-place into
-  an occupied nest.
-- **Walkthrough:** (1) on boot read the persisted worklist progress; (2)
-  perceive the actual tray and gripper; (3) reconcile intent against
-  reality; (4) resume at the correct next vial without double-placing.
-- **In the scene:** the lab wakes to find the cell rebooted overnight after
-  a power blip — yet the tray is correct. On restart it read its own saved
-  place, looked at the real tray to confirm, and carried on from vial 85
-  rather than starting the night over.
-- **Why it's done this way:** unattended means no one is there to restart
-  it after a power blip; without durable state and reconciliation a hiccup
-  would silently corrupt the tray, so resuming from verified reality is
-  what lets the lab trust an unwatched run.
-- **In the full loop:** this spans whole runs — it ties the persisted
-  state from Layer 08 to the live tray via Layer 04, so the loop can be
-  interrupted at any vial and still finish the tray correctly.
-- **Value:** an unattended run survives an infrastructure hiccup instead of
-  silently corrupting the tray.
+- **The moment:** a fresh tray and worklist arrive; the cell must work
+  each vial through the same ordered steps until the tray is built.
+- **How, in depth:** a behaviour tree defines the per-vial Sequence
+  (perceive → pick → decap → dispense → recap → scan → verify → place) and
+  an outer loop iterates it over every worklist row.
+- **Edge case it survives:** a step that fails mid-sequence — the Sequence
+  stops at that vial (handed to quarantine/retry) rather than running
+  later steps on a vial that isn't ready.
+- **Walkthrough:** (1) read the next worklist row; (2) tick the per-vial
+  Sequence top to bottom; (3) each step only runs if the prior one
+  succeeded; (4) advance to the next row when the vial is placed.
+- **In the scene:** the simulated arm settles into a rhythm — the same
+  dance for each vial, perceive-pick-decap-dispense-scan-place — repeating
+  steadily down the tray.
+- **Why it's done this way:** the order is fixed and skipping or
+  reordering a step corrupts the sample, so the loop enforces the exact
+  sequence every time, identically, without the lapses a tired human
+  risks.
+- **In the full loop:** this *is* the loop — it calls every other layer in
+  turn, so it's the spine the whole cell hangs on.
+- **Value:** every vial gets the exact same correct sequence of steps,
+  every time, which is the whole point of automating the routine.
 
 ### Meta code
 
-This meta has two halves: writing progress safely as the run proceeds, and
-reconciling that progress against reality on restart. The writing half
-persists, after every vial, a small snapshot of what has been done — which
-slots are filled and which worklist row is next.
+This meta expresses the per-vial routine as a Sequence in a behaviour tree
+— a node whose children run in order, each only if the previous succeeded,
+and which fails as soon as any child fails. The children are the steps of
+the routine: perceive the vial, pick it, decap, dispense, recap, scan,
+verify identity, place.
 
-The snapshot is written crash-safely: to a temporary file first, then
-renamed over the real one in a single atomic operation. That way a crash
-mid-write can never leave a half-written, corrupt progress file — the
-snapshot is either the old complete one or the new complete one, never a
-torn mix.
+Encoding the routine as an ordered Sequence is what makes the order
+guaranteed: there is no path through the tree that runs "place" before
+"verify" or skips "decap," because each step is gated on the success of
+the one before it. The fixed order a person has to remember is built into
+the structure.
 
-On boot, the recovery half does not blindly trust the snapshot — it trusts
-reality more. It reads what the snapshot *claims* was placed, then has
-perception look at the actual tray (which slots are really filled) and the
-gripper (is it mid-place, still holding a vial?). Where the snapshot and
-reality disagree — a slot logged as placed but actually empty — reality
-wins and that vial is redone.
+An outer loop node iterates this per-vial Sequence over every row of the
+worklist, feeding the current row's slot, sample, and method into the
+steps. So the same logic is applied, independently and identically, to
+each of the tray's vials.
 
-Reconciled, the pipeline resumes at the first worklist row that isn't
-actually complete, so nothing is skipped and nothing is double-placed into
-an occupied nest. The resume in pseudocode:
+Because each step returns success or failure, a problem at any point stops
+that vial's Sequence cleanly — where the quarantine and safe-stop branches
+take over — rather than blundering ahead; the deterministic order and the
+failure handling are the same mechanism. The loop in pseudocode:
 
 ```text
-# after every vial: atomically persist {placed:[slots], next:row} to disk   (Layer 08)
-# on boot:
-#     read the persisted progress (or start fresh if none)
-#     perceive the ACTUAL tray (filled slots) + gripper (holding a vial?)
-#     reconcile intent vs reality:
-#         "placed" + perception confirms filled -> done, skip
-#         "placed" but perception sees empty    -> redo that vial
-#         gripper holding a vial                 -> finish placing it first
-#     resume the worklist at the first not-yet-done row                       (never double-place)
+# load the worklist (the ordered list of vials to build)
+# for each worklist row (slot, sample_id, method):
+#     Sequence "process one vial" (each step only runs if the prior succeeded):
+#         perceive  -> locate the vial in its nest            (Layer 04)
+#         pick      -> grasp it safely                        (Layer 05)
+#         decap     -> open it (if capped)                    (Layer 05)
+#         dispense  -> add diluent / internal standard
+#         recap     -> close it
+#         scan      -> read its barcode                       (Layer 06)
+#         verify    -> confirm ID matches the worklist        (Layer 06/07)
+#         place     -> seat it in its tray slot               (Layer 03)
+#     on any step's failure -> hand to quarantine/retry; else advance
 ```
 
 ### Real code
 
-A crash-safe progress store and a boot-time reconcile that trusts reality
-over intention. **Illustrative teaching code** — re-verify before use;
-every line is commented.
+A **py_trees** per-vial Sequence iterated over the worklist. **Illustrative
+teaching code** — re-verify before use; every line is commented.
 
 ```python
-import json                                              # the durable progress file format
-import os                                                # for the atomic replace + existence check
-
-PROGRESS = "progress.json"                              # {"placed": [slots], "next": row_index}
+import py_trees                                         # the behavior-tree library (pure Python)
 
 
-def save_progress(placed, next_row):                    # called after every vial (durable state)
-    tmp = PROGRESS + ".tmp"                              # write to a temp file first...
-    with open(tmp, "w") as fh:                           # ...so a crash never leaves a half file
-        json.dump({"placed": sorted(placed), "next": next_row}, fh)  # the progress snapshot
-    os.replace(tmp, PROGRESS)                            # atomic rename = crash-safe commit
+class Step(py_trees.behaviour.Behaviour):               # one routine step wrapping a layer call
+    def __init__(self, name, fn):                       # name shown in the tree; fn() -> bool
+        super().__init__(name); self.fn = fn            # store the action to run
+    def update(self):                                   # ticked until it returns a terminal status
+        ok = self.fn()                                  # call the layer (perceive / pick / ...)
+        return (py_trees.common.Status.SUCCESS if ok    # success advances the Sequence...
+                else py_trees.common.Status.FAILURE)    # ...failure stops this vial's routine
 
 
-def recover(worklist, tray_filled, gripper_has_vial):   # reconcile saved state with reality on boot
-    if not os.path.exists(PROGRESS):                     # first run, nothing to recover?
-        return 0, set()                                  # start at row 0 with nothing placed
-    with open(PROGRESS) as fh:                           # load what we believed before the crash
-        saved = json.load(fh)                            # {"placed": [...], "next": i}
-    placed = set(saved["placed"])                        # slots we thought were filled
-    for slot in list(placed):                            # trust reality over intention...
-        if slot not in tray_filled:                      # logged placed, but the slot is actually empty
-            placed.discard(slot)                         # -> it wasn't really placed; redo it
-    if gripper_has_vial:                                 # crashed mid-place, vial still in hand?
-        return saved["next"], placed                     # resume by finishing that very vial
-    for i, row in enumerate(worklist):                   # else scan the worklist in order...
-        if row["slot"] not in placed:                    # first slot not confirmed placed
-            return i, placed                              # -> resume here, no double-placing
-    return len(worklist), placed                         # everything done: nothing left to do
+def per_vial_sequence(row, L):                          # build the ordered routine for one vial
+    seq = py_trees.composites.Sequence(                 # ordered, all-children-must-pass...
+        name=f"vial {row['slot']}", memory=True)        # ...remembering progress between ticks
+    seq.add_children([                                  # the fixed step order (each gated on the last):
+        Step("perceive", lambda: L.perceive(row)),      # locate the vial            (Layer 04)
+        Step("pick",     lambda: L.pick(row)),          # grasp it safely            (Layer 05)
+        Step("decap",    lambda: L.decap(row)),         # open it if capped          (Layer 05)
+        Step("dispense", lambda: L.dispense(row)),      # add diluent / standard
+        Step("recap",    lambda: L.recap(row)),         # close it
+        Step("scan",     lambda: L.scan(row)),          # read the barcode           (Layer 06)
+        Step("verify",   lambda: L.verify(row)),        # ID matches the worklist?   (Layer 06)
+        Step("place",    lambda: L.place(row)),         # seat it in its tray slot   (Layer 03)
+    ])
+    return seq                                          # the per-vial subtree to tick
+
+
+def run_worklist(worklist, L):                          # drive the whole tray, vial by vial
+    for row in worklist:                                # each worklist row, in order
+        seq = per_vial_sequence(row, L)                 # build this vial's ordered routine
+        seq.tick_once()                                 # tick to completion (a real run loops ticks)
+        if seq.status != py_trees.common.Status.SUCCESS:  # the vial didn't complete cleanly?
+            L.quarantine(row)                           # hand it to the quarantine branch
 ```
 
 ## See also
