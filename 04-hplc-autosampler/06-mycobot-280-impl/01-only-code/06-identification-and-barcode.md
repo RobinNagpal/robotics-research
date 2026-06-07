@@ -238,6 +238,26 @@ identification — the cell's chain-of-custody check.
 
 ## Decode a label on a curved vial
 
+A lab assistant glances at the label on each vial — often turning it in
+their fingers to bring the barcode or printed ID into view around the
+curved glass — to confirm which sample it is before placing it. This use
+case is the cell doing the same: reading the barcode wrapped around a 2 mL
+vial, rotating the vial in the gripper when one view isn't enough to
+capture the whole code.
+
+The bigger experiment is the HPLC batch, where every vial must be
+traceable to a specific sample and end up in the slot its worklist row
+names. The label is the link between the physical vial and its identity in
+the records; if the cell can't read it reliably, it can't prove the right
+sample went into the right slot. Reading curved labels is therefore a
+basic competence, not an edge case.
+
+The assistant reads a label on effectively every vial they handle — dozens
+to a few hundred times a day — and curvature is the normal condition,
+since lab labels wrap around small cylinders. The cell reads the label on
+every vial at the scan step, using its own ability to rotate the vial
+rather than relying on a special wrap-around scanner.
+
 - **The moment:** the barcode is wrapped around a 2 mL cylinder, so only a
   narrow strip faces the camera head-on.
 - **How, in depth:** the OpenCV barcode/QR module decodes the flat strip;
@@ -265,7 +285,27 @@ identification — the cell's chain-of-custody check.
 
 ### Meta code
 
-The shape of the rotate-and-read decoder, before any library detail:
+This meta combines reading with motion, because a barcode on a cylinder
+can't always be captured in one shot. The pipeline subscribes to the wrist
+camera at the scan pose and, on each frame, tries to decode the label —
+first as a 1-D barcode, then as a 2-D QR code, since either symbology might
+be on the vial.
+
+When a frame decodes successfully, the job is done and the ID is returned.
+The interesting part is what happens when it doesn't: rather than declaring
+failure, the pipeline uses the cell's own dexterity to present a different
+face of the vial.
+
+It commands the gripper or wrist to rotate the vial one small step, waits
+for the motion and a fresh frame, and tries again. Because each rotation
+brings a new strip of the curved label into the camera's flat view, a code
+that no single frame could see whole is gradually brought into readable
+position.
+
+The loop is bounded by a maximum number of rotations, so a vial whose
+label genuinely can't be read this way doesn't spin forever — it returns
+empty-handed and hands off to the no-read recovery use case. The decoder
+in pseudocode:
 
 ```text
 # at the scan pose, for up to MAX_TURNS presented faces:
@@ -323,6 +363,26 @@ class CurvedDecoder(Node):                              # reads a barcode wrappe
 
 ## No-read recovery
 
+Every so often a lab assistant meets a label they can't read at a glance —
+smudged, glared, or peeling. They don't give up or guess; they reposition
+the vial, look again, and only if it's genuinely illegible do they set it
+aside for follow-up. This use case gives the cell the same patience: it
+retries a failed read with a second decoder and a fresh presentation
+before, as a last resort, flagging the vial for a human.
+
+The bigger experiment is the HPLC batch, which must keep flowing
+overnight. A single hard-to-read label is not a reason to halt the whole
+tray, but it is also not something to guess at — a guessed ID is worse
+than no ID in a traceable record. The tiered retry resolves the common
+transient failures automatically and reserves human attention only for the
+truly unreadable.
+
+For the assistant a problem label turns up occasionally — a handful of
+times a day across many vials. The cell sees the same rate, so the
+recovery ladder (second decoder, re-present, then flag) is a routine part
+of the scan step rather than an exceptional path, keeping throughput up
+while never inventing an identity.
+
 - **The moment:** a label is smudged, glared, or half-hidden by the jaw and
   the first decode returns nothing.
 - **How, in depth:** the pipeline leads with OpenCV, falls back to **ZBar**,
@@ -350,7 +410,25 @@ class CurvedDecoder(Node):                              # reads a barcode wrappe
 
 ### Meta code
 
-The shape of the tiered recovery, before any library detail:
+This meta is a ladder of increasingly effortful attempts, designed so that
+cheap fixes are tried first and a human is bothered last. The first rung is
+the primary decoder (OpenCV), which is already part of the vision stack and
+handles the clean, common cases.
+
+If that fails, the second rung is a different decoder library (ZBar) on the
+same frame. Because the two decoders have different strengths — one may
+read a marginal 1-D barcode the other misses — trying both for free catches
+a good fraction of the failures the first alone would not.
+
+If both decoders fail on the current view, the third rung re-presents the
+vial: moving it back to the dedicated scan pose and capturing a fresh
+frame, which clears up transient problems like a bad angle or a momentary
+glare. This re-presentation is repeated up to a fixed budget of attempts.
+
+Only when the whole ladder is exhausted does the pipeline flag the vial for
+human review, never guessing an ID. The crucial property is that a guessed
+identity — worse than none in a traceable record — is impossible by
+construction. The recovery in pseudocode:
 
 ```text
 # decode with OpenCV (primary)            -> success: return ID
@@ -397,6 +475,26 @@ def read_id(grab_frame, re_present):                   # grab_frame() -> image; 
 
 ## Identity verification against the worklist — mismatch halt
 
+The most important check a lab assistant makes before committing a vial to
+its slot is the simplest: does this vial's ID match what the worklist
+expects for this position? It is the guard against the worst lab error — a
+sample in the wrong place, producing a confident but wrong result. This
+use case is the cell making that comparison mechanically, and halting the
+vial if the decoded ID doesn't match.
+
+The bigger experiment is the HPLC batch, where the instrument injects
+whatever physically sits in each slot, in order, with no way of knowing if
+a vial is misplaced. The entire chain of custody depends on the right
+sample being in the right slot; verifying identity against the worklist
+*before* the place is the last line of defence that makes that guarantee
+mechanical rather than hopeful.
+
+The assistant performs this match on every vial — hundreds of times a day
+— and an actual mismatch is rare, but its cost is so high (a corrupted
+result, a regulatory investigation) that the check is never skipped. The
+cell does the same: it compares every scanned ID to the worklist on every
+vial, quarantining and auditing the rare mismatch the moment it appears.
+
 - **The moment:** vial 53 decodes to an ID the worklist doesn't expect in
   that slot — a sample mix-up.
 - **How, in depth:** orchestration compares the decoded string to the
@@ -425,7 +523,26 @@ def read_id(grab_frame, re_present):                   # grab_frame() -> image; 
 
 ### Meta code
 
-The shape of the identity gate, before any library detail:
+This meta is a deliberately simple comparison sitting at a critical
+junction. On startup the pipeline loads the worklist — the authoritative
+mapping from each tray slot to the sample ID that belongs there — into a
+lookup table, so the expected identity for any slot is instantly
+available.
+
+When a vial is scanned at a given slot, the pipeline takes the decoded ID
+and the slot, looks up what the worklist expects for that slot, and
+compares the two strings. There is no fuzzy matching: the identity either
+matches the plan exactly or it does not.
+
+On a match, the pipeline issues a PLACE verdict and the per-vial cycle
+proceeds to seat the vial. On a mismatch — the wrong sample for this slot —
+it does two things at once: it issues a QUARANTINE verdict so orchestration
+sets the vial aside rather than placing it, and it writes the discrepancy
+(slot, expected, decoded) to the tamper-evident audit trail.
+
+That audit write is what makes the catch defensible later: there is a
+permanent, unalterable record that a mismatch was detected and the vial was
+not injected. The gate in pseudocode:
 
 ```text
 # load the worklist: slot -> expected sample ID
