@@ -280,12 +280,12 @@ use case 5 — is when **Contact-GraspNet** (best-in-class) or a **VLA
 policy** earns its GPU and demonstrations, which is the upgrade path the
 next section lays out.
 
-### Deep dive: the three highest-value use cases
+## Deep dive: the three highest-value use cases
 
 The five above all matter; these three carry the most weight for grasping
 & manipulation — the layer that physically touches the glass.
 
-#### Force-safe pinch of a glass vial
+### Force-safe pinch of a glass vial
 
 - **The moment:** the gripper closes on a smooth 2 mL glass vial — too soft
   and it slips, too hard and it cracks.
@@ -308,7 +308,7 @@ The five above all matter; these three carry the most weight for grasping
 - **Value:** the most failure-prone touch in the loop is made repeatable,
   removing the drop-or-crack risk a human babysits.
 
-#### Slip detection and re-grasp
+### Slip detection and re-grasp
 
 - **The moment:** vial 61 shifts on first contact and the pick fails; the
   arm must notice and retry, not carry nothing to the dispenser.
@@ -328,7 +328,7 @@ The five above all matter; these three carry the most weight for grasping
 - **Value:** a failed pick becomes a retry, not a dropped sample and a
   halted run.
 
-#### Anti-rotation hold for decap/recap
+### Anti-rotation hold for decap/recap
 
 - **The moment:** the decapper applies torque to unscrew a cap; if the vial
   spins in the jaws nothing comes off and the cap may strip.

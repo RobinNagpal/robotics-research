@@ -287,12 +287,12 @@ constrained transfer (use case 5) is the trigger for **Drake**. The v1
 cell needs none of those escalations — MoveIt 2 on a sparse scene is the
 right tool.
 
-### Deep dive: the three highest-value use cases
+## Deep dive: the three highest-value use cases
 
 The five above all matter; these three carry the most weight for arm
 motion planning.
 
-#### Collision-free pick/place across a crowded bench
+### Collision-free pick/place across a crowded bench
 
 - **The moment:** an operator slid a tall waste bin onto the bench
   overnight; the planner must still move vial A7 to slot 12 without
@@ -315,7 +315,7 @@ motion planning.
 - **Value:** the arm adapts to a bench that changed since yesterday instead
   of demanding a frozen world.
 
-#### Cartesian straight-line approach and retreat
+### Cartesian straight-line approach and retreat
 
 - **The moment:** the gripper must drop vertically into a 16 mm-clearance
   nest and lift straight out; any lateral swing knocks the neighbours.
@@ -335,7 +335,7 @@ motion planning.
 - **Value:** tight nests are entered and exited without disturbing 95 other
   vials.
 
-#### Replanning on a perception correction
+### Replanning on a perception correction
 
 - **The moment:** perception reports vial A7 is actually 8 mm off the nest
   centre after the rack shifted; the in-flight motion must adapt.

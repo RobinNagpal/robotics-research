@@ -259,12 +259,12 @@ and 5) does the learned **Ultralytics YOLO** path earn its GPU and
 dataset, trained on the synthetic frames the digital twin already
 generates.
 
-### Deep dive: the three highest-value use cases
+## Deep dive: the three highest-value use cases
 
 The five above all matter; these three carry the most weight for
 perception & vision.
 
-#### Known-pose localization of tray and vials
+### Known-pose localization of tray and vials
 
 - **The moment:** an operator nudged the rack 5 mm and rotated it 2°; the
   arm must still reach each nest centre exactly.
@@ -284,7 +284,7 @@ perception & vision.
 - **Value:** the cell tolerates a hand-placed rack instead of demanding
   micron-perfect fixturing.
 
-#### Presence/absence and fill verification
+### Presence/absence and fill verification
 
 - **The moment:** two nests are empty and one vial is under-filled; the arm
   must skip the empties and flag the low one *before* wasting a move.
@@ -304,7 +304,7 @@ perception & vision.
 - **Value:** the cell never picks an empty nest or loads an under-filled
   vial, catching prep errors a human would miss at 2 a.m.
 
-#### Hand-eye calibration and its verification
+### Hand-eye calibration and its verification
 
 - **The moment:** if the camera-to-arm transform is off by 3 mm, every
   reach inherits the error; the cell must establish *and check* the

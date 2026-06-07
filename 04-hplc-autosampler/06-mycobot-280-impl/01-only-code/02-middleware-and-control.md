@@ -306,12 +306,12 @@ nothing above it" promise holds. The silent dispenser is the stand-in for
 real **micro-ROS** station firmware, mocked now so the contract is proven
 before any MCU exists.
 
-### Deep dive: the three highest-value use cases
+## Deep dive: the three highest-value use cases
 
 The five above all matter; these three carry the most weight for
 middleware & control.
 
-#### One-plugin sim-to-hardware transfer
+### One-plugin sim-to-hardware transfer
 
 - **The moment:** months of only-code work must run on the real myCobot
   without a rewrite; the day the arm arrives, the team swaps one plugin
@@ -336,7 +336,7 @@ middleware & control.
 - **Value:** the only-code investment becomes the production control layer,
   not a throwaway prototype.
 
-#### Device-as-service with timeouts
+### Device-as-service with timeouts
 
 - **The moment:** orchestration calls `weigh` and reads `/balance/mass`;
   mid-run the dispenser controller goes silent for 2 s and the loop must
@@ -359,7 +359,7 @@ middleware & control.
 - **Value:** one flaky device degrades to a handled exception, never a
   deadlocked cell.
 
-#### Graceful degradation on a lost node or e-stop
+### Graceful degradation on a lost node or e-stop
 
 - **The moment:** a station node crashes or `/estop` fires mid-trajectory;
   the arm must hold/stop safely and the graph must recover when the node

@@ -241,12 +241,12 @@ contacts). The layering is deliberate: one free, CPU-friendly twin for
 the system, two specialists swapped in only where their axis is the
 bottleneck.
 
-### Deep dive: the three highest-value use cases
+## Deep dive: the three highest-value use cases
 
 The five above all matter; these three carry the most weight for the
 digital twin, so each is worth unpacking.
 
-#### Reach & collision validation
+### Reach & collision validation
 
 - **The moment:** before a myCobot is ordered, the twin is asked to touch
   all 96 nests, the tray, the decapper, and the dispenser for *this*
@@ -273,7 +273,7 @@ digital twin, so each is worth unpacking.
 - **Value:** a bad geometry costs a relaunch, not a bent arm and a
   re-ordered fixture.
 
-#### Synthetic perception data
+### Synthetic perception data
 
 - **The moment:** Layer 04 needs labelled images but no real photos exist
   yet; the twin renders thousands of rack frames under varied light, fill
@@ -300,7 +300,7 @@ digital twin, so each is worth unpacking.
 - **Value:** a dataset worth weeks of staged photography and hand-labelling
   appears overnight, covering corners real data rarely catches.
 
-#### Fault-injection rehearsal
+### Fault-injection rehearsal
 
 - **The moment:** the team must know the loop survives a dropped vial, a
   missing vial, a stuck cap, and an e-stop mid-motion — none of which a

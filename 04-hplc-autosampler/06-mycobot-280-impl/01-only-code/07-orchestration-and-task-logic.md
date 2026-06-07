@@ -267,12 +267,12 @@ of iterating* the tree against mocks rather than runtime performance,
 **py_trees** is the lighter pure-Python swap; the tree's logic is the same
 either way.
 
-### Deep dive: the three highest-value use cases
+## Deep dive: the three highest-value use cases
 
 The five above all matter; these three carry the most weight for
 orchestration — the cell's conscience for the overnight run.
 
-#### React to a verification failure (quarantine)
+### React to a verification failure (quarantine)
 
 - **The moment:** vial 53's barcode mismatches; the loop must isolate it
   and keep going, not crash the run or place a wrong vial.
@@ -292,7 +292,7 @@ orchestration — the cell's conscience for the overnight run.
   around the one bad apple.
 - **Value:** one bad vial costs one slot, not the night.
 
-#### Safe-stop and resume
+### Safe-stop and resume
 
 - **The moment:** an e-stop fires or a door opens during vial 70's
   transfer; the arm must halt safely and resume cleanly once cleared.
@@ -312,7 +312,7 @@ orchestration — the cell's conscience for the overnight run.
 - **Value:** a safety event is a pause, not a ruined tray and a manual
   reset.
 
-#### Crash/power-blip recovery with durable state
+### Crash/power-blip recovery with durable state
 
 - **The moment:** a power blip reboots the controller after vial 84; on
   restart the cell must resume at vial 85, not redo 1–84.

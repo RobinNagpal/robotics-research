@@ -310,12 +310,12 @@ over PostgreSQL/asyncua** — is the destination for use cases 2–4 once the
 lab is validating for real; the cheapest CSV/JSONL stack is the scaffold
 you start on.
 
-### Deep dive: the three highest-value use cases
+## Deep dive: the three highest-value use cases
 
 The five above all matter; these three carry the most weight for the
 software, worklist & compliance layer — what makes the cell *trustable*.
 
-#### Tamper-evident audit trail (ALCOA+)
+### Tamper-evident audit trail (ALCOA+)
 
 - **The moment:** an auditor needs proof that the record of last night's
   run wasn't altered after the fact.
@@ -335,7 +335,7 @@ software, worklist & compliance layer — what makes the cell *trustable*.
 - **Value:** the cell's actions become a defensible, *Original and Accurate*
   record — the precondition for a regulated lab using it at all.
 
-#### Electronic review and signature
+### Electronic review and signature
 
 - **The moment:** before results are released, a reviewer must approve them
   and disposition the quarantined and flagged vials under their identity.
@@ -355,7 +355,7 @@ software, worklist & compliance layer — what makes the cell *trustable*.
 - **Value:** accountability is built into the data, not bolted on in a
   spreadsheet afterwards.
 
-#### Instrument hand-off over a standard interface
+### Instrument hand-off over a standard interface
 
 - **The moment:** the verified load order must reach the HPLC autosampler —
   today against a mock, tomorrow against the real instrument.

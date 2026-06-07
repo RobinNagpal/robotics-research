@@ -294,12 +294,12 @@ the *real* acquisition path for use case 5 — stubbed here, swapped in at
 hardware — while the pure-mock route stays the cheapest way to rehearse
 the exact faults of use case 3.
 
-### Deep dive: the three highest-value use cases
+## Deep dive: the three highest-value use cases
 
 The five above all matter; these three carry the most weight for sensing
 & signal acquisition — the cell's nervous system.
 
-#### Scriptable fault rehearsal
+### Scriptable fault rehearsal
 
 - **The moment:** the gates in Layer 10 must be tested against a gradual
   under-fill, a torque spike, a curtain blip, and creeping gripper effort —
@@ -320,7 +320,7 @@ The five above all matter; these three carry the most weight for sensing
 - **Value:** every gate is proven against the exact signal that should trip
   it, before any sensor is bought.
 
-#### Cross-sensor time synchronization
+### Cross-sensor time synchronization
 
 - **The moment:** Layer 10 must line up the decapper torque spike with the
   gripper-effort creep at the *same instant* to decide they're one event.
@@ -340,7 +340,7 @@ The five above all matter; these three carry the most weight for sensing
 - **Value:** fused decisions rest on a coherent snapshot of the cell, not a
   smear across time.
 
-#### Hardware-faithful contracts
+### Hardware-faithful contracts
 
 - **The moment:** the day real sensors arrive, nothing above this layer
   should change.

@@ -291,12 +291,12 @@ before time-correctness matters. Together these close the loop: Layers
 03–09 *act and sense*, and this layer decides, vial by vial, whether each
 action is allowed to proceed.
 
-### Deep dive: the three highest-value use cases
+## Deep dive: the three highest-value use cases
 
 The five above all matter; these three carry the most weight for sensor
 fusion & gating — the cell's conscience, vial by vial.
 
-#### Two-witness grasp gate
+### Two-witness grasp gate
 
 - **The moment:** before transit, the cell must be *sure* a vial is held;
   the wrist camera says "present" but the gripper effort says "jaws fully
@@ -317,7 +317,7 @@ fusion & gating — the cell's conscience, vial by vial.
 - **Value:** "never carry nothing, never drop in transit" becomes a
   mechanical guarantee, not an assumption.
 
-#### Fail-safe safety gate
+### Fail-safe safety gate
 
 - **The moment:** the arm may only move if the light curtain *and* the door
   read clear — but the curtain cleared 2 s ago and no fresh reading has
@@ -337,7 +337,7 @@ fusion & gating — the cell's conscience, vial by vial.
 - **Value:** the gate fails closed, so a sensor dropout halts the arm
   instead of letting it move near a hand.
 
-#### Stale-witness rejection
+### Stale-witness rejection
 
 - **The moment:** a gate is about to pass a *fresh* gripper reading against
   a *stale* camera frame from before the last move.

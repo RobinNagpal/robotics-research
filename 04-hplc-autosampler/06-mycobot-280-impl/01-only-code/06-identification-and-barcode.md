@@ -231,12 +231,12 @@ print quality and throughput — heavily degraded or warped labels at speed,
 an extreme of use case 3 — does the paid **Dynamsoft** reader become worth
 its licence.
 
-### Deep dive: the three highest-value use cases
+## Deep dive: the three highest-value use cases
 
 The five above all matter; these three carry the most weight for
 identification — the cell's chain-of-custody check.
 
-#### Decode a label on a curved vial
+### Decode a label on a curved vial
 
 - **The moment:** the barcode is wrapped around a 2 mL cylinder, so only a
   narrow strip faces the camera head-on.
@@ -256,7 +256,7 @@ identification — the cell's chain-of-custody check.
 - **Value:** curvature, the most common lab-label problem, is handled by
   motion the cell already has, not a special scanner.
 
-#### No-read recovery
+### No-read recovery
 
 - **The moment:** a label is smudged, glared, or half-hidden by the jaw and
   the first decode returns nothing.
@@ -276,7 +276,7 @@ identification — the cell's chain-of-custody check.
 - **Value:** transient read failures self-heal; only the truly unreadable
   reach a human, keeping throughput up.
 
-#### Identity verification against the worklist — mismatch halt
+### Identity verification against the worklist — mismatch halt
 
 - **The moment:** vial 53 decodes to an ID the worklist doesn't expect in
   that slot — a sample mix-up.
