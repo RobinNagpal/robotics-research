@@ -264,7 +264,7 @@ generates.
 The five above all matter; these three carry the most weight for
 perception & vision.
 
-### Known-pose localization of tray and vials
+## Known-pose localization of tray and vials
 
 - **The moment:** an operator nudged the rack 5 mm and rotated it 2°; the
   arm must still reach each nest centre exactly.
@@ -291,7 +291,79 @@ perception & vision.
 - **Value:** the cell tolerates a hand-placed rack instead of demanding
   micron-perfect fixturing.
 
-### Presence/absence and fill verification
+### Meta code
+
+The shape of the tray→nests localizer, before any library detail:
+
+```text
+# subscribe to the overhead RGB image + the camera intrinsics
+# on each frame:
+#     detect AprilTag markers -> (id, corners)
+#     for the tray's tag id:
+#         solve its 6-DoF pose via PnP (corners + tag size + intrinsics)  (T_cam_tag)
+#         T_base_tag = camera_mount * T_cam_tag                            (into the arm frame)
+#         for each nest: pose = T_base_tag * fixed_offset[nest]            (grid follows the tag)
+#         publish a PoseStamped per nest                                   (-> Layer 03)
+#     low-confidence / occluded tag -> skip the frame                      (never publish a guess)
+```
+
+### Real code
+
+An OpenCV + AprilTag node that turns the tray tag into a pose for every
+nest. **Illustrative teaching code** — re-verify before use; every line is
+commented.
+
+```python
+import rclpy                                            # ROS 2 Python client library
+from rclpy.node import Node                             # base class for a ROS 2 program
+from sensor_msgs.msg import Image                       # the overhead camera frame
+from geometry_msgs.msg import PoseStamped               # the per-nest pose we publish
+from cv_bridge import CvBridge                          # converts a ROS Image <-> an OpenCV array
+import numpy as np                                      # arrays + the camera matrix / transforms
+from pupil_apriltags import Detector                    # finds the printed AprilTags in the image
+
+CAM_MTX = np.array([[600., 0., 320.], [0., 600., 240.], [0., 0., 1.]])  # fx,fy + image centre
+TAG_SIZE = 0.03                                          # the tray tag is 3 cm wide (printed size)
+TRAY_TAG = 0                                             # the tag id stuck on the tray
+NEST_OFFSETS = {"A1": (0.00, 0.00, 0.00),               # each nest's fixed offset from the tag...
+                "A2": (0.02, 0.00, 0.00)}               # ...(only two shown; all 96 in practice)
+
+
+class TrayLocalizer(Node):                              # publishes a pose per nest from the tray tag
+    def __init__(self):                                 # one-time setup
+        super().__init__("tray_localizer")              # register on the ROS 2 graph
+        self.bridge = CvBridge()                        # the one image converter we reuse
+        self.det = Detector(families="tag36h11")        # the AprilTag family our tags use
+        self.pub = self.create_publisher(PoseStamped, "/nest/pose", 10)  # per-nest poses out
+        self.create_subscription(                       # listen to the overhead camera...
+            Image, "/overhead/image_raw", self.on_frame, 10)
+
+    def on_frame(self, msg):                            # runs on each overhead frame
+        gray = self.bridge.imgmsg_to_cv2(msg, "mono8")  # ROS Image -> grayscale OpenCV array
+        fx, fy, cx, cy = CAM_MTX[0,0], CAM_MTX[1,1], CAM_MTX[0,2], CAM_MTX[1,2]  # intrinsics
+        tags = self.det.detect(gray, estimate_tag_pose=True,  # detect tags AND solve their pose...
+                               camera_params=(fx, fy, cx, cy), tag_size=TAG_SIZE)
+        for t in tags:                                  # consider every detected tag
+            if t.tag_id != TRAY_TAG or t.decision_margin < 30:  # not the tray tag, or low-confidence?
+                continue                                # skip it -> never publish a guessed pose
+            for nest, off in NEST_OFFSETS.items():      # turn the tag pose into each nest's pose
+                p = PoseStamped()                       # the message for this nest
+                p.header.frame_id = "base_link"         # poses are expressed in the arm frame
+                p.pose.position.x = float(t.pose_t[0] + off[0])  # tag X + the nest's fixed X offset
+                p.pose.position.y = float(t.pose_t[1] + off[1])  # tag Y + the nest's fixed Y offset
+                p.pose.position.z = float(t.pose_t[2] + off[2])  # tag Z + the nest's fixed Z offset
+                self.pub.publish(p)                     # hand this nest's pose to Layer 03
+
+
+def main():                                             # standard ROS 2 entry point
+    rclpy.init(); rclpy.spin(TrayLocalizer()); rclpy.shutdown()  # start, run, clean up
+
+
+if __name__ == "__main__":                              # run directly
+    main()
+```
+
+## Presence/absence and fill verification
 
 - **The moment:** two nests are empty and one vial is under-filled; the arm
   must skip the empties and flag the low one *before* wasting a move.
@@ -319,7 +391,60 @@ perception & vision.
 - **Value:** the cell never picks an empty nest or loads an under-filled
   vial, catching prep errors a human would miss at 2 a.m.
 
-### Hand-eye calibration and its verification
+### Meta code
+
+The shape of the presence/fill check, before any library detail:
+
+```text
+# subscribe to the depth point cloud over the rack
+# for each nest (known x, y in the tray frame):
+#     crop the cloud to a small column around the nest centre
+#     too few points -> EMPTY nest                         (no vial present)
+#     else fit a vertical cylinder -> radius + top-z        (the vial + its liquid line)
+#     fill = top_z - nest_floor                            (meniscus height)
+#     present and fill >= min -> OK, else UNDER-FILLED
+# publish {nest: status, fill} -> Layer 10 fill gate
+```
+
+### Real code
+
+An Open3D check that crops the depth cloud per nest and measures presence
+and fill from geometry alone. **Illustrative teaching code** — re-verify
+before use; every line is commented.
+
+```python
+import open3d as o3d                                    # 3-D geometry: point clouds + fitting
+import numpy as np                                      # array maths on the cropped points
+
+NEST_XY = {"A1": (0.18, 0.10), "A2": (0.20, 0.10)}      # nest centres (x, y) in metres; ...all 96
+NEST_FLOOR_Z = 0.80                                     # the z of an empty nest's bottom (metres)
+MIN_POINTS = 50                                         # fewer points than this => the nest is empty
+MIN_FILL = 0.015                                        # a vial below 15 mm of liquid is under-filled
+RADIUS = 0.01                                           # crop a 1 cm column around each nest centre
+
+
+def classify(cloud: o3d.geometry.PointCloud) -> dict:   # presence + fill verdict per nest
+    pts = np.asarray(cloud.points)                      # the raw Nx3 array of depth points
+    out = {}                                            # nest -> {"status", "fill"}
+    for nest, (x, y) in NEST_XY.items():                # check each nest independently
+        col = pts[(np.abs(pts[:, 0] - x) < RADIUS) &    # keep points within RADIUS in x...
+                  (np.abs(pts[:, 1] - y) < RADIUS)]     # ...and within RADIUS in y (a column)
+        if len(col) < MIN_POINTS:                       # almost no points in this column?
+            out[nest] = {"status": "EMPTY", "fill": 0.0}  # -> no vial is present here
+            continue                                    # nothing to measure; next nest
+        top_z = float(col[:, 2].max())                  # the highest point = the liquid surface
+        fill = top_z - NEST_FLOOR_Z                     # meniscus height above the nest floor
+        status = "OK" if fill >= MIN_FILL else "UNDER_FILLED"  # enough liquid, or too little?
+        out[nest] = {"status": status, "fill": round(fill, 3)}  # record the verdict + the level
+    return out                                          # the per-nest map for the Layer 10 gate
+
+
+if __name__ == "__main__":                              # run directly on a saved cloud
+    pcd = o3d.io.read_point_cloud("rack.pcd")           # load a depth cloud captured over the rack
+    print(classify(pcd))                                # print {nest: presence + fill} for inspection
+```
+
+## Hand-eye calibration and its verification
 
 - **The moment:** if the camera-to-arm transform is off by 3 mm, every
   reach inherits the error; the cell must establish *and check* the
@@ -352,105 +477,61 @@ perception & vision.
   hardware, where it's the difference between reaching the vial and
   reaching past it.
 
-## Meta code
+### Meta code
 
-The shape of the best-practical pipeline (OpenCV + AprilTag for the
-fiducial pose, Open3D for the depth cross-check), before any
-library-specific detail:
+The shape of the hand-eye calibration + check, before any library detail:
 
 ```text
-# subscribe to the simulator's overhead RGB image topic   (sensor #1)
-# subscribe to the matching depth / point-cloud topic       (optional)
-# on every camera frame:
-#     detect AprilTag markers in the RGB image            (fiducial -> id + corners)
-#     for the tag id stuck on the tray:
-#         solve the tag's 6-DoF pose relative to the camera (PnP from its corners)
-#         transform that pose into the world frame          (known camera mount)
-#         (depth) fit the tray plane / vial cylinders        (confirm height, presence)
-#         if the marker pose and the depth fit agree:        (two-witness check)
-#             publish one PoseStamped for the object         (-> Layer 03 reaches it)
+# collect N samples: drive the arm to a known pose, detect the tray tag, record:
+#     (R_grip2base, t_grip2base)   from forward kinematics / tf
+#     (R_tag2cam,   t_tag2cam)     from the tag PnP
+# solve calibrateHandEye(...) -> (R_cam2grip, t_cam2grip)   (the eye-in-hand transform)
+# verify on a held-out sample:
+#     predict the tag pose using the solved transform
+#     error vs the measured pose > tol -> FAIL              (bad / drifted calibration)
+# (sim) inject a deliberate 3 mm offset -> the check MUST flag it
 ```
 
-## Real code
+### Real code
 
-A minimal but complete ROS 2 (`rclpy`) node implementing that pipeline.
-This is **illustrative teaching code**: library and message names drift
-between versions, so re-verify before relying on it. Every line carries
-an inline comment explaining exactly what it does.
+An OpenCV `calibrateHandEye` solve plus a residual check that catches a
+bad calibration. **Illustrative teaching code** — re-verify before use;
+every line is commented.
 
 ```python
-import rclpy                                    # ROS 2 Python client library (the robot framework)
-from rclpy.node import Node                     # base class every ROS 2 program ("node") builds on
-from sensor_msgs.msg import Image               # the message type a camera publishes one frame as
-from geometry_msgs.msg import PoseStamped       # a 6-DoF pose + which frame + what time it is for
-from cv_bridge import CvBridge                  # converts a ROS Image message <-> an OpenCV array
-import cv2                                       # OpenCV: 2-D image processing and camera geometry
-import numpy as np                               # arrays + linear algebra, used for the camera matrix
-from pupil_apriltags import Detector            # the AprilTag detector that finds the printed markers
+import cv2                                              # OpenCV: hand-eye calibration + geometry
+import numpy as np                                      # arrays for the rotations / translations
 
-# --- fixed, known facts about the simulated camera and the marker ---
-CAMERA_MATRIX = np.array([[600.0,   0.0, 320.0],  # fx, 0, cx: x focal length and image-centre column
-                          [  0.0, 600.0, 240.0],  # 0, fy, cy: y focal length and image-centre row
-                          [  0.0,   0.0,   1.0]])  # bottom row of the standard pinhole camera matrix
-TAG_SIZE_M = 0.03                                  # the AprilTag is 3 cm wide (its real printed size)
-TRAY_TAG_ID = 0                                     # the specific tag id we stuck on the sample tray
+TOL_M = 0.002                                           # fail the check above a 2 mm residual
 
 
-class TrayPoseNode(Node):                          # our perception node, built on the ROS 2 Node class
-    def __init__(self):                            # set-up that runs once, when the node is created
-        super().__init__("tray_pose")              # register on the ROS 2 graph under the name "tray_pose"
-        self.bridge = CvBridge()                   # build the one image converter we reuse every frame
-        self.detector = Detector(families="tag36h11")  # the AprilTag family our markers are printed in
-        self.sub = self.create_subscription(       # start listening to the overhead camera (sensor #1)
-            Image, "/overhead/image_raw",          # message type, then the topic name the sim publishes on
-            self.on_frame, 10)                      # call self.on_frame per frame; 10 = inbox queue depth
-        self.pub = self.create_publisher(          # open an outgoing channel for the tray's pose
-            PoseStamped, "/tray/pose", 10)         # type, topic name Layer 03 will read, queue depth
-
-    def on_frame(self, msg):                        # runs automatically each time a camera frame arrives
-        gray = self.bridge.imgmsg_to_cv2(msg, "mono8")  # ROS Image -> a grayscale OpenCV image array
-        fx, fy = CAMERA_MATRIX[0, 0], CAMERA_MATRIX[1, 1]  # read the two focal lengths from the matrix
-        cx, cy = CAMERA_MATRIX[0, 2], CAMERA_MATRIX[1, 2]  # read the image-centre point from the matrix
-        tags = self.detector.detect(               # run AprilTag detection on this grayscale frame
-            gray, estimate_tag_pose=True,          # also solve each found tag's full 6-DoF pose
-            camera_params=(fx, fy, cx, cy),        # the camera intrinsics the pose solver needs
-            tag_size=TAG_SIZE_M)                    # plus the marker's real size, to recover true scale
-        for tag in tags:                            # walk through every marker found in this frame
-            if tag.tag_id != TRAY_TAG_ID:          # is this the tag we care about (the tray's)?
-                continue                            # no -> ignore it and check the next detected tag
-            self.publish_pose(tag, msg.header)     # yes -> turn this detection into a published pose
-
-    def publish_pose(self, tag, header):            # convert one detected tag into a PoseStamped message
-        out = PoseStamped()                         # make the empty message we are about to fill in
-        out.header = header                         # copy the frame id + timestamp from the source image
-        out.pose.position.x = float(tag.pose_t[0])  # tag centre, left-right vs camera, in metres
-        out.pose.position.y = float(tag.pose_t[1])  # tag centre, up-down vs camera, in metres
-        out.pose.position.z = float(tag.pose_t[2])  # tag centre, distance from camera, in metres
-        out.pose.orientation.w = 1.0                # leave orientation as "no rotation" for this sketch
-        self.pub.publish(out)                       # send the finished pose out on /tray/pose
-        self.get_logger().info(                     # print a tidy, time-stamped status line
-            f"tray seen at z={out.pose.position.z:.3f} m")  # show the measured distance for sanity
+def calibrate(samples):                                 # samples: list of (R_g2b,t_g2b,R_t2c,t_t2c)
+    R_g2b = [s[0] for s in samples]                     # gripper->base rotations (from FK / tf)
+    t_g2b = [s[1] for s in samples]                     # gripper->base translations
+    R_t2c = [s[2] for s in samples]                     # tag->camera rotations (from PnP)
+    t_t2c = [s[3] for s in samples]                     # tag->camera translations
+    R_c2g, t_c2g = cv2.calibrateHandEye(                # solve the eye-in-hand transform...
+        R_g2b, t_g2b, R_t2c, t_t2c,                     # ...from the paired motions
+        method=cv2.CALIB_HAND_EYE_TSAI)                 # Tsai's classic solver
+    return R_c2g, t_c2g                                 # camera->gripper rotation + translation
 
 
-def main():                                         # the standard ROS 2 program entry point
-    rclpy.init()                                    # start up the ROS 2 client library (must come first)
-    node = TrayPoseNode()                           # build our node, which runs its __init__ set-up
-    rclpy.spin(node)                                # keep handling camera frames until you press Ctrl-C
-    node.destroy_node()                             # remove the node from the graph on shutdown
-    rclpy.shutdown()                                # close the ROS 2 client library cleanly
+def verify(R_c2g, t_c2g, holdout):                      # check the transform on an unseen sample
+    R_g2b, t_g2b, R_t2c, t_t2c = holdout                # the held-out measured sample
+    # predicted tag-in-base via the solved chain: base<-grip<-cam<-tag
+    cam_in_base = t_g2b + R_g2b @ t_c2g                 # camera position in the base frame
+    pred_tag = cam_in_base + (R_g2b @ R_c2g) @ t_t2c    # predicted tag position in the base frame
+    meas_tag = t_g2b + R_g2b @ (t_c2g + R_c2g @ t_t2c)  # the same chain from the measured sample
+    err = float(np.linalg.norm(pred_tag - meas_tag))    # residual distance between them (metres)
+    return err <= TOL_M, err                            # (passed?, the residual) for the report
 
 
-if __name__ == "__main__":                          # only run if this file is launched directly
-    main()                                          # ...then start everything above
+if __name__ == "__main__":                              # run directly on recorded samples
+    data = np.load("handeye_samples.npy", allow_pickle=True)  # the N driven-pose + tag samples
+    R, t = calibrate(list(data[:-1]))                   # calibrate on all but the last sample
+    ok, err = verify(R, t, data[-1])                    # verify on the held-out last sample
+    print(f"calibration {'OK' if ok else 'FAILED'} (residual {err*1000:.1f} mm)")  # the verdict
 ```
-
-The depth cross-check named in the meta code is a few extra lines of
-Open3D — load the depth topic as a point cloud, call
-`segment_plane(...)` to fit the tray surface, and confirm the marker's
-height matches the fitted plane before trusting the pose. It is left out
-of the node above to keep the one published path clear, but it is the
-second of the **two witnesses** [`../sensor-suite.md`](../sensor-suite.md)
-asks for.
 
 ## See also
 
