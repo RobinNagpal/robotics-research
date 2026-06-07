@@ -298,6 +298,25 @@ fusion & gating — the cell's conscience, vial by vial.
 
 ## Two-witness grasp gate
 
+Before carrying a vial across the bench, a lab assistant unconsciously
+double-checks they actually have it — a glance plus the feel of it in
+their fingers. Two senses agreeing is what makes "yes, I'm holding it"
+certain. This use case is the cell formalizing that: it only lets the arm
+move a vial when two independent witnesses — the gripper's own feel and
+the wrist camera's eye — agree a vial is held.
+
+The bigger experiment is the HPLC batch, where carrying nothing (a missed
+pick) or dropping a vial in transit both corrupt the tray. The gate sits
+between the pick and the carry, so it guards every single transfer in the
+run. Requiring two witnesses is what makes "never carry nothing, never
+drop" a mechanical guarantee instead of a hope, because no single fooled
+sensor can wave an empty gripper through.
+
+The assistant makes this is-it-held check on every pick — hundreds of
+times a day, mostly without noticing. The cell runs the two-witness gate
+just as often: once before every transit, on every vial, all run long. It
+is the most frequently-evaluated gate in the loop.
+
 - **The moment:** before transit, the cell must be *sure* a vial is held;
   the wrist camera says "present" but the gripper effort says "jaws fully
   closed" (empty) — a contradiction.
@@ -326,7 +345,27 @@ fusion & gating — the cell's conscience, vial by vial.
 
 ### Meta code
 
-The shape of the two-witness grasp gate, before any library detail:
+This meta turns a safety-critical yes/no question — "is a vial actually
+held?" — into the logical AND of two independent confirmations, and
+publishes the answer as a single boolean fact the rest of the cell can
+trust. The first witness is the gripper's jaw width; the second is the
+wrist camera's "vial present" signal.
+
+Crucially, the two witnesses are first paired in time, so the gate reasons
+about both sensors describing the same instant rather than a fresh reading
+from one and a stale one from the other. Only a time-matched pair is
+evaluated.
+
+For each matched pair the gate computes two conditions: the gripper
+condition (jaw width close to the expected vial diameter, meaning it
+closed on glass rather than air) and the camera condition (a vial is seen
+at the gripper line). The published gate value is the AND of the two —
+true only when both agree.
+
+That single boolean is what the Layer 07 behaviour tree ticks before
+allowing transit; a false value blocks the place. Because the answer
+requires two independent yeses, one fooled sensor — a reflection, a jammed
+jaw — cannot open the gate alone. The gate in pseudocode:
 
 ```text
 # subscribe to witness A: gripper jaw width (#4) and witness B: wrist /vial_present (#3)
@@ -382,6 +421,25 @@ if __name__ == "__main__":                              # run directly
 
 ## Fail-safe safety gate
 
+A careful lab assistant treats the absence of an "all clear" as a reason
+to wait, not to proceed — if they can't confirm it's safe, they don't
+move. This use case builds that conservative default into the cell as a
+fail-closed safety gate: the arm is only allowed to move when the safety
+sensors actively and recently confirm it's clear, and silence is treated
+as unsafe.
+
+The bigger experiment is the unattended HPLC batch in a shared lab, where
+people can approach the cell at any time. The danger isn't only a seen
+hazard — it's a safety sensor that has gone quiet, whose last "clear" is
+now stale. Designing the gate so that a missing or out-of-date "clear"
+blocks motion is what guarantees a sensor dropout can never be misread as
+permission to move near a hand.
+
+For the assistant, the safety judgment is constant — it precedes every
+motion near other people. The cell evaluates this gate continuously, above
+every per-vial step, so no pick, transit, or place proceeds unless the
+cell is, at that very moment, freshly confirmed safe.
+
 - **The moment:** the arm may only move if the light curtain *and* the door
   read clear — but the curtain cleared 2 s ago and no fresh reading has
   arrived.
@@ -409,7 +467,25 @@ if __name__ == "__main__":                              # run directly
 
 ### Meta code
 
-The shape of the fail-closed safety gate, before any library detail:
+This meta is built around a default of "unsafe," from which the gate only
+departs when it has positive, current evidence to the contrary. It
+subscribes to the safety inputs — the light curtain and the door — and,
+importantly, records not just their latest values but the time each was
+last received.
+
+On a fixed timer it recomputes the verdict from two requirements that must
+both hold. The first is "clear": both inputs currently report a safe
+state. The second is "fresh": both inputs were received within a short
+deadline, so the cell is acting on current information.
+
+Safe is published only when the readings are both clear AND fresh. This is
+what closes the stale-curtain trap: a curtain that said "clear" two seconds
+ago but has since gone silent fails the freshness test, so the gate
+reports unsafe even though the last value was good.
+
+The default before any message has arrived is unsafe, and a sensor that
+stops publishing entirely is read as unsafe rather than as permission —
+the gate fails closed in every degenerate case. The gate in pseudocode:
 
 ```text
 # subscribe to /light_curtain_clear and /door_closed (latched booleans)
@@ -470,6 +546,27 @@ if __name__ == "__main__":                              # run directly
 
 ## Stale-witness rejection
 
+A lab assistant wouldn't act on a glance they took several seconds ago and
+a touch they feel right now as if the two described the same moment —
+they'd take a fresh look first. Acting on stale information is how mistakes
+happen. This use case gives the cell that discipline: a gate decision is
+only made from witnesses whose readings are genuinely from the same,
+recent instant; a fresh reading paired with a stale one produces no
+decision at all.
+
+The bigger experiment is the HPLC batch, where every two-witness gate
+(grasp, fill, safety) depends on combining sensors. A cheap shortcut —
+pairing whatever each sensor reported most recently — can match a fresh
+reading against a stale one and decide wrongly. Rejecting stale pairings,
+and holding the gate until a properly time-matched pair arrives, is what
+keeps every fused decision trustworthy in time, not just in value.
+
+The assistant's instinct to take a fresh look applies whenever a judgment
+matters — many times an hour. The cell applies the same rule under every
+gate it evaluates, on every vial, throughout the run; the cost is at most
+a brief hold while a matching pair arrives, never a wrong action on old
+data.
+
 - **The moment:** a gate is about to pass a *fresh* gripper reading against
   a *stale* camera frame from before the last move.
 - **How, in depth:** the `ApproximateTimeSynchronizer` slop window means
@@ -497,7 +594,27 @@ if __name__ == "__main__":                              # run directly
 
 ### Meta code
 
-The shape of stale-witness rejection, before any library detail:
+This meta closes the one gap a naive two-witness gate leaves open:
+comparing readings without checking whether they are from the same time.
+It treats both witnesses as stamped streams and uses an approximate time
+synchronizer to deliver only pairs whose timestamps fall within a small
+slop window.
+
+Because the synchronizer never pairs an out-of-window sample, a fresh
+reading from one sensor is simply never matched against a stale reading
+from the other. Unmatched samples produce no callback at all — and no
+callback means no decision, so the gate holds rather than deciding wrongly.
+
+A second guard handles the case where even a time-matched pair is itself
+too old: if the pair's timestamp is older than a maximum age, it is
+dropped. This stops a long stall from later "unsticking" and pushing
+through a decision built on data that is internally consistent but stale
+overall.
+
+Only a pair that is both mutually time-matched and recent gets to decide,
+which is what makes the fused gate trustworthy in time as well as in value
+— the property a cheap latest-value cache can't provide. The rejection in
+pseudocode:
 
 ```text
 # subscribe to the two witnesses as STAMPED streams
