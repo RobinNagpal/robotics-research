@@ -274,6 +274,25 @@ orchestration — the cell's conscience for the overnight run.
 
 ## React to a verification failure (quarantine)
 
+When a lab assistant hits a problem vial mid-batch — a mismatched label, a
+fill that looks wrong — they don't stop the whole tray. They set that one
+aside in a "to investigate" spot, note why, and carry on with the next
+sample. This use case is the cell's version of that judgment: a vial that
+fails a check is routed to a quarantine-and-log branch while the run
+continues to the next worklist row.
+
+The bigger experiment is the HPLC batch of 60–100 vials, where finding a
+few problem samples is completely normal. If a single failure aborted the
+entire tray, the cell would almost never finish a run — so isolating the
+bad vial and pressing on is what makes unattended throughput real. The
+good vials still get prepared and loaded; the bad ones become a short list
+to deal with in the morning.
+
+For the assistant, setting a vial aside happens a few times in most
+batches — several times a day on a busy bench. The cell quarantines at the
+same rate, which is why this is the loop's normal control flow, not an
+emergency: every per-vial cycle ends in either a place or a quarantine.
+
 - **The moment:** vial 53's barcode mismatches; the loop must isolate it
   and keep going, not crash the run or place a wrong vial.
 - **How, in depth:** **condition nodes** gate each action, so a failed
@@ -302,7 +321,29 @@ orchestration — the cell's conscience for the overnight run.
 
 ### Meta code
 
-The shape of the place-or-quarantine subtree, before any library detail:
+This meta expresses the per-vial decision as a behaviour tree — a
+structure of nodes the orchestration engine "ticks" repeatedly, each node
+returning success or failure and the structure deciding what runs next.
+The key composite here is a Selector (or Fallback): it tries its children
+in order and succeeds as soon as one of them does.
+
+Its first child is a "verified place" Sequence, which only succeeds if
+every step in it passes: the identity check (Layer 06 said the vial
+belongs in this slot), the fill check (Layer 10's gate is satisfied), and
+then the place action itself. If any of those fails, the whole Sequence
+fails — and that failure is exactly the signal the Selector uses to fall
+through.
+
+The second child is the "quarantine" branch, which runs only because the
+verified place failed. It moves the vial to a reject location and writes
+an audit event recording which vial was set aside and why. Because
+quarantining is designed always to succeed, the Selector as a whole always
+completes — the vial is either placed or safely set aside, never left in
+limbo.
+
+An outer loop node iterates this per-vial subtree over every row of the
+worklist, so the same place-or-quarantine logic is applied, independently,
+to each of the tray's vials. The subtree in pseudocode:
 
 ```text
 # Selector "place-or-quarantine" (first child to succeed wins):
@@ -358,6 +399,26 @@ def per_vial_subtree(bb):                               # build the place-or-qua
 
 ## Safe-stop and resume
 
+If someone reaches into a lab assistant's working space, or an alarm
+sounds, they stop instantly — hand frozen mid-motion — and only resume
+once it's clear. Safety always wins, immediately, no matter what they were
+doing. This use case builds that reflex into the cell: an e-stop or an
+opened door preempts everything the arm is doing, the arm holds, and the
+loop resumes the very vial it paused on once the condition clears.
+
+The bigger experiment is the unattended HPLC batch, often running in a
+shared lab where people come and go. The cell has to be safe to be near,
+which means any safety event must override the loop instantly. But if
+every interruption meant scrapping the tray, the cell would be unusable —
+so the design pairs an instant stop with a clean resume, keeping it both
+safe and practical.
+
+For the assistant, a genuine safety interruption is occasional — someone
+reaching in, a door opening — maybe a few times a day in a busy shared
+space. The cell treats every one as a hard, instant priority, so the
+safe-stop path is wired to win on every single tick, not handled as a rare
+special case.
+
 - **The moment:** an e-stop fires or a door opens during vial 70's
   transfer; the arm must halt safely and resume cleanly once cleared.
 - **How, in depth:** a high-priority **reactive guard** subtree watches
@@ -386,7 +447,26 @@ def per_vial_subtree(bb):                               # build the place-or-qua
 
 ### Meta code
 
-The shape of the reactive safety guard, before any library detail:
+This meta places safety at the very top of the behaviour tree, as a guard
+that is re-evaluated on every single tick. The whole per-vial loop is made
+a child of a Sequence whose first node is a "safe?" condition; nothing
+below it can run unless that condition currently passes.
+
+The "safe?" condition reads the latched safety signals — the light curtain
+clear, the door closed, the e-stop not pressed — and returns success only
+if all of them say it is safe to move. Because the tree ticks frequently
+and this node is checked first every time, a safety event takes effect
+within one tick: the moment the curtain breaks, the condition fails.
+
+When the guard fails, the Sequence fails, and every node below it —
+whatever motion the arm was running — is preempted rather than allowed to
+continue. This is the "reactive" part: the guard doesn't wait for the
+current action to finish; it interrupts it.
+
+When the condition clears, the guard passes again and the subtree below
+resumes ticking from where it was. Because the per-vial steps are written
+to be idempotent — safe to re-check and continue — the resume picks up
+cleanly without dropping or double-placing. The guard in pseudocode:
 
 ```text
 # Sequence "guarded run" (re-ticked every heartbeat, memory=False):
@@ -434,6 +514,27 @@ if __name__ == "__main__":                              # demo: tick the guarded
 
 ## Crash/power-blip recovery with durable state
 
+A lab assistant called away mid-batch — a phone call, a shift change —
+comes back and picks up exactly where they left off: they check the tray
+to see what's already done and continue from the next empty slot, without
+redoing finished work or accidentally double-filling one. This use case is
+the cell surviving the equivalent of being yanked away mid-run: after a
+crash or power blip, it resumes at the right vial rather than starting
+over.
+
+The bigger experiment is the unattended overnight HPLC batch, which can
+run for many hours with no one watching. Over that span a power blip or a
+controller reboot is a real possibility, and the value of automating prep
+evaporates if a hiccup silently corrupts the tray. Persisting progress and
+reconciling it against the real tray on restart is what lets the lab trust
+a run no one was watching.
+
+For the assistant, an interruption mid-batch is occasional but normal — a
+few times a week, more around shift changes. The cell faces the software
+equivalent rarely, but because an unattended run can't tolerate even one
+silent corruption, the recovery is built to be correct every time rather
+than treated as a once-in-a-while concern.
+
 - **The moment:** a power blip reboots the controller after vial 84; on
   restart the cell must resume at vial 85, not redo 1–84.
 - **How, in depth:** worklist progress is **persisted** (Layer 08); on boot
@@ -461,7 +562,27 @@ if __name__ == "__main__":                              # demo: tick the guarded
 
 ### Meta code
 
-The shape of the crash-safe resume, before any library detail:
+This meta has two halves: writing progress safely as the run proceeds, and
+reconciling that progress against reality on restart. The writing half
+persists, after every vial, a small snapshot of what has been done — which
+slots are filled and which worklist row is next.
+
+The snapshot is written crash-safely: to a temporary file first, then
+renamed over the real one in a single atomic operation. That way a crash
+mid-write can never leave a half-written, corrupt progress file — the
+snapshot is either the old complete one or the new complete one, never a
+torn mix.
+
+On boot, the recovery half does not blindly trust the snapshot — it trusts
+reality more. It reads what the snapshot *claims* was placed, then has
+perception look at the actual tray (which slots are really filled) and the
+gripper (is it mid-place, still holding a vial?). Where the snapshot and
+reality disagree — a slot logged as placed but actually empty — reality
+wins and that vial is redone.
+
+Reconciled, the pipeline resumes at the first worklist row that isn't
+actually complete, so nothing is skipped and nothing is double-placed into
+an occupied nest. The resume in pseudocode:
 
 ```text
 # after every vial: atomically persist {placed:[slots], next:row} to disk   (Layer 08)
