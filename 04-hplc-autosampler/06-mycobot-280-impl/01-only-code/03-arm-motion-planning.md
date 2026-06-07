@@ -292,7 +292,7 @@ right tool.
 The five above all matter; these three carry the most weight for arm
 motion planning.
 
-### Collision-free pick/place across a crowded bench
+## Collision-free pick/place across a crowded bench
 
 - **The moment:** an operator slid a tall waste bin onto the bench
   overnight; the planner must still move vial A7 to slot 12 without
@@ -322,7 +322,69 @@ motion planning.
 - **Value:** the arm adapts to a bench that changed since yesterday instead
   of demanding a frozen world.
 
-### Cartesian straight-line approach and retreat
+### Meta code
+
+The shape of the crowded-bench planner, before any library detail:
+
+```text
+# build a planning scene: add rack, instrument, decapper, tray as collision boxes
+# subscribe to perception's obstacle updates -> add/move the waste bin live
+# on a pick/place request (goal_pose for the gripper):
+#     plan from the live joint state with a collision-aware planner   (samples + checks scene)
+#     no plan found -> return FAILURE to orchestration                (retry / flag, never crash)
+#     plan found    -> execute the trajectory                         (joint by joint)
+```
+
+### Real code
+
+A **MoveItPy** planner that keeps the scene honest and plans collision-free
+moves. **Illustrative teaching code** — MoveIt's Python API drifts between
+releases, so re-verify before relying on it; every line is commented.
+
+```python
+import rclpy                                            # ROS 2 Python client library
+from rclpy.node import Node                             # base class for a ROS 2 program
+from moveit.planning import MoveItPy                    # the Python entry point to MoveIt 2
+from geometry_msgs.msg import Pose, PoseStamped         # poses for obstacles and the goal
+from moveit_msgs.msg import CollisionObject             # an obstacle for the planning scene
+from shape_msgs.msg import SolidPrimitive               # the box primitive for that obstacle
+
+
+class CrowdedBenchPlanner(Node):                        # plans collision-free pick/place moves
+    def __init__(self):                                 # one-time setup
+        super().__init__("crowded_bench_planner")       # register on the ROS 2 graph
+        self.moveit = MoveItPy(node_name="moveit_py")   # spin up MoveIt 2's planning components
+        self.arm = self.moveit.get_planning_component("arm")  # the move group for the 6-DoF arm
+        self.scene = self.moveit.get_planning_scene_monitor()  # owns the world the arm must avoid
+        self._add_box("waste_bin", [0.30, -0.10, 0.95], [0.15, 0.15, 0.40])  # the new obstacle
+
+    def _add_box(self, name, xyz, size):                # add one box obstacle to the planning scene
+        obj = CollisionObject()                         # the message describing the obstacle
+        obj.id = name                                   # a unique name so we can move/remove it later
+        obj.header.frame_id = "base_link"               # poses are given in the arm's base frame
+        box = SolidPrimitive()                          # the shape...
+        box.type = SolidPrimitive.BOX                   # ...is a box
+        box.dimensions = size                           # its [x, y, z] extents in metres
+        pose = Pose()                                   # where the box sits
+        (pose.position.x, pose.position.y, pose.position.z) = xyz  # box centre in the base frame
+        obj.primitives = [box]                          # attach the shape...
+        obj.primitive_poses = [pose]                    # ...at that pose
+        obj.operation = CollisionObject.ADD             # ADD it into the scene (vs REMOVE / MOVE)
+        with self.scene.read_write() as s:              # lock the scene for editing
+            s.apply_collision_object(obj)               # the arm will now plan around this box
+
+    def move_to(self, goal: PoseStamped) -> bool:       # plan + execute a move; True if it ran
+        self.arm.set_start_state_to_current_state()     # plan from where the arm actually is
+        self.arm.set_goal_state(pose_stamped_msg=goal, pose_link="gripper")  # the target pose
+        plan = self.arm.plan()                          # run the collision-aware planner
+        if not plan:                                    # planner found no collision-free path
+            self.get_logger().warn("no plan -> back to orchestration")  # don't crash, hand back
+            return False                                # orchestration will retry or flag the vial
+        self.moveit.execute(plan.trajectory, controllers=[])  # follow the planned trajectory
+        return True                                     # the move was executed
+```
+
+## Cartesian straight-line approach and retreat
 
 - **The moment:** the gripper must drop vertically into a 16 mm-clearance
   nest and lift straight out; any lateral swing knocks the neighbours.
@@ -350,7 +412,67 @@ motion planning.
 - **Value:** tight nests are entered and exited without disturbing 95 other
   vials.
 
-### Replanning on a perception correction
+### Meta code
+
+The shape of the straight-line entry, before any library detail:
+
+```text
+# free-space transit to the nest-top pose (just above the vial)       (collision-aware)
+# build a pure-Z Cartesian path down:
+#     waypoints = [nest_top, nest_top lowered by approach_z]           (no X/Y change)
+#     compute_cartesian_path(waypoints, step, jump_threshold)          (follow the line)
+#     fraction < 1.0 -> abort the entry (can't reach full depth)       (singularity / limit)
+# grasp, then mirror the path upward for a straight retreat            (pure +Z translation)
+```
+
+### Real code
+
+A node that asks MoveIt's Cartesian-path service for a pure-vertical
+descent and refuses to force a partial one. **Illustrative teaching
+code** — re-verify before use; every line is commented.
+
+```python
+import rclpy                                            # ROS 2 Python client library
+from rclpy.node import Node                             # base class for a ROS 2 program
+from geometry_msgs.msg import Pose                      # waypoints for the straight-line path
+from moveit_msgs.srv import GetCartesianPath            # MoveIt's straight-line path service
+
+APPROACH_Z = 0.05                                       # how far straight down to descend (metres)
+
+
+class CartesianEntry(Node):                             # builds straight-down approach/retreat paths
+    def __init__(self):                                 # one-time setup
+        super().__init__("cartesian_entry")             # register on the ROS 2 graph
+        self.cli = self.create_client(                  # client to MoveIt's Cartesian-path service
+            GetCartesianPath, "/compute_cartesian_path")
+        self.cli.wait_for_service()                     # block until MoveIt is up
+
+    def straight_line(self, start: Pose, dz: float):    # request a pure-Z move of dz from start
+        end = Pose()                                    # the single waypoint at the end of the line
+        end.position.x = start.position.x               # same X (no sideways drift)...
+        end.position.y = start.position.y               # ...same Y...
+        end.position.z = start.position.z + dz          # ...only Z changes (down when dz < 0)
+        end.orientation = start.orientation             # keep the gripper orientation fixed
+        req = GetCartesianPath.Request()                # build the service request
+        req.group_name = "arm"                          # plan for the arm move group
+        req.link_name = "gripper"                       # the link that must follow the line
+        req.waypoints = [start, end]                    # the two points defining the straight segment
+        req.max_step = 0.005                            # interpolate every 5 mm along the line
+        req.jump_threshold = 0.0                        # 0 = disable jump checking (teaching default)
+        future = self.cli.call_async(req)               # send the request without blocking
+        rclpy.spin_until_future_complete(self, future)  # wait for the computed path
+        res = future.result()                           # response carries the trajectory + fraction
+        return res.solution, res.fraction               # how much of the line MoveIt could follow
+
+    def enter_nest(self, nest_top: Pose):               # descend into a nest only if fully reachable
+        traj, frac = self.straight_line(nest_top, -APPROACH_Z)  # try a straight-down approach
+        if frac < 0.99:                                 # MoveIt couldn't follow the whole line
+            self.get_logger().warn(f"approach only {frac:.0%}; aborting entry")  # don't force it
+            return None                                 # abort -> orchestration re-plans / flags
+        return traj                                     # the full straight-down trajectory to run
+```
+
+## Replanning on a perception correction
 
 - **The moment:** perception reports vial A7 is actually 8 mm off the nest
   centre after the rack shifted; the in-flight motion must adapt.
@@ -378,100 +500,80 @@ motion planning.
 - **Value:** small real-world misalignments are absorbed live, not turned
   into missed grasps.
 
-## Meta code
+### Meta code
 
-The shape of the best-practical pick (MoveIt 2, driven from Python
-through `pymoveit2`): keep the planning scene honest about obstacles,
-then plan and execute a collision-free move to a target pose.
+The shape of the live re-planner, before any library detail:
 
 ```text
-# subscribe to the target pose for the gripper            (e.g. a vial from Layer 04)
-# tell MoveIt about the world the arm must avoid:
-#     add the bench, the HPLC rack, and the tray as obstacles  (planning-scene boxes)
-#     keep these updated as fixtures move or appear            (scene stays honest)
-# on a new target pose:
-#     ask MoveIt to plan a path from "here" to the target  (IK + collision-aware planner)
-#     if no collision-free path is found:                  (planner returned nothing)
-#         report failure and stop                           (-> orchestration retries)
-#     otherwise execute the planned trajectory             (sim follows it, joint by joint)
-#     wait until the motion reports done                   (then the next layer may grasp)
+# track the current target pose + the in-flight trajectory goal handle
+# on a corrected target pose from perception:
+#     if it differs from the current target by < epsilon -> ignore     (avoid churn)
+#     else:
+#         cancel the in-flight trajectory goal                         (preempt, no stop-start)
+#         plan from the LIVE joint state to the corrected pose         (fresh + accurate)
+#         send the new trajectory as the new active goal               (newest wins)
 ```
 
-## Real code
+### Real code
 
-A minimal but complete ROS 2 (`rclpy`) node using **MoveIt 2** via the
-**`pymoveit2`** helper. This is **illustrative teaching code**: library
-and message names drift between versions, so re-verify before relying on
-it. Every line carries an inline comment explaining what it does.
+A node that preempts the running motion onto perception's newest target.
+**Illustrative teaching code** — re-verify before use; every line is
+commented.
 
 ```python
-import rclpy                                      # ROS 2 Python client library (the robot framework)
-from rclpy.node import Node                       # base class every ROS 2 program ("node") builds on
-from geometry_msgs.msg import PoseStamped         # a 6-DoF pose + which frame + what time it is for
-from pymoveit2 import MoveIt2                     # thin Python wrapper that drives MoveIt 2 planning
-from pymoveit2.robots import mycobot280           # joint + link names for the myCobot 280 arm
+import rclpy                                            # ROS 2 Python client library
+from rclpy.node import Node                             # base class for a ROS 2 program
+from rclpy.action import ActionClient                   # to send and cancel trajectory goals
+from geometry_msgs.msg import PoseStamped               # perception's corrected target pose
+from control_msgs.action import FollowJointTrajectory   # the arm controller's action interface
+from moveit.planning import MoveItPy                    # to replan from the live joint state
 
-# --- fixed, known facts about the cell the arm must not hit ---
-RACK_BOX = ([0.20, 0.0, 0.10], [0.10, 0.30, 0.20])  # HPLC rack: centre (x,y,z) then size (dx,dy,dz), metres
-BENCH_BOX = ([0.0, 0.0, -0.02], [1.00, 1.00, 0.04])  # the benchtop the arm stands on: centre then size, metres
-
-
-class ArmMover(Node):                              # our motion-planning node, built on the ROS 2 Node class
-    def __init__(self):                            # set-up that runs once, when the node is created
-        super().__init__("arm_mover")              # register on the ROS 2 graph under the name "arm_mover"
-        self.moveit2 = MoveIt2(                    # build the MoveIt 2 driver we will plan and execute with
-            node=self,                             # let it publish/subscribe on this node's behalf
-            joint_names=mycobot280.joint_names(),  # the six joints of the 280, in MoveIt's expected order
-            base_link_name=mycobot280.base_link_name(),   # the fixed frame the arm is measured from
-            end_effector_name=mycobot280.end_effector_name(),  # the gripper frame we want to place at a pose
-            group_name=mycobot280.MOVE_GROUP_ARM)  # the planning group = just the arm (not the gripper)
-        self.add_obstacle("rack", *RACK_BOX)       # tell MoveIt about the rack so plans steer clear of it
-        self.add_obstacle("bench", *BENCH_BOX)     # tell MoveIt about the bench so plans steer clear of it
-        self.sub = self.create_subscription(       # listen for a target gripper pose to move to
-            PoseStamped, "/arm/target_pose",       # message type, then the topic Layer 04 publishes on
-            self.on_target, 10)                     # call self.on_target per pose; 10 = inbox queue depth
-
-    def add_obstacle(self, name, centre, size):    # register one box in MoveIt's planning scene
-        self.moveit2.add_collision_box(            # push a collision box the planner must avoid
-            id=name,                               # a unique name so we can move or remove it later
-            position=centre,                       # where the box centre sits, in the base frame, metres
-            size=size)                             # the box's full width/depth/height, in metres
-        self.get_logger().info(f"scene: added {name}")  # log that the scene now knows about this obstacle
-
-    def on_target(self, msg):                       # runs automatically each time a target pose arrives
-        self.get_logger().info("planning to target")  # announce that we are about to plan a move
-        self.moveit2.move_to_pose(                  # ask MoveIt to plan AND execute a path to this pose
-            position=[msg.pose.position.x,         # target gripper position: left-right, metres
-                      msg.pose.position.y,         # target gripper position: forward-back, metres
-                      msg.pose.position.z],        # target gripper position: up-down, metres
-            quat_xyzw=[msg.pose.orientation.x,     # target gripper orientation, as a quaternion (x...
-                       msg.pose.orientation.y,     # ...y...
-                       msg.pose.orientation.z,     # ...z...
-                       msg.pose.orientation.w])    # ...w): which way the hand should point
-        success = self.moveit2.wait_until_executed()  # block until the trajectory finishes; True if it ran
-        if success:                                 # did MoveIt find a collision-free path and run it?
-            self.get_logger().info("reached target")  # yes -> report success (Layer 05 may now grasp)
-        else:                                       # no path, or execution was rejected
-            self.get_logger().warn("plan/exec failed")  # warn so orchestration can retry or stop
+EPS = 0.003                                             # ignore corrections smaller than 3 mm
 
 
-def main():                                        # the standard ROS 2 program entry point
-    rclpy.init()                                    # start up the ROS 2 client library (must come first)
-    node = ArmMover()                               # build our node, which runs its __init__ set-up
-    rclpy.spin(node)                                # keep handling target poses until you press Ctrl-C
-    node.destroy_node()                             # remove the node from the graph on shutdown
-    rclpy.shutdown()                                # close the ROS 2 client library cleanly
+class ReplanOnCorrection(Node):                         # preempts the arm onto the newest target
+    def __init__(self):                                 # one-time setup
+        super().__init__("replan_on_correction")        # register on the ROS 2 graph
+        self.moveit = MoveItPy(node_name="replanner")   # MoveIt 2 planning components
+        self.arm = self.moveit.get_planning_component("arm")  # the arm move group
+        self.client = ActionClient(                     # action client to the trajectory controller
+            self, FollowJointTrajectory,
+            "/joint_trajectory_controller/follow_joint_trajectory")
+        self.goal_handle = None                         # the in-flight goal we may need to cancel
+        self.target = None                              # the pose we are currently driving toward
+        self.create_subscription(                       # listen for perception's corrected poses
+            PoseStamped, "/vial/corrected_pose", self.on_correction, 10)
+
+    def on_correction(self, pose: PoseStamped):         # runs each time perception refines the target
+        if self.target and self._close(pose, self.target):  # correction smaller than EPS?
+            return                                      # ignore it -> avoid needless replanning
+        self.target = pose                              # adopt the newer, more accurate target
+        if self.goal_handle:                            # is a trajectory already running?
+            self.goal_handle.cancel_goal_async()        # preempt it (newest goal wins)
+        self.arm.set_start_state_to_current_state()     # plan from where the arm actually is now
+        self.arm.set_goal_state(pose_stamped_msg=pose, pose_link="gripper")  # the corrected goal
+        plan = self.arm.plan()                          # replan to the new pose
+        if plan:                                        # a valid path exists
+            goal = FollowJointTrajectory.Goal(          # wrap the joint trajectory as an action goal
+                trajectory=plan.trajectory.joint_trajectory)
+            self.goal_handle = self.client.send_goal_async(goal).result()  # make it the active goal
+
+    def _close(self, a: PoseStamped, b: PoseStamped):   # are two target poses within EPS in XYZ?
+        da, db = a.pose.position, b.pose.position       # shorthand for the two positions
+        return (abs(da.x - db.x) < EPS and             # X within tolerance, and...
+                abs(da.y - db.y) < EPS and             # ...Y within tolerance, and...
+                abs(da.z - db.z) < EPS)                # ...Z within tolerance
 
 
-if __name__ == "__main__":                          # only run if this file is launched directly
-    main()                                          # ...then start everything above
+def main():                                             # standard ROS 2 entry point
+    rclpy.init()                                         # start the client library
+    rclpy.spin(ReplanOnCorrection())                    # run the re-planner until Ctrl-C
+    rclpy.shutdown()                                     # clean shutdown
+
+
+if __name__ == "__main__":                              # run directly
+    main()
 ```
-
-The single planning-scene box added above is the minimum; a real cell
-keeps adding and updating boxes (tray, decapper, neighbouring vials) as
-fixtures move, so every plan is checked against the *current* world. When
-Layer 05 attaches a vial to the gripper it also updates this same scene,
-so later moves know the arm is now carrying something.
 
 ## See also
 
