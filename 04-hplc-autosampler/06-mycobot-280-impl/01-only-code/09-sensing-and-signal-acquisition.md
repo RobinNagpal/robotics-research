@@ -299,7 +299,7 @@ the exact faults of use case 3.
 The five above all matter; these three carry the most weight for sensing
 & signal acquisition — the cell's nervous system.
 
-### Scriptable fault rehearsal
+## Scriptable fault rehearsal
 
 - **The moment:** the gates in Layer 10 must be tested against a gradual
   under-fill, a torque spike, a curtain blip, and creeping gripper effort —
@@ -327,7 +327,71 @@ The five above all matter; these three carry the most weight for sensing
 - **Value:** every gate is proven against the exact signal that should trip
   it, before any sensor is bought.
 
-### Cross-sensor time synchronization
+### Meta code
+
+The shape of the fault player, before any library detail:
+
+```text
+# define a fault timeline: segments (t_start, t_end, topic, type, v_start, v_end)
+# on a fixed timer (e.g. 10 Hz), advance a playback clock:
+#     for each active segment -> linearly interpolate v_start -> v_end over its window
+#     publish the value on the sensor's real topic                 (ramp = drift, step = blip)
+# so a gradual under-fill, a torque spike, and a 200 ms curtain blip play out
+#     exactly + repeatably -> the Layer 10 gates see them and react
+```
+
+### Real code
+
+A node that plays a scripted fault timeline (ramps and steps) onto the
+real sensor topics. **Illustrative teaching code** — re-verify before use;
+every line is commented.
+
+```python
+import rclpy                                            # ROS 2 Python client library
+from rclpy.node import Node                             # base class for a ROS 2 program
+from std_msgs.msg import Float64, Bool                  # level/balance values + safety booleans
+
+# (t_start, t_end, topic, kind, v_start, v_end): ramp v_start->v_end over [t_start, t_end]
+TIMELINE = [(0.0, 12.0, "/level", "f", 1.00, 0.40),     # fill level drifts low over 12 s (under-fill)
+            (5.0, 5.2, "/light_curtain_clear", "b", 1, 0),   # 200 ms curtain blip at t = 5 s
+            (5.2, 99.0, "/light_curtain_clear", "b", 1, 1)]  # curtain clear again afterwards
+
+
+class FaultPlayer(Node):                                # plays a scripted fault timeline onto topics
+    def __init__(self):                                 # one-time setup
+        super().__init__("fault_player")                # register on the ROS 2 graph
+        self.pubs = {}                                  # cache one publisher per topic
+        self.t = 0.0                                    # elapsed playback time (seconds)
+        self.dt = 0.1                                   # tick period -> 10 Hz playback
+        self.create_timer(self.dt, self.tick)           # advance + publish every dt
+
+    def _pub(self, topic, kind):                        # get (or lazily make) a publisher for a topic
+        if topic not in self.pubs:                      # first time we touch this topic?
+            msg_t = Float64 if kind == "f" else Bool    # float value vs boolean state
+            self.pubs[topic] = self.create_publisher(msg_t, topic, 10)  # create + cache it
+        return self.pubs[topic]                         # the cached publisher
+
+    def tick(self):                                     # runs at 10 Hz: publish the scheduled values
+        for t0, t1, topic, kind, a, b in TIMELINE:      # consider every scheduled segment
+            if t0 <= self.t <= t1:                       # is this segment active right now?
+                frac = (self.t - t0) / max(t1 - t0, 1e-6)  # how far through the segment (0..1)
+                val = a + (b - a) * frac                  # linearly interpolate a -> b (ramp or step)
+                if kind == "f":                          # a float sensor (level / balance)...
+                    self._pub(topic, "f").publish(Float64(data=float(val)))  # ...publish the value
+                else:                                    # a boolean sensor (curtain / door)...
+                    self._pub(topic, "b").publish(Bool(data=bool(round(val))))  # ...publish state
+        self.t += self.dt                                # advance our playback clock
+
+
+def main():                                             # standard ROS 2 entry point
+    rclpy.init(); rclpy.spin(FaultPlayer()); rclpy.shutdown()  # start, run, clean up
+
+
+if __name__ == "__main__":                              # run directly
+    main()
+```
+
+## Cross-sensor time synchronization
 
 - **The moment:** Layer 10 must line up the decapper torque spike with the
   gripper-effort creep at the *same instant* to decide they're one event.
@@ -354,7 +418,58 @@ The five above all matter; these three carry the most weight for sensing
 - **Value:** fused decisions rest on a coherent snapshot of the cell, not a
   smear across time.
 
-### Hardware-faithful contracts
+### Meta code
+
+The shape of the time-aligner, before any library detail:
+
+```text
+# subscribe to two stamped streams, e.g. /decapper/wrench + /joint_states (gripper effort)
+# feed them into an ApproximateTimeSynchronizer with a slop window (e.g. 20 ms)
+# the synchronizer calls back only with samples whose stamps fall within slop
+#     -> the callback gets a coherent (torque, effort) pair from the SAME instant
+# hand the matched pair to the Layer 10 gate
+```
+
+### Real code
+
+A node that pairs the cap torque and the gripper effort by timestamp.
+**Illustrative teaching code** — re-verify before use; every line is
+commented.
+
+```python
+import rclpy                                            # ROS 2 Python client library
+from rclpy.node import Node                             # base class for a ROS 2 program
+from geometry_msgs.msg import WrenchStamped             # the decapper torque (stamped)
+from sensor_msgs.msg import JointState                  # the gripper effort (stamped)
+from message_filters import Subscriber, ApproximateTimeSynchronizer  # align the two streams in time
+
+
+class TorqueEffortSync(Node):                           # pairs torque + gripper effort by timestamp
+    def __init__(self):                                 # one-time setup
+        super().__init__("torque_effort_sync")          # register on the ROS 2 graph
+        wrench = Subscriber(self, WrenchStamped, "/decapper/wrench")  # stream 1: cap torque
+        joints = Subscriber(self, JointState, "/joint_states")       # stream 2: gripper effort
+        self.sync = ApproximateTimeSynchronizer(        # align the two streams in time...
+            [wrench, joints], queue_size=30, slop=0.02)  # ...within a 20 ms slop window
+        self.sync.registerCallback(self.on_pair)        # fire only on a time-matched pair
+
+    def on_pair(self, wrench, joints):                  # runs with a coherent same-instant pair
+        tz = abs(wrench.wrench.torque.z)                # the un-cap torque at that instant
+        eff = 0.0                                       # the gripper effort at that same instant...
+        if "gripper_finger_joint" in joints.name:       # find the finger joint, if present
+            eff = abs(joints.effort[joints.name.index("gripper_finger_joint")])  # its effort
+        self.get_logger().info(f"t={tz:.2f} Nm  eff={eff:.2f}  (same instant)")  # one fused sample
+
+
+def main():                                             # standard ROS 2 entry point
+    rclpy.init(); rclpy.spin(TorqueEffortSync()); rclpy.shutdown()  # start, run, clean up
+
+
+if __name__ == "__main__":                              # run directly
+    main()
+```
+
+## Hardware-faithful contracts
 
 - **The moment:** the day real sensors arrive, nothing above this layer
   should change.
@@ -381,92 +496,62 @@ The five above all matter; these three carry the most weight for sensing
 - **Value:** sensor bring-up swaps a publisher; it doesn't ripple a rewrite
   through the stack.
 
-## Meta code
+### Meta code
 
-The shape of "stand up every sensor as a topic," before any
-library-specific detail:
+The shape of the sensor contract, before any library detail:
 
 ```text
-# start the sim world with its sensor plugins enabled        (cameras, imu, force_torque, contact, logical_camera)
-# run the ros_gz_bridge to carry those plugin topics into ROS 2   (-> standard sensor_msgs)
-# launch ros2_control so the arm publishes joint state + effort   (-> gripper #4, limit switches #9)
-# run the mock publishers for the sensors with no plugin:
-#     /light_curtain_clear, /door_closed, /estop                  (safety #10, #11)
-#     /level   (driven from the fill scalar where possible)        (level #8)
-#     /balance/mass (the fill scalar read as a mass)               (balance #6)
-# now EVERY sensor in the suite is a live ROS 2 topic:
-#     the gate logic (Layer 10) can subscribe and read each one    (no code knows or cares it is simulated)
+# pick the STANDARD message type the real device will publish (sensor_msgs / micro-ROS shape)
+# back the topic with a mock now that fills exactly those fields, same topic name + QoS + rate
+# define a conforms() contract: required frame_id, a non-zero stamp, expected units
+# on hardware: a real driver publishes the SAME type on the SAME topic
+#     -> any unit/field difference is converted INSIDE the driver
+#     -> perception + gating subscribers are byte-for-byte unchanged
 ```
 
-## Real code
+### Real code
 
-A minimal **mock sensor stand-in** node for the non-camera sensors that
-have no Gazebo plugin (the camera, IMU, and force-torque come from Gazebo
-plugins instead). This is **illustrative teaching code**: library and
-message names drift between versions, so re-verify before relying on it.
-Every line carries an inline comment explaining exactly what it does.
+A mock that publishes the exact standard message a real sensor would, with
+a contract assertion. **Illustrative teaching code** — re-verify before
+use; every line is commented.
 
 ```python
-import rclpy                                       # ROS 2 Python client library (the robot framework)
-from rclpy.node import Node                        # base class every ROS 2 program ("node") builds on
-from std_msgs.msg import Bool, Float64             # simple message types: a true/false, and a number
+import rclpy                                            # ROS 2 Python client library
+from rclpy.node import Node                             # base class for a ROS 2 program
+from geometry_msgs.msg import WrenchStamped             # the STANDARD type the real sensor will use
 
-# --- which topic each sensor publishes on (must match sensor-suite.md) ---
-T_CURTAIN = "/light_curtain_clear"                 # safety #10: is the work-zone light curtain clear?
-T_DOOR    = "/door_closed"                          # safety #11: is the enclosure door shut?
-T_ESTOP   = "/estop"                                # safety #11: is the emergency-stop pressed?
-T_MASS    = "/balance/mass"                         # balance #6: mass the analytical balance reads (grams)
-T_LEVEL   = "/level"                                # level #8: liquid level / fill reading (a fraction)
-
-PUBLISH_HZ = 10.0                                   # how many times per second to publish each value
+CONTRACT_FRAME = "cap_joint"                            # the frame_id every publisher MUST set
+CONTRACT_RATE_HZ = 50                                   # the rate the gate logic above expects
 
 
-class MockSensors(Node):                            # our mock-sensor node, built on the ROS 2 Node class
-    def __init__(self):                             # set-up that runs once, when the node is created
-        super().__init__("mock_sensors")            # register on the ROS 2 graph under the name "mock_sensors"
-        self.curtain = self.create_publisher(Bool, T_CURTAIN, 10)   # channel for the light-curtain state
-        self.door    = self.create_publisher(Bool, T_DOOR, 10)      # channel for the door-closed state
-        self.estop   = self.create_publisher(Bool, T_ESTOP, 10)     # channel for the e-stop state
-        self.mass    = self.create_publisher(Float64, T_MASS, 10)   # channel for the balance mass reading
-        self.level   = self.create_publisher(Float64, T_LEVEL, 10)  # channel for the liquid-level reading
-        self.fill = 0.0                             # current fill fraction (0.0 empty .. 1.0 full), starts empty
-        period = 1.0 / PUBLISH_HZ                   # seconds between ticks, from the chosen rate above
-        self.create_timer(period, self.on_tick)     # call self.on_tick on a steady clock, forever
-
-    def on_tick(self):                              # runs automatically every timer period
-        self.curtain.publish(Bool(data=True))       # report the work zone is clear (no hand in the curtain)
-        self.door.publish(Bool(data=True))          # report the enclosure door is closed
-        self.estop.publish(Bool(data=False))        # report the e-stop is NOT pressed (False = not triggered)
-        self.fill = min(1.0, self.fill + 0.01)      # creep the fill up a little, capped at full, to mimic dispensing
-        self.level.publish(Float64(data=self.fill)) # publish that fill fraction as the liquid-level reading
-        grams = self.fill * 20.0                     # turn the fill fraction into a mass (~20 g when full)
-        self.mass.publish(Float64(data=grams))      # publish that as the balance's gravimetric reading
-
-    # NOTE: cameras #1-#3, base IMU #12, and decap force-torque #5 are NOT mocked here --
-    #       they come from Gazebo sensor plugins, bridged into ROS 2 via ros_gz_bridge.
-    #       The gripper #4 and limit switches #9 come from ros2_control joint feedback.
+def conforms(msg: WrenchStamped) -> bool:               # the contract a real driver must ALSO satisfy
+    return (msg.header.frame_id == CONTRACT_FRAME and   # correct frame_id, and...
+            msg.header.stamp.sec != 0)                  # ...a real (non-zero) timestamp present
 
 
-def main():                                         # the standard ROS 2 program entry point
-    rclpy.init()                                    # start up the ROS 2 client library (must come first)
-    node = MockSensors()                            # build our node, which runs its __init__ set-up
-    rclpy.spin(node)                                # keep publishing on the timer until you press Ctrl-C
-    node.destroy_node()                             # remove the node from the graph on shutdown
-    rclpy.shutdown()                                # close the ROS 2 client library cleanly
+class MockTorque(Node):                                 # stands in for the real cap force-torque sensor
+    def __init__(self):                                 # one-time setup
+        super().__init__("mock_torque")                 # register on the ROS 2 graph
+        self.pub = self.create_publisher(               # publish on the SAME topic the real one uses
+            WrenchStamped, "/decapper/wrench", 10)
+        self.create_timer(1.0 / CONTRACT_RATE_HZ, self.tick)  # at the contracted rate
+
+    def tick(self):                                     # emit one fully-populated, stamped message
+        msg = WrenchStamped()                           # the standard message type
+        msg.header.stamp = self.get_clock().now().to_msg()  # a real timestamp (contract requirement)
+        msg.header.frame_id = CONTRACT_FRAME            # the contracted frame_id
+        msg.wrench.torque.z = 0.1                       # a benign idle torque (N*m)
+        assert conforms(msg), "mock violates the sensor contract"  # fail loudly if we ever drift
+        self.pub.publish(msg)                           # publish; consumers can't tell mock from real
 
 
-if __name__ == "__main__":                          # only run if this file is launched directly
-    main()                                          # ...then start everything above
+def main():                                             # standard ROS 2 entry point
+    rclpy.init(); rclpy.spin(MockTorque()); rclpy.shutdown()  # start, run, clean up
+
+
+if __name__ == "__main__":                              # run directly
+    main()
 ```
-
-Driving `/level` and `/balance/mass` from the *same* simulated fill
-scalar (rather than two hand-typed constants) is what keeps the
-**two-witness** fill check honest — both witnesses move with the real
-underlying state, so the gate in Layer 10 can catch a genuine
-disagreement instead of two constants that always agree. The safety
-booleans are published steadily so a gate can detect not only a *false*
-reading but also a topic that has gone **silent** (stale), which is
-itself a fault.
 
 ## See also
 
