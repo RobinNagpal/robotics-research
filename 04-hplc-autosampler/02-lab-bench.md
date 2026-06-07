@@ -14,6 +14,28 @@
 > before quoting. See [`01-hplc-intro.md`](01-hplc-intro.md) for the
 > plain-language background this builds on.
 
+## Why this matters to you (even if you've never seen a lab)
+
+You rely on these labs every day without noticing. Almost nothing you
+swallow, drink, or put on your skin reaches you until a person at a bench
+has answered one question about it: *is this really what the label says,
+and is it safe?*
+
+A few things you have probably used today, and the lab work behind them:
+
+| Something you used today | The question a lab answered | Who below |
+|---|---|---|
+| A painkiller or a vitamin | Does each pill hold the right dose, with no harmful impurities? | Priya |
+| A glass of tap water | Is it free of lead, pesticides, and sewage? | Marco |
+| Washed salad or imported fruit | Are pesticide residues under the legal limit? | Marco |
+| A brand-new medicine or supplement | Does the test that proves all this even exist yet? | Sarah |
+| The expiry date on any of them | How fast does it go off, and how should you store it? | Sarah |
+
+Behind every one of those answers is the slow, repetitive bench work this
+document walks through — and that bench work is exactly the part a robot
+arm could take over. You need no chemistry to follow along; just keep the
+product in your hand in mind as you read.
+
 ## How to read this
 
 Every task below gets one of three labels. The whole point of the
@@ -34,6 +56,7 @@ variable touch, it drifts toward Human-led.*
 
 ## Index
 
+- [Why this matters to you](#why-this-matters-to-you-even-if-youve-never-seen-a-lab)
 - [How to read this](#how-to-read-this)
 - [Person 1. Priya, a pharmaceutical QC analyst](#person-1-priya-a-pharmaceutical-qc-analyst)
   - [P1. Sample receipt and login](#p1-sample-receipt-and-login)
