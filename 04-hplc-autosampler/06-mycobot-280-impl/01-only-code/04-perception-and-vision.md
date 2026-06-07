@@ -525,136 +525,129 @@ if __name__ == "__main__":                              # run directly on a save
     print(classify(pcd))                                # print {nest: presence + fill} for inspection
 ```
 
-## Hand-eye calibration and its verification
+## Grasp confirmation from the wrist camera
 
-A lab assistant's hand-eye coordination is so practised they never think
-about it — they see a vial and their hand goes exactly there, the brain
-having long since learned the offset between eye and hand. A robot has to
-*measure* that offset explicitly: the transform between what the camera
-sees and where the arm actually is. This use case establishes and,
-crucially, *checks* that camera-to-arm calibration, because a few
-millimetres of error turns every reach into a near-miss.
+After a lab assistant grips a vial, they take a quick look to confirm it's
+actually in their fingers before lifting it away — a glance that costs
+nothing and catches an empty grab. This use case is the cell's version:
+the wrist camera looks at the gripper right after a pick and confirms a
+vial is held before the arm carries it off.
 
-The bigger experiment is the HPLC batch, every vial of which is reached
-for using poses the camera reports. If the calibration is wrong, that
-error is baked silently into all 60–100 reaches — the arm consistently
-grips a few millimetres off, dropping or crushing vials. Calibration is
-the foundation the whole perception-to-motion chain stands on, which is
-why this use case also verifies it rather than trusting it.
+The bigger experiment is the HPLC batch, where every vial is picked before
+it's moved, decapped, dispensed, scanned, and placed. A pick that grabbed
+nothing, if uncaught, would send the arm carrying an empty gripper through
+all those steps. The wrist-camera check is the visual confirmation that a
+vial is really there — the other half of a two-witness grasp check, paired
+with the gripper's own feel from Layer 05.
 
-A human's hand-eye coordination is continuous and self-correcting; the
-robot's calibration is a periodic procedure — run at bring-up and
-re-checked routinely (say, daily or after any bump to the camera) because
-it can drift. The verification step runs more often than the full
-recalibration, quietly confirming on a regular cadence that the cell is
-still reaching true.
+The assistant's confirming glance happens on every pick — hundreds of
+times a day. The cell runs the wrist-camera grasp confirmation just as
+often: once after every pick, on every vial, all run long. It's one of the
+highest-frequency perception checks in the loop.
 
-- **The moment:** if the camera-to-arm transform is off by 3 mm, every
-  reach inherits the error; the cell must establish *and check* the
-  calibration.
-- **How, in depth:** the arm is driven to several known tag poses and
-  `calibrateHandEye` solves the camera↔arm transform; in only-code the
-  truth is known, so a deliberate 3 mm offset is injected to prove the
-  depth cross-check flags the disagreement.
-- **Edge case it survives:** calibration drift over time — the periodic
-  re-check against the depth witness catches a slowly creeping offset
-  before it causes a missed grasp.
-- **Walkthrough:** (1) drive the arm to several known tag poses; (2)
-  collect tag-in-camera and arm-in-base pairs; (3) solve `calibrateHandEye`
-  for the camera↔arm transform; (4) cross-check against depth and flag any
-  offset over tolerance.
-- **In the scene:** the arm taps out a little choreography, touching
-  several known marker poses while the camera watches, and from that dance
-  the exact camera-to-arm offset is solved — then a deliberately planted
-  3 mm error is caught by the depth check, proving the safeguard bites.
-- **Why it's done this way:** every reach is only as accurate as the
-  camera-to-arm transform, and a few millimetres of calibration error
-  turns each grasp into a near-miss; building and *verifying* the
-  calibration is the foundation the whole perception-to-motion chain
-  stands on.
-- **In the full loop:** this underwrites accuracy for the whole loop —
-  every pose the perception layer publishes inherits the calibration, so
-  it connects perception's outputs to motion's inputs for every reach in
-  the run.
-- **Value:** the calibration *procedure* is proven in sim and transfers to
-  hardware, where it's the difference between reaching the vial and
-  reaching past it.
+- **The moment:** the gripper has just closed on a nest; before the arm
+  lifts and carries the vial, the wrist camera must confirm a vial is
+  actually in the jaws.
+- **How, in depth:** the wrist camera looks at the gripper line for the
+  vial's edge (or a tag), returning a "vial present" boolean that the
+  Layer 10 grasp gate ANDs with the gripper's own width reading.
+- **Edge case it survives:** a vial gripped but not properly seated — the
+  camera sees no vial at the expected gripper line and reports absent, so
+  the cell re-grasps rather than carrying a bad hold.
+- **Walkthrough:** (1) after a pick, capture a wrist-camera frame; (2)
+  detect the vial at the gripper line; (3) publish "vial present"
+  true/false; (4) Layer 10 fuses it with the gripper width to allow or
+  block transit.
+- **In the scene:** the wrist camera, inches from the closed jaws, catches
+  the bright edge of a held vial against the gripper — or empty space where
+  a vial should be — and reports what it sees in a heartbeat.
+- **Why it's done this way:** the gripper's feel can be fooled (a jammed
+  jaw reads as "holding"), so an independent visual witness is needed
+  before trusting a grasp; checking before transit catches the miss at its
+  cheapest moment.
+- **In the full loop:** this runs right after every Layer 05 pick and
+  feeds the Layer 10 two-witness grasp gate, the checkpoint before every
+  transit.
+- **Value:** an empty or bad grasp is caught visually the instant it
+  happens, before the arm carries nothing across the bench.
 
 ### Meta code
 
-This meta is the classic eye-in-hand calibration: recover the unknown
-rigid transform between the camera and the gripper by moving the arm to
-several known poses and watching how a fixed marker appears to move in the
-camera. Each sample pairs two measurements taken at the same instant —
-where the gripper is relative to the arm base (from forward kinematics),
-and where the marker is relative to the camera (from the tag's pose).
+This meta is a small, fast, single-purpose detector aimed at one fixed
+region: the gap between the gripper's fingers, where a held vial would
+appear. Because the wrist camera is rigidly mounted near the gripper, the
+vial — if present — always shows up in roughly the same place in the
+frame, which makes the check simple and reliable.
 
-With a handful of such pairs spanning different orientations, a standard
-solver (OpenCV's `calibrateHandEye`) computes the camera-to-gripper
-transform that is consistent with all of them. That single transform is
-what lets any future tag detection be expressed correctly in the arm's
-frame.
+Right after a pick, the pipeline grabs a wrist-camera frame and looks for
+the vial's signature at the gripper line — the bright vertical edges of
+the glass, or a fiducial if the vials carry one. It is not trying to
+identify the vial (that's the scan step later), only to answer
+present-or-absent.
 
-The pipeline does not stop at solving — it verifies. Holding out a sample
-the solve didn't use, it predicts where the marker should appear given the
-computed transform and compares that to where the marker was actually
-measured. A residual error above a small tolerance means the calibration
-is wrong or has drifted, and the result is rejected rather than trusted.
+The result is published as a single boolean on a "vial present" topic.
+Deliberately, this is only one witness: the pipeline doesn't act on it
+alone, because a camera can be fooled by a reflection just as a gripper
+can be fooled by a jam.
 
-In only-code the true transform is known, so a deliberate few-millimetre
-error is injected to prove the verification step actually catches it — the
-safeguard is tested, not assumed. The calibration in pseudocode:
+Instead the boolean is consumed by the Layer 10 grasp gate, which ANDs it
+with the gripper's own width reading from Layer 05, so transit is allowed
+only when both the camera and the gripper agree a vial is held. The check
+in pseudocode:
 
 ```text
-# collect N samples: drive the arm to a known pose, detect the tray tag, record:
-#     (R_grip2base, t_grip2base)   from forward kinematics / tf
-#     (R_tag2cam,   t_tag2cam)     from the tag PnP
-# solve calibrateHandEye(...) -> (R_cam2grip, t_cam2grip)   (the eye-in-hand transform)
-# verify on a held-out sample:
-#     predict the tag pose using the solved transform
-#     error vs the measured pose > tol -> FAIL              (bad / drifted calibration)
-# (sim) inject a deliberate 3 mm offset -> the check MUST flag it
+# the wrist camera is rigidly mounted, so a held vial appears at a fixed region of the frame
+# right after a pick:
+#     grab a wrist-camera frame
+#     look at the gripper line for the vial's edges (or its tag)
+#     vial seen there -> publish /wrist/vial_present = True
+#     nothing there   -> publish /wrist/vial_present = False
+# Layer 10 ANDs this with the gripper width -> the two-witness grasp gate
 ```
 
 ### Real code
 
-An OpenCV `calibrateHandEye` solve plus a residual check that catches a
-bad calibration. **Illustrative teaching code** — re-verify before use;
-every line is commented.
+A node that checks a fixed gripper-line region of the wrist frame for a
+held vial. **Illustrative teaching code** — re-verify before use; every
+line is commented.
 
 ```python
-import cv2                                              # OpenCV: hand-eye calibration + geometry
-import numpy as np                                      # arrays for the rotations / translations
+import rclpy                                            # ROS 2 Python client library
+from rclpy.node import Node                             # base class for a ROS 2 program
+from sensor_msgs.msg import Image                       # the wrist-camera frame
+from std_msgs.msg import Bool                           # the "vial present" witness we publish
+from cv_bridge import CvBridge                          # ROS Image <-> OpenCV array
+import cv2                                              # OpenCV: crop + edge detection
+import numpy as np                                      # count edge pixels in the region
 
-TOL_M = 0.002                                           # fail the check above a 2 mm residual
-
-
-def calibrate(samples):                                 # samples: list of (R_g2b,t_g2b,R_t2c,t_t2c)
-    R_g2b = [s[0] for s in samples]                     # gripper->base rotations (from FK / tf)
-    t_g2b = [s[1] for s in samples]                     # gripper->base translations
-    R_t2c = [s[2] for s in samples]                     # tag->camera rotations (from PnP)
-    t_t2c = [s[3] for s in samples]                     # tag->camera translations
-    R_c2g, t_c2g = cv2.calibrateHandEye(                # solve the eye-in-hand transform...
-        R_g2b, t_g2b, R_t2c, t_t2c,                     # ...from the paired motions
-        method=cv2.CALIB_HAND_EYE_TSAI)                 # Tsai's classic solver
-    return R_c2g, t_c2g                                 # camera->gripper rotation + translation
+# the fixed region of the wrist frame where a held vial appears (x0, y0, x1, y1), in pixels
+GRIPPER_ROI = (270, 180, 370, 460)                     # a tall strip between the fingers
+EDGE_PIXELS_MIN = 400                                  # this many edge pixels => a vial is there
 
 
-def verify(R_c2g, t_c2g, holdout):                      # check the transform on an unseen sample
-    R_g2b, t_g2b, R_t2c, t_t2c = holdout                # the held-out measured sample
-    # predicted tag-in-base via the solved chain: base<-grip<-cam<-tag
-    cam_in_base = t_g2b + R_g2b @ t_c2g                 # camera position in the base frame
-    pred_tag = cam_in_base + (R_g2b @ R_c2g) @ t_t2c    # predicted tag position in the base frame
-    meas_tag = t_g2b + R_g2b @ (t_c2g + R_c2g @ t_t2c)  # the same chain from the measured sample
-    err = float(np.linalg.norm(pred_tag - meas_tag))    # residual distance between them (metres)
-    return err <= TOL_M, err                            # (passed?, the residual) for the report
+class GraspConfirm(Node):                              # confirms a vial is in the jaws after a pick
+    def __init__(self):                                 # one-time setup
+        super().__init__("grasp_confirm")               # register on the ROS 2 graph
+        self.bridge = CvBridge()                        # the one image converter we reuse
+        self.pub = self.create_publisher(Bool, "/wrist/vial_present", 10)  # the visual witness
+        self.create_subscription(                       # watch the wrist camera...
+            Image, "/wrist/image_raw", self.on_frame, 10)
+
+    def on_frame(self, msg):                            # runs on each wrist-camera frame
+        img = self.bridge.imgmsg_to_cv2(msg, "mono8")   # ROS Image -> a grayscale OpenCV array
+        x0, y0, x1, y1 = GRIPPER_ROI                    # the fixed strip between the fingers
+        roi = img[y0:y1, x0:x1]                         # crop to just that region
+        edges = cv2.Canny(roi, 50, 150)                 # find strong edges (the vial's glass walls)
+        present = int(np.count_nonzero(edges)) > EDGE_PIXELS_MIN  # enough edge => a vial is held
+        self.pub.publish(Bool(data=bool(present)))      # publish the present/absent witness
 
 
-if __name__ == "__main__":                              # run directly on recorded samples
-    data = np.load("handeye_samples.npy", allow_pickle=True)  # the N driven-pose + tag samples
-    R, t = calibrate(list(data[:-1]))                   # calibrate on all but the last sample
-    ok, err = verify(R, t, data[-1])                    # verify on the held-out last sample
-    print(f"calibration {'OK' if ok else 'FAILED'} (residual {err*1000:.1f} mm)")  # the verdict
+def main():                                             # standard ROS 2 entry point
+    rclpy.init(); rclpy.spin(GraspConfirm()); rclpy.shutdown()  # start, run, clean up
+
+
+if __name__ == "__main__":                              # run directly
+    main()
 ```
 
 ## See also
