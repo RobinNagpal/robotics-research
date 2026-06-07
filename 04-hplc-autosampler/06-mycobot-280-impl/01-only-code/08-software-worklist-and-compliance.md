@@ -452,237 +452,246 @@ class AuditLog:                                         # an append-only, hash-c
         return True, None                              # the whole chain verifies
 ```
 
-## Electronic review and signature
+## Per-vial status tracking in the worklist store
 
-Before results leave the lab, a second qualified person — not the one who
-prepared the samples — reviews them and signs off, taking formal
-responsibility for releasing them. That second-person review is a
-cornerstone of regulated lab work. This use case is the cell supporting
-that step: presenting the run's results for review and capturing the
-reviewer's electronic signature — who, when, and what the signature means
-— bound to the record.
+A lab assistant keeps constant track of where each sample is in the
+process — which ones are weighed, which are diluted, which are loaded —
+usually by marking up the worklist or updating the LIMS as they go. That
+running status is how anyone can tell, at a glance, what's done and what's
+left. This use case is the cell maintaining the same live status for every
+vial in the worklist store: pending, prepared, placed, or quarantined,
+updated the moment each step completes.
 
-The bigger experiment is the HPLC batch, whose results can't be acted on
-until they're approved and the flagged or quarantined vials are
-dispositioned. The cell does the mechanical work, but a human still owns
-the release decision; capturing that decision as a proper electronic
-signature on the record — rather than a note in a side spreadsheet — is
-what makes the accountability auditable.
+The bigger experiment is the HPLC batch, tracked vial by vial. The status
+store is what the orchestration reads to know the next vial to work, and
+what an operator (or a recovery on restart) consults to see the run's
+state. It is the cell's live picture of the tray as it's built — distinct
+from the immutable audit trail, which records *what happened*; this records
+*where things stand now*.
 
-Review-and-sign happens per batch — a handful of times a day in a busy QC
-lab, once the run's data is ready. The reviewer is deliberately a
-different identity from the operator (segregation of duties), so the
-cadence is tied to completed runs rather than to individual vials, and
-each one produces a signed, locked record.
+The assistant updates a sample's status at every step — many times per
+vial, all day. The cell writes a status update for every vial as it moves
+through the loop — prepared, placed, or quarantined — so the store is
+touched constantly, on the order of thousands of writes across an
+overnight batch.
 
-- **The moment:** before results are released, a reviewer must approve them
-  and disposition the quarantined and flagged vials under their identity.
-- **How, in depth:** the review step captures **user, timestamp, and the
-  meaning of the signature** on the record — the shape 21 CFR Part 11
-  expects — and locks the signed record against silent edits.
-- **Edge case it survives:** a reviewer who is not the operator (segregation
-  of duties) — distinct identities are recorded for prepare vs approve, so
-  the trail shows who did what.
-- **Walkthrough:** (1) present results for review; (2) capture the
-  reviewer's identity, timestamp, and the meaning of the signature; (3)
-  bind that signature to the record; (4) lock it against any silent edit.
-- **In the scene:** a reviewer sits with the night's results, approves the
-  good ones and dispositions the two flagged vials, and their name, the
-  time, and the meaning of that approval are locked onto the record —
-  accountability fused to the data itself.
-- **Why it's done this way:** regulators require a named person to take
-  responsibility for releasing results; capturing identity, time, and
-  intent on the record — rather than in a side spreadsheet — is what makes
-  that accountability auditable and tamper-resistant.
-- **In the full loop:** this closes the loop after the run — once the tray
-  is built and the per-vial records exist, a human reviews and signs, the
-  gate between the cell's work and releasing results.
-- **Value:** accountability is built into the data, not bolted on in a
-  spreadsheet afterwards.
+- **The moment:** a vial finishes a step (prepared, placed, or
+  quarantined); the worklist store must reflect its new status
+  immediately.
+- **How, in depth:** orchestration updates the vial's row in the store
+  (SQLite/LIMS) with its new status and a timestamp, so the current state
+  of the tray is always queryable.
+- **Edge case it survives:** a query mid-run — because the store is updated
+  per step, an operator or a restart sees an accurate, up-to-the-moment
+  picture rather than a stale one.
+- **Walkthrough:** (1) a step completes for a vial; (2) update its status
+  field (+timestamp) in the store; (3) orchestration reads the store to
+  pick the next pending vial; (4) repeat to the end of the tray.
+- **In the scene:** a live table of the tray fills in as the run proceeds
+  — slot A1 "placed," A2 "placed," A3 "quarantined," the rest "pending" —
+  refreshing vial by vial.
+- **Why it's done this way:** a long, unattended run needs a single source
+  of truth for "what's done"; updating per step keeps that picture
+  accurate so the loop, operators, and any restart all agree.
+- **In the full loop:** this is written on every per-vial step, so it's the
+  running state every other layer's progress is recorded against.
+- **Value:** the exact state of the tray is always known and queryable,
+  vial by vial, throughout the run.
 
 ### Meta code
 
-This meta captures not just *that* something was approved but *who*
-approved it, *when*, and *what the approval means* — the elements a
-regulated electronic signature requires. The signature is a small
-structured record: the signer's identity and role, a timestamp, and an
-explicit meaning such as "approved" or "rejected".
+This meta keeps a mutable, queryable record of the tray's current state,
+separate from the immutable audit log. Where the audit trail answers "what
+happened, provably," this store answers "where does each vial stand right
+now" — and it is updated in place as the run proceeds.
 
-Before accepting a signature, the pipeline enforces segregation of duties:
-it refuses a signature from the same person who operated the run, because a
-meaningful review must be performed by someone other than the preparer. A
-signer who is also the operator is rejected outright.
+Each worklist row has a status field — pending, prepared, placed, or
+quarantined — plus a timestamp of the last change. When orchestration
+finishes a step for a vial, it writes the new status to that row. Because
+the write is keyed by slot, the update is a simple, fast, indexed
+operation.
 
-To make the signature inseparable from what it signs, the pipeline
-computes a hash binding the signature and the specific record together.
-That binding means a signature can't later be silently moved to a
-different record, nor the record changed underneath an existing signature,
-without detection.
+Orchestration also reads the store to drive the loop: "the next vial to
+work is the first one still pending." So the same store that records
+progress also sequences the run, which keeps the two perfectly
+consistent.
 
-Finally the signing event is written to the audit trail from the previous
-use case, so the act of signing is itself part of the tamper-evident chain
-— locking the signed record in place. The signature in pseudocode:
+Because every status change is persisted immediately, any consumer — an
+operator dashboard, a monitoring view, or a restart reconciling against
+reality — sees an accurate, current picture rather than a guess. The store
+in pseudocode:
 
 ```text
-# present a result record for review (its data + any flags)
-# capture the signature: {user, role, ts, meaning}   (e.g. "approved" / "rejected")
-# enforce segregation of duties: signer.user != record.operator
-# bind it: hash(record + signature) -> proves the signature covers THIS exact record
-# write a SIGN event to the audit trail; the signed record is now locked by the chain
+# the worklist store has one row per slot: {slot, sample_id, method, status, updated_at}
+# status starts as "pending" for every row
+# when orchestration finishes a step for a vial:
+#     UPDATE the row's status (-> prepared / placed / quarantined) + updated_at = now
+# to choose the next vial:
+#     SELECT the first row WHERE status = 'pending'                 (drives the loop)
+# any operator / dashboard / restart can SELECT to see the live tray state
 ```
 
 ### Real code
 
-A 21 CFR Part 11-shaped signing helper with a segregation-of-duties check.
-**Illustrative teaching code** — compliance certification is a quality
-owner's call; re-verify before use; every line is commented.
-
-```python
-import hashlib, json, time                              # bind the signature by hash; timestamps
-
-
-class SignatureError(Exception):                        # raised when a signature is not allowed
-    pass                                                # e.g. the signer also prepared the batch
-
-
-def sign(record, signer, meaning, audit):               # apply an e-signature to a result record
-    if signer["user"] == record.get("operator"):        # segregation of duties: signer != operator
-        raise SignatureError("signer also prepared the batch")  # a different person must approve
-    sig = {"user": signer["user"],                      # WHO is signing...
-           "role": signer["role"],                      # ...in what role...
-           "ts": time.time(),                           # ...WHEN...
-           "meaning": meaning}                          # ...and the MEANING (approved / rejected)
-    sig["binds_to"] = hashlib.sha256(                   # bind the signature to THIS exact record:
-        json.dumps({"record": record, "sig": sig},      # hash the record + the signature together
-                   sort_keys=True).encode()).hexdigest()  # the tie that locks them as a pair
-    audit.append(signer["user"], "SIGN", {              # write the signing event to the audit trail
-        "record_id": record["id"],                      # which record was signed...
-        "meaning": meaning,                             # ...with what meaning...
-        "binds_to": sig["binds_to"]})                   # ...and the binding hash (now chain-locked)
-    return sig                                          # the signature to store on the record
-```
-
-## Instrument hand-off over a standard interface
-
-The final thing a lab assistant does with a prepared tray is hand it to
-the instrument — sliding the tray into the autosampler and entering or
-confirming the sequence in the instrument's software, then checking it was
-accepted before walking away. This use case is the cell's equivalent:
-passing the verified load order to the HPLC over a standard interface and
-confirming the instrument acknowledged it, rather than assuming.
-
-The bigger experiment is the HPLC batch itself — the run the instrument
-will execute from the tray and sequence the cell hands it. This is the
-boundary where the cell's prep work meets the instrument's own world;
-getting the hand-off right (and checking the instrument's reply) is what
-connects a correctly-built tray to a correctly-run analysis. It is also,
-notoriously, where integration projects stall, so it is built against the
-real interface from the start.
-
-Like loading the autosampler, this hand-off happens once per batch — a
-handful of times a day. It's a low-frequency but high-stakes step: a
-single batch carries dozens of samples, so a silent mismatch between the
-tray and the sequence would corrupt the whole run, which is why the cell
-checks the acknowledgement every time.
-
-- **The moment:** the verified load order must reach the HPLC autosampler —
-  today against a mock, tomorrow against the real instrument.
-- **How, in depth:** a **SiLA 2** mock receives the final sequence in
-  only-code; because it speaks the production interface, swapping in the
-  real instrument later changes the backend, not the control flow above.
-- **Edge case it survives:** an instrument that rejects or re-orders a row —
-  the SiLA reply is checked, so a refused load surfaces as an error the
-  cell handles instead of a silent mismatch between tray and sequence.
-- **Walkthrough:** (1) assemble the verified load order; (2) send it over
-  the SiLA 2 interface (a mock now); (3) check the instrument's reply; (4)
-  on a rejection surface an error instead of a silent tray/sequence
-  mismatch.
-- **In the scene:** the finished, verified load order is handed across to
-  the HPLC over a standard interface; the instrument acknowledges, and the
-  cell checks that acknowledgement rather than blindly assuming the tray
-  and the sequence agree.
-- **Why it's done this way:** the cell's output only matters if the
-  instrument actually runs the right sequence, and integration is where
-  deployments usually stall; building against the real SiLA 2 interface
-  from day one, and checking the instrument's reply, is what de-risks that
-  last mile.
-- **In the full loop:** this is the loop's final output step — after the
-  tray is loaded and verified, the load order goes to the instrument over
-  SiLA 2, connecting the cell's prep loop to the HPLC's own injection
-  sequence.
-- **Value:** the integration that usually blocks deployment is designed and
-  proven before the instrument is even connected.
-
-### Meta code
-
-This meta wraps the instrument behind a standard laboratory interface —
-SiLA 2 — so the cell talks to the autosampler the same way whether it is a
-mock today or a real instrument tomorrow. The pipeline assembles the
-verified load order: an ordered list of which slot holds which sample
-under which method.
-
-It sends that order to the instrument's "load sequence" command over the
-SiLA interface. Crucially, the backend behind that command is swappable:
-in only-code it is an in-process mock that mimics a healthy instrument,
-while on hardware the same call goes out over gRPC to the real device —
-the control flow above doesn't change.
-
-The pipeline does not assume the load succeeded. It reads the instrument's
-reply and checks the status: an acceptance returns the instrument's own
-sequence identifier and the hand-off is done; anything else (a rejected or
-re-ordered sequence) is raised as an error the cell handles.
-
-That explicit check is what prevents a silent mismatch between the
-physical tray the cell built and the sequence the instrument believes it
-will run. The hand-off in pseudocode:
-
-```text
-# assemble the verified load order: ordered [{slot, sample_id, method}]
-# send it to the instrument's SiLA 2 "LoadSequence" command (mock now, real gRPC later)
-# read the reply:
-#     ACCEPTED            -> return the instrument's sequence id (tray + instrument agree)
-#     REJECTED/REORDERED  -> raise an error the cell handles (never assume success)
-```
-
-### Real code
-
-A SiLA 2-shaped autosampler client with a swappable mock/real backend.
+A small SQLite-backed status store that also sequences the loop.
 **Illustrative teaching code** — re-verify before use; every line is
 commented.
 
 ```python
-from dataclasses import dataclass                       # a tidy value type for each load row
-from typing import List, Optional                       # type hints for the sequence + channel
+import sqlite3, time                                    # the worklist store + change timestamps
 
 
-class LoadRejected(Exception):                          # the instrument refused the sequence
-    pass                                                # the cell handles this, never ignores it
+class WorklistStore:                                    # live, queryable per-vial status of the tray
+    def __init__(self, path="worklist.db"):             # one SQLite file
+        self.db = sqlite3.connect(path)                 # open (or create) the store
+        self.db.execute(                                # one row per tray slot...
+            "CREATE TABLE IF NOT EXISTS vials ("        # ...if it doesn't exist yet
+            "slot TEXT PRIMARY KEY, sample_id TEXT, method TEXT, "  # the worklist columns
+            "status TEXT, updated_at REAL)")            # current status + when it changed
+        self.db.commit()                                # persist the schema
+
+    def load(self, rows):                               # seed the store from a worklist (all pending)
+        for r in rows:                                  # one row per worklist entry
+            self.db.execute(                            # insert it as pending...
+                "INSERT OR REPLACE INTO vials VALUES (?,?,?,?,?)",
+                (r["slot"], r["sample_id"], r["method"], "pending", time.time()))
+        self.db.commit()                                # persist the seeded tray
+
+    def set_status(self, slot, status):                 # update one vial's status (per step)
+        self.db.execute(                                # write the new status + timestamp...
+            "UPDATE vials SET status=?, updated_at=? WHERE slot=?",
+            (status, time.time(), slot))                # keyed by slot (fast, indexed)
+        self.db.commit()                                # persist immediately (always current)
+
+    def next_pending(self):                             # the next vial the loop should work
+        cur = self.db.execute(                          # the first row still pending...
+            "SELECT slot FROM vials WHERE status='pending' ORDER BY slot LIMIT 1")
+        row = cur.fetchone()                            # None when the tray is complete
+        return row[0] if row else None                  # the slot to process next, or None
+
+    def snapshot(self):                                 # the live tray state (dashboards / restart)
+        return dict(self.db.execute(                    # {slot: status} for every vial
+            "SELECT slot, status FROM vials").fetchall())
+```
+
+## Per-vial provenance & measurement capture
+
+For every sample, a lab assistant records the actual numbers — the weight
+they measured, the dilution they made, the volume dispensed, the ID they
+read — because those values *are* the result's provenance: the proof of
+how this specific sample was prepared. This use case is the cell capturing
+the same per-vial measurements as structured data: the weight, dilution
+factor, fill, scan ID, and timestamps, recorded for every vial as it's
+processed.
+
+The bigger experiment is the HPLC batch, whose every result must be
+traceable to exactly how its sample was prepared. The instrument later
+produces a number per vial; this captured provenance is what lets that
+number be interpreted and trusted — and it's the data a reviewer signs off
+and an auditor inspects. Capturing it per vial, as it happens, is what
+makes the whole batch defensible.
+
+The assistant records these numbers for every sample at every measuring
+step — many values per vial, all day. The cell captures provenance on
+every vial as it moves through prep, so the records accumulate
+continuously — thousands of values across an overnight batch.
+
+- **The moment:** a vial is weighed, diluted, dispensed, and scanned; each
+  measured value must be captured against that vial as it happens.
+- **How, in depth:** orchestration records a structured per-vial record
+  (weight, dilution factor, fill, scan ID, timestamps) keyed by slot,
+  building the provenance the result will later be interpreted against.
+- **Edge case it survives:** a value captured but a later step failing —
+  the partial record still exists, so a quarantined vial carries the
+  provenance of what *was* done to it.
+- **Walkthrough:** (1) at each measuring step, read the value; (2) write it
+  into that vial's provenance record; (3) accumulate the full record as the
+  vial is processed; (4) finalize it when the vial is placed or
+  quarantined.
+- **In the scene:** as each vial passes the balance, the dispenser, and
+  the scanner, its little dossier fills in — 12.503 g, ×10 dilution,
+  1.4 mL, "ABC-123" — a complete account of its preparation.
+- **Why it's done this way:** a result is only interpretable with its
+  provenance, and provenance can't be reconstructed after the fact;
+  capturing each value the moment it's measured is what makes the batch
+  traceable and defensible.
+- **In the full loop:** this is captured at every measuring step of every
+  vial, building the data the review/sign and the instrument hand-off
+  later rely on.
+- **Value:** every result traces back to exactly how its vial was prepared,
+  because the provenance was captured per vial, as it happened.
+
+### Meta code
+
+This meta accumulates a structured record per vial as it moves through the
+prep steps, so that by the time a vial is placed, its full provenance —
+every value measured for it — exists as one object. The record is keyed by
+slot, the same key the status store and audit trail use, so the three line
+up.
+
+At each measuring step, orchestration writes the relevant value into that
+vial's record: the weighed mass at the balance, the dilution factor and
+dispensed volume at the dispenser, the measured fill from perception, the
+decoded ID at the scanner — each with the time it was taken.
+
+The record grows incrementally rather than being assembled at the end,
+which matters for two reasons: a vial that fails partway still carries the
+provenance of what was done to it, and the data is captured at the moment
+it's true rather than reconstructed (which a regulated record forbids).
+
+When the vial is placed or quarantined, its record is finalized and handed
+to the review/sign step and, ultimately, paired with the instrument's
+result. The capture in pseudocode:
+
+```text
+# each vial has a provenance record keyed by slot: {weights, dilution, fill, scan_id, timestamps}
+# at each measuring step for a vial:
+#     balance    -> record the weighed mass + time
+#     dispenser  -> record the dilution factor + dispensed volume + time
+#     perception -> record the measured fill + time
+#     scanner    -> record the decoded ID + time
+# the record grows incrementally (a failed vial keeps the partial provenance)
+# on place / quarantine -> finalize the record -> review/sign + pair with the result
+```
+
+### Real code
+
+A per-vial provenance recorder that finalizes one dossier per vial.
+**Illustrative teaching code** — re-verify before use; every line is
+commented.
+
+```python
+import json, time                                       # serialize records; timestamp each value
 
 
-@dataclass
-class Row:                                              # one autosampler position to load
-    slot: str                                          # the tray slot, e.g. "A3"
-    sample_id: str                                     # the sample that belongs there
-    method: str                                        # the HPLC method to run on it
+class ProvenanceBook:                                   # accumulates a per-vial preparation record
+    def __init__(self, path="provenance.jsonl"):        # finalized records are appended here
+        self.path = path                                # the file of completed vial dossiers
+        self.open = {}                                  # slot -> the record being built
 
+    def record(self, slot, key, value):                 # capture one measured value for a vial
+        rec = self.open.setdefault(                      # start the dossier if this slot is new...
+            slot, {"slot": slot, "events": []})         # ...with an empty list of measurements
+        rec["events"].append({                          # append this measurement...
+            "key": key, "value": value, "t": time.time()})  # ...with the time it was taken
 
-class SilaAutosampler:                                 # SiLA 2-shaped client (mock backend now)
-    def __init__(self, channel: Optional[object] = None):  # 'channel' is a gRPC channel on hardware
-        self._channel = channel                        # None -> use the in-process mock below
+    def weigh(self, slot, grams):                       # convenience: a balance reading
+        self.record(slot, "mass_g", grams)              # store the weighed mass
 
-    def load_sequence(self, rows: List[Row]) -> str:   # the SiLA 2 "LoadSequence" command
-        slots = [r.slot for r in rows]                 # the slots we ask the instrument to expect
-        reply = self._call_load(slots)                 # send to the instrument, get its reply
-        if reply["status"] != "ACCEPTED":              # did the instrument accept the order?
-            raise LoadRejected(reply)                  # no -> surface it; don't assume success
-        return reply["sequence_id"]                    # the instrument's id for this run
+    def dilute(self, slot, factor, volume_ml):          # convenience: a dispense step
+        self.record(slot, "dilution", factor)           # store the dilution factor...
+        self.record(slot, "dispensed_ml", volume_ml)    # ...and the dispensed volume
 
-    def _call_load(self, slots):                       # the swappable backend (mock vs real gRPC)
-        if self._channel is None:                      # only-code: a deterministic mock...
-            return {"status": "ACCEPTED",              # ...that mimics a healthy instrument
-                    "sequence_id": "SEQ-0001"}
-        stub = self._channel.LoadSequence              # real hardware: the generated SiLA stub
-        return stub(slots)                             # call the real instrument over gRPC
+    def scan(self, slot, sample_id):                    # convenience: a barcode read
+        self.record(slot, "scan_id", sample_id)         # store the decoded ID
+
+    def finalize(self, slot, disposition):              # the vial is placed or quarantined
+        rec = self.open.pop(                            # take its accumulated dossier...
+            slot, {"slot": slot, "events": []})         # ...(empty if nothing was recorded)
+        rec["disposition"] = disposition                # placed / quarantined
+        with open(self.path, "a") as fh:                # append the finished record...
+            fh.write(json.dumps(rec) + "\n")            # ...one JSON line per vial
+        return rec                                      # the full provenance, ready for review/sign
 ```
 
 ## See also
