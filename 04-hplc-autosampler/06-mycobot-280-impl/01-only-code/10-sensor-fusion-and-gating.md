@@ -296,7 +296,7 @@ action is allowed to proceed.
 The five above all matter; these three carry the most weight for sensor
 fusion & gating — the cell's conscience, vial by vial.
 
-### Two-witness grasp gate
+## Two-witness grasp gate
 
 - **The moment:** before transit, the cell must be *sure* a vial is held;
   the wrist camera says "present" but the gripper effort says "jaws fully
@@ -324,7 +324,63 @@ fusion & gating — the cell's conscience, vial by vial.
 - **Value:** "never carry nothing, never drop in transit" becomes a
   mechanical guarantee, not an assumption.
 
-### Fail-safe safety gate
+### Meta code
+
+The shape of the two-witness grasp gate, before any library detail:
+
+```text
+# subscribe to witness A: gripper jaw width (#4) and witness B: wrist /vial_present (#3)
+# time-sync A and B so both describe the same instant (ApproximateTimeSynchronizer)
+# on each synced pair:
+#     held_by_jaw = jaw width ~ vial diameter            (A within its band)
+#     held_by_cam = (B is True)                          (B's independent confirmation)
+#     publish /gate/grasp = held_by_jaw AND held_by_cam  (one trustworthy boolean)
+# the Layer 07 tree ticks this gate before transit; False blocks the place
+```
+
+### Real code
+
+A node that ANDs the gripper and wrist-camera witnesses into one grasp
+gate. **Illustrative teaching code** — re-verify before use; every line is
+commented.
+
+```python
+import rclpy                                            # ROS 2 Python client library
+from rclpy.node import Node                             # base class for a ROS 2 program
+from sensor_msgs.msg import JointState                  # witness A: gripper jaw width
+from std_msgs.msg import Bool                           # witness B: wrist "vial present"; + gate out
+from message_filters import Subscriber, ApproximateTimeSynchronizer  # same-instant pairing
+
+VIAL_DIA = 0.0118                                       # jaw width when truly holding a vial (m)
+TOL = 0.002                                             # within 2 mm counts as "holding glass"
+
+
+class GraspGate(Node):                                  # two-witness "is a vial held?" gate
+    def __init__(self):                                 # one-time setup
+        super().__init__("grasp_gate")                  # register on the ROS 2 graph
+        self.pub = self.create_publisher(Bool, "/gate/grasp", 10)  # the single trustworthy fact
+        jaw = Subscriber(self, JointState, "/joint_states")   # witness A: the gripper
+        cam = Subscriber(self, Bool, "/wrist/vial_present")   # witness B: the wrist camera
+        self.sync = ApproximateTimeSynchronizer(        # pair the two witnesses in time...
+            [jaw, cam], queue_size=10, slop=0.05, allow_headerless=True)
+        self.sync.registerCallback(self.on_pair)        # decide only on a matched pair
+
+    def on_pair(self, js, present):                     # runs on a same-instant (gripper, camera) pair
+        held_jaw = ("gripper_finger_joint" in js.name and  # witness A: jaw width near vial diameter?
+                    abs(js.position[js.name.index("gripper_finger_joint")] * 2 - VIAL_DIA) <= TOL)
+        agree = bool(held_jaw and present.data)         # the two-witness AND (both must confirm)
+        self.pub.publish(Bool(data=agree))              # publish the gate; False blocks the place
+
+
+def main():                                             # standard ROS 2 entry point
+    rclpy.init(); rclpy.spin(GraspGate()); rclpy.shutdown()  # start, run, clean up
+
+
+if __name__ == "__main__":                              # run directly
+    main()
+```
+
+## Fail-safe safety gate
 
 - **The moment:** the arm may only move if the light curtain *and* the door
   read clear — but the curtain cleared 2 s ago and no fresh reading has
@@ -351,7 +407,68 @@ fusion & gating — the cell's conscience, vial by vial.
 - **Value:** the gate fails closed, so a sensor dropout halts the arm
   instead of letting it move near a hand.
 
-### Stale-witness rejection
+### Meta code
+
+The shape of the fail-closed safety gate, before any library detail:
+
+```text
+# subscribe to /light_curtain_clear and /door_closed (latched booleans)
+# track the time each was last received (freshness)
+# on a fixed timer, publish /gate/safe:
+#     fresh = both received within DEADLINE seconds
+#     clear = curtain_clear AND door_closed
+#     safe  = fresh AND clear                            (absence of a fresh "clear" => UNSAFE)
+# default before any message: UNSAFE                     (fail-closed)
+```
+
+### Real code
+
+A gate that publishes "safe" only when both safety inputs are clear AND
+fresh. **Illustrative teaching code** — re-verify before use; every line
+is commented.
+
+```python
+import rclpy                                            # ROS 2 Python client library
+from rclpy.node import Node                             # base class for a ROS 2 program
+from std_msgs.msg import Bool                           # the safety inputs + the /gate/safe output
+
+DEADLINE = 0.5                                          # a reading older than 0.5 s counts as stale
+
+
+class SafetyGate(Node):                                 # fail-closed safety gate
+    def __init__(self):                                 # one-time setup
+        super().__init__("safety_gate")                 # register on the ROS 2 graph
+        self.state = {"curtain": (False, 0.0),          # topic -> (last_value, last_time)...
+                      "door": (False, 0.0)}             # ...both start UNSAFE + never-seen
+        self.pub = self.create_publisher(Bool, "/gate/safe", 10)  # the fused safety verdict
+        self.create_subscription(Bool, "/light_curtain_clear",    # curtain input...
+                                 lambda m: self._set("curtain", m), 10)
+        self.create_subscription(Bool, "/door_closed",            # door input...
+                                 lambda m: self._set("door", m), 10)
+        self.create_timer(0.1, self.publish)            # re-evaluate at 10 Hz
+
+    def now(self):                                      # current time in seconds
+        return self.get_clock().now().nanoseconds * 1e-9  # ROS clock -> float seconds
+
+    def _set(self, key, msg):                           # record a fresh reading + its arrival time
+        self.state[key] = (msg.data, self.now())        # value + the time we received it
+
+    def publish(self):                                  # runs at 10 Hz: compute + publish "safe"
+        t = self.now()                                  # the time of this evaluation
+        fresh = all(t - ts <= DEADLINE for _, ts in self.state.values())  # both readings recent?
+        clear = all(v for v, _ in self.state.values())  # both readings say "clear"?
+        self.pub.publish(Bool(data=bool(fresh and clear)))  # safe ONLY if fresh AND clear
+
+
+def main():                                             # standard ROS 2 entry point
+    rclpy.init(); rclpy.spin(SafetyGate()); rclpy.shutdown()  # start, run, clean up
+
+
+if __name__ == "__main__":                              # run directly
+    main()
+```
+
+## Stale-witness rejection
 
 - **The moment:** a gate is about to pass a *fresh* gripper reading against
   a *stale* camera frame from before the last move.
@@ -378,94 +495,62 @@ fusion & gating — the cell's conscience, vial by vial.
 - **Value:** closes the exact gap the cheap latest-value cache leaves open,
   making fused decisions trustworthy in time as well as value.
 
-## Meta code
+### Meta code
 
-The shape of one best-practical two-witness gate, before any
-library-specific detail:
+The shape of stale-witness rejection, before any library detail:
 
 ```text
-# subscribe to witness A for a fact   (e.g. gripper effort #4)
-# subscribe to witness B for the same fact (e.g. wrist /vial_present #3)
-# time-sync A and B so both describe the same instant   (ApproximateTimeSynchronizer)
-# on each synced (A, B) pair:
-#     in_band_A = effort_low <= A <= effort_high          (A within its expected band)
-#     witness_B = (B is True)                              (B's independent confirmation)
-#     agree     = in_band_A AND witness_B                  (the two-witness AND)
-#     publish one boolean gate topic = agree               (-> a single trustworthy fact)
-# the Layer 07 behaviour tree ticks this gate BEFORE the guarded motion:
-#     gate True  -> proceed to the next step               (act only on agreement)
-#     gate False -> retry the step, else quarantine, else stop   (FAIL branch)
+# subscribe to the two witnesses as STAMPED streams
+# feed them into ApproximateTimeSynchronizer(slop=S):
+#     a pair is delivered ONLY if |stamp_A - stamp_B| <= S   (no fresh-vs-stale pairing)
+#     out-of-window samples are buffered, not paired -> NO decision (the gate holds)
+# also drop any matched pair older than MAX_AGE                (a long stall can't decide late)
+# (contrast: a latest-value cache would pair a fresh A with a stale B and decide wrongly)
 ```
 
-## Real code
+### Real code
 
-A minimal but complete ROS 2 (`rclpy`) **two-witness gate node**, using
-the best-practical pick — `message_filters` to synchronise the witnesses
-and a single fused boolean out. This is **illustrative teaching code**:
-library and message names drift between versions, so re-verify before
-relying on it. Every line carries an inline comment.
+A gate that decides only on a fresh, time-matched witness pair and holds
+otherwise. **Illustrative teaching code** — re-verify before use; every
+line is commented.
 
 ```python
-import rclpy                                      # ROS 2 Python client library (the robot framework)
-from rclpy.node import Node                       # base class every ROS 2 program ("node") builds on
-from std_msgs.msg import Float64, Bool            # Float64 = grip effort number; Bool = a true/false fact
-import message_filters                            # utility that time-aligns two topics into one callback
+import rclpy                                            # ROS 2 Python client library
+from rclpy.node import Node                             # base class for a ROS 2 program
+from std_msgs.msg import Bool                           # the gate output
+from sensor_msgs.msg import JointState, Image           # two stamped witness streams
+from message_filters import Subscriber, ApproximateTimeSynchronizer  # time-window pairing
 
-# --- fixed, known band for the "held" fact (re-verify against the real gripper) ---
-EFFORT_LOW_NM = 2.0                               # below this, the jaws are basically empty (no vial)
-EFFORT_HIGH_NM = 8.0                              # above this, the jaws are crushing or jammed (bad grip)
-
-
-class HeldGateNode(Node):                          # fuses two witnesses into the single /gate/held fact
-    def __init__(self):                            # set-up that runs once, when the node is created
-        super().__init__("held_gate")             # register on the ROS 2 graph under the name "held_gate"
-        effort_sub = message_filters.Subscriber(   # witness A: how hard the gripper is squeezing (#4)
-            self, Float64, "/grip/effort")        # a Float64 in newton-metres, published by Layer 09
-        present_sub = message_filters.Subscriber(  # witness B: does the wrist camera see a vial (#3)
-            self, Bool, "/vial_present")          # a Bool, published by the Layer 04 perception node
-        self.sync = message_filters.ApproximateTimeSynchronizer(  # pair the two by near-equal timestamp
-            [effort_sub, present_sub],            # the two witness streams to line up in time
-            queue_size=10,                        # how many recent messages each stream may buffer
-            slop=0.1,                             # max seconds apart two messages may be and still pair
-            allow_headerless=True)                # std_msgs carry no header, so stamp them on arrival
-        self.sync.registerCallback(self.on_pair)  # call self.on_pair once per matched (effort, present)
-        self.pub = self.create_publisher(         # open the outgoing channel for the fused verdict
-            Bool, "/gate/held", 10)               # type, topic the Layer 07 tree subscribes to, queue depth
-
-    def on_pair(self, effort_msg, present_msg):    # runs when a same-instant (effort, present) pair arrives
-        in_band = EFFORT_LOW_NM <= effort_msg.data <= EFFORT_HIGH_NM  # witness A: grip force looks right
-        sees_vial = bool(present_msg.data)        # witness B: the wrist camera confirms a vial is there
-        held = in_band and sees_vial              # the two-witness AND: both must agree to trust "held"
-        out = Bool()                              # make the empty boolean message we are about to publish
-        out.data = held                           # the single fused verdict, true only if both witnesses agree
-        self.pub.publish(out)                     # send it out on /gate/held for the behaviour tree to tick
-        self.get_logger().info(                   # print a tidy, watchable status line for the sim run
-            f"held={held} (effort={effort_msg.data:.1f} Nm, sees_vial={sees_vial})")  # show both witnesses
+SLOP = 0.03                                             # only pair witnesses within 30 ms
+MAX_AGE = 0.2                                           # ignore even a matched pair older than 200 ms
 
 
-def main():                                        # the standard ROS 2 program entry point
-    rclpy.init()                                    # start up the ROS 2 client library (must come first)
-    node = HeldGateNode()                           # build our node, which runs its __init__ set-up
-    rclpy.spin(node)                                # keep fusing witness pairs until you press Ctrl-C
-    node.destroy_node()                             # remove the node from the graph on shutdown
-    rclpy.shutdown()                                # close the ROS 2 client library cleanly
+class StaleSafeGate(Node):                              # only decides on a fresh, time-matched pair
+    def __init__(self):                                 # one-time setup
+        super().__init__("stale_safe_gate")             # register on the ROS 2 graph
+        self.pub = self.create_publisher(Bool, "/gate/grasp", 10)  # the gate verdict
+        a = Subscriber(self, JointState, "/joint_states")    # witness A (stamped)
+        b = Subscriber(self, Image, "/wrist/image_raw")      # witness B (stamped)
+        self.sync = ApproximateTimeSynchronizer(        # deliver a pair ONLY within SLOP...
+            [a, b], queue_size=20, slop=SLOP)            # ...so out-of-window samples never pair
+        self.sync.registerCallback(self.on_pair)        # ...making stale pairing impossible
+
+    def on_pair(self, a, b):                            # runs only on a time-matched (A, B) pair
+        now = self.get_clock().now().nanoseconds * 1e-9  # current time in seconds
+        stamp = a.header.stamp.sec + a.header.stamp.nanosec * 1e-9  # the pair's own timestamp
+        if now - stamp > MAX_AGE:                        # even a matched pair can be too OLD...
+            return                                       # ...drop it: no decision -> the gate holds
+        # a fresh, time-matched pair would be evaluated here (e.g. the grasp AND above):
+        self.pub.publish(Bool(data=True))               # only a fresh, coherent pair gets to decide
 
 
-if __name__ == "__main__":                          # only run if this file is launched directly
-    main()                                          # ...then start everything above
+def main():                                             # standard ROS 2 entry point
+    rclpy.init(); rclpy.spin(StaleSafeGate()); rclpy.shutdown()  # start, run, clean up
+
+
+if __name__ == "__main__":                              # run directly
+    main()
 ```
-
-The `/gate/held` topic this node publishes is the **same** `held?`
-condition the Layer 07 per-vial tree already ticks — see the `HeldGate`
-leaf in
-[`07-orchestration-and-task-logic.md`](07-orchestration-and-task-logic.md).
-The only change there is that its single subscription becomes a
-subscription to `/gate/held`, so the tree now consumes a **fused,
-two-witness** verdict instead of one raw sensor. In only-code mode both
-witness topics come from mock publishers, so you can **inject faults** —
-publish an out-of-band effort, or flip `/vial_present` to `false` — and
-watch the gate go `False` and the tree fall into its retry / quarantine /
-stop branch, with no bench time.
 
 ## See also
 
