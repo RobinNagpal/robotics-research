@@ -221,6 +221,72 @@ Drake's heavier optimization until the cell actually demands it.
 > Note: tool maturity, speed claims, and ecosystem support drift over
 > time — re-check before quoting any of the above as fact.
 
+## Realistic scenario & use cases
+
+> **Why this matters for automation.** Motion planning is where "move the
+> vial" becomes a safe, collision-free, repeatable trajectory. Its
+> automation value is that the arm reaches **every** nest and station
+> **without being hand-taught each pose** and **without crashing** when
+> the bench is crowded or a target shifts — the difference between a demo
+> and an unattended overnight run.
+
+**The scenario.** The arm must carry a capped 2 mL vial from **rack nest
+A7**, past a **newly added decapper fixture** and a **tall waste bin** an
+operator slid in overnight, to the dispenser, and finally into **tray
+slot 12**. One nest sits near the edge of the 280's reach, so the only
+valid arm configuration is close to a joint limit; the descent into each
+nest must be **straight down** so the gripper doesn't clip neighbouring
+vials; and once the vial is filled, the move must be **gentle enough not
+to slosh**. Then perception (Layer 04) reports the vial is actually 8 mm
+off the expected nest centre, and the plan must adapt. All of this is the
+planner's job.
+
+The layer must therefore serve several **distinct use cases**:
+
+1. **Collision-free pick/place across a crowded bench.** Reach every nest
+   and station without striking the racks, the instrument body, the
+   decapper, or the new waste bin.
+   - *How the solution handles it:* MoveIt 2 keeps a **planning scene**
+     of those obstacles and runs a collision-aware sampling planner, so a
+     blocked path returns *no plan* (handed to orchestration) instead of
+     a collision.
+
+2. **Cartesian straight-line approach and retreat.** Descend vertically
+   into a tight nest and lift straight up — no lateral swing that knocks
+   neighbours.
+   - *How:* MoveIt 2's **Cartesian path** (`compute_cartesian_path`)
+     produces a pure-translation segment for the final approach/retreat,
+     separate from the free-space transit move.
+
+3. **Replanning on a perception correction.** When the target shifts
+   8 mm, plan again from the *current* state, fast, and supersede the old
+   motion.
+   - *How:* the corrected pose is a new planning goal; MoveIt plans from
+     the live joint state and the new trajectory **preempts** the old one
+     through the Layer 02 action interface — no stop-start jerk.
+
+4. **Joint-limit and singularity-aware reach.** For the edge-of-workspace
+   nest, choose an IK solution that stays within limits and avoids a
+   near-singular pose.
+   - *How:* MoveIt's IK respects the URDF joint limits and can seed/filter
+     solutions; if none is valid it fails cleanly to orchestration rather
+     than forcing a bad configuration.
+
+5. **Slosh-aware, speed-limited transfer of a filled vial.** Once a vial
+   holds liquid, cap velocity and acceleration so it doesn't spill.
+   - *How:* MoveIt's **velocity/acceleration scaling** throttles the
+     filled-vial moves; if true slosh constraints are ever needed, this is
+     the one use case that would reach for **Drake**'s optimization.
+
+**Where the pick flexes.** MoveIt 2 (best-practical) covers all five and
+auto-configures from the myCobot URDF. If only kinematics were needed
+(use case 4 in isolation), **Pinocchio/KDL** would do; if the bench grew
+into a dense industrial cell (use case 1 at extreme clearances),
+**Tesseract**'s optimization planners would earn their keep; and slosh-
+constrained transfer (use case 5) is the trigger for **Drake**. The v1
+cell needs none of those escalations — MoveIt 2 on a sparse scene is the
+right tool.
+
 ## Meta code
 
 The shape of the best-practical pick (MoveIt 2, driven from Python
