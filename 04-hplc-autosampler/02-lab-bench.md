@@ -59,6 +59,7 @@ variable touch, it drifts toward Human-led.*
 - [Why this matters to you](#why-this-matters-to-you-even-if-youve-never-seen-a-lab)
 - [How to read this](#how-to-read-this)
 - [Person 1. Priya, a pharmaceutical QC analyst](#person-1-priya-a-pharmaceutical-qc-analyst)
+  - [What Priya actually tests — three familiar drugs](#what-priya-actually-tests--three-drugs-from-your-bathroom-cabinet)
   - [P1. Sample receipt and login](#p1-sample-receipt-and-login)
   - [P2. Weighing and measuring](#p2-weighing-and-measuring)
   - [P3. Sample preparation](#p3-sample-preparation)
@@ -136,6 +137,184 @@ autosampler, and started a run that finishes overnight. The afternoon is
 and reviewing yesterday's chromatograms** — including any result that
 fell outside specification and triggered an investigation. The arm would
 empty out her morning; it barely touches her afternoon.
+
+### What Priya actually tests — three drugs from your bathroom cabinet
+
+Priya's four staple tests sound abstract until you pin each one to a
+tablet you have actually swallowed. So here is every test made concrete
+on a **very familiar drug** — the exact question it answers, what she is
+physically measuring, and step by step how the sample travels from the
+blister pack to the 2 mL vial.
+
+> **Numbers are illustrative.** Weights, volumes, wavelengths, and limits
+> below are representative of published pharmacopoeial methods (USP and
+> equivalents) but **vary by monograph, strength, and lab**. Treat every
+> figure as `~` and check the current monograph before quoting it.
+
+A one-line orientation on the four tests, each tied to its example below:
+
+| Test | The plain-English question | Example drug |
+|---|---|---|
+| **Assay** | Is the labelled dose really in there? | Paracetamol 500 mg |
+| **Related substances** | Has any of it turned into something harmful? | Aspirin ~300 mg |
+| **Dissolution** | Will it release in your body in time? | Ibuprofen 200 mg |
+| **Content uniformity** | Does *every* tablet carry the same dose? | Ibuprofen 200 mg |
+
+#### 1. Assay — "is there really 500 mg in this paracetamol tablet?"
+
+**The drug:** plain paracetamol (US name: acetaminophen; brands Panadol,
+Tylenol) — the 500 mg tablet in nearly every home.
+
+**What she is answering:** does each tablet hold **90–110%** of its
+labelled 500 mg of active ingredient? Below that the patient is
+under-dosed; above it edges toward the dose that harms the liver. The
+assay is the test that would catch a mixing or compression error that
+left a whole batch sitting at, say, 430 mg or 560 mg a tablet.
+
+**What she physically measures:** the **size of the paracetamol peak**
+from the sample, compared with the peak from a known-weight **reference
+standard**. The HPLC separates paracetamol from everything else in the
+tablet (binder, filler, coating), and the detector — set to **~243 nm**,
+the wavelength paracetamol absorbs strongly — draws one clean peak whose
+**area is proportional to how much drug is present**.
+
+**How the sample is prepared** — the chain Priya runs at the bench:
+
+1. **Sample the batch fairly.** Take **≥20 tablets** at random from the
+   batch, weigh them all together, and grind to a fine, even powder, so
+   one scoop represents the *average* tablet, not one lucky pill.
+2. **Weigh out one tablet's worth.** If the average tablet weighs
+   ~600 mg, weigh ~600 mg of the powder (≈500 mg of paracetamol) on the
+   0.1 mg balance into a **500 mL volumetric flask**.
+3. **Dissolve.** Add ~350 mL of **diluent** (typically a water/methanol
+   mix), **sonicate** ~10–15 min to break up the powder and dissolve the
+   drug, then let it cool back to room temperature.
+4. **Make to the mark.** Top the flask up to exactly the 500 mL line and
+   mix. The solution is now nominally **~1 mg/mL** of paracetamol.
+5. **Dilute into range.** The detector would be saturated at 1 mg/mL, so
+   she pipettes **5 mL into a 50 mL flask** and fills to the mark
+   (→ ~0.1 mg/mL), often repeating once more to land near the method's
+   working **~0.01 mg/mL**.
+6. **Filter into the vial.** Draw the final solution through a 0.45 µm
+   syringe filter into a 2 mL vial (first ~0.5 mL to waste so the filter
+   is rinsed), cap, and barcode-label it.
+7. **Prepare the standard identically.** Weigh ~50 mg of **USP
+   Acetaminophen Reference Standard** and carry it through the *same*
+   dilution chain to the *same* ~0.01 mg/mL, so sample and standard are
+   directly comparable.
+
+**Reading it:** % of label ≈ (sample peak area ÷ standard peak area) ×
+(standard concentration ÷ sample's nominal concentration) × 100,
+corrected for the exact weights used. A result of **99.2%** passes;
+**112%** or **88%** fails and triggers an out-of-spec investigation (see
+[P8](#p8-data-review-and-reporting)).
+
+#### 2. Related substances — "is this aspirin turning into something harsher?"
+
+**The drug:** aspirin (acetylsalicylic acid), the ~300 mg tablet.
+
+**The everyday hook:** that **vinegar smell from an old bottle of
+aspirin** is this test made audible. Aspirin slowly **hydrolyses** back
+into **salicylic acid** (harsher on the stomach) plus acetic acid (the
+vinegar smell). The "related substances" test measures exactly how much
+salicylic acid has formed.
+
+**What she is answering:** is **free salicylic acid** below its limit —
+typically **~0.3%** of the aspirin content? This is the safety-and-
+stability test: run on fresh batches, and again on samples pulled from
+storage at 3, 6, 12 months to set the **expiry date**.
+
+**What she physically measures:** a **tiny** salicylic-acid peak sitting
+beside the huge aspirin peak. Because the impurity is hundreds of times
+smaller than the drug, the prep is *flipped* from the assay: she injects
+a **concentrated** sample (so a small impurity is actually visible) and
+compares it against a **very dilute** salicylic-acid standard set right
+at the limit.
+
+**How the sample is prepared:**
+
+1. Powder **≥20 tablets** as before.
+2. Weigh powder equal to **~1 tablet (~300 mg aspirin)** into a flask and
+   dissolve in a **cold** diluent — kept cold and run **quickly**,
+   because warmth and standing time create *more* salicylic acid and
+   would fail a good batch by accident.
+3. Make to volume at a **high** concentration — no big dilution this
+   time; she *wants* the impurity visible.
+4. Separately make a **limit standard**: a salicylic-acid solution at
+   ~0.3% of the sample's aspirin concentration.
+5. Filter both into vials, cap, label, and run them **promptly**.
+
+**Reading it:** if the salicylic-acid peak in the sample is **smaller
+than** the peak from the 0.3% limit standard, the batch passes; bigger,
+and it fails. The same logic guards the paracetamol above against
+**4-aminophenol** (a toxic process/breakdown residue, limit on the order
+of ~50 ppm) — a tiny impurity peak checked against a tiny standard.
+
+#### 3. Dissolution — "will this ibuprofen actually release in time?"
+
+**The drug:** ibuprofen 200 mg (Advil, Nurofen).
+
+**What she is answering:** a tablet with the perfect dose is useless if
+it passes straight through you without dissolving. Dissolution asks: does
+**≥80%** (the method's **"Q"** value) of the ibuprofen **release within
+~30–45 minutes** under conditions that mimic the gut?
+
+**What she physically measures:** how much drug has dissolved into a
+warm, stirred bath over time. This test *starts* on a **dissolution
+apparatus**, not the HPLC:
+
+1. Drop **one tablet into each of 6 vessels**, each holding **~900 mL**
+   of a **pH ~7.2 phosphate buffer** (an intestine stand-in), held at
+   **37 °C** (body temperature).
+2. A **paddle stirs at ~50 rpm**. At set times (e.g. 30, 45, 60 min) she
+   **withdraws a few mL** from each vessel.
+3. Each withdrawn aliquot is **filtered** straight into a 2 mL vial — and
+   from here it is the **same vial-prep loop** as the assay.
+4. HPLC (or a direct UV reading) measures the ibuprofen concentration in
+   each time-point vial; multiplied by the ~900 mL volume, that gives the
+   **% released** at each time.
+
+**Reading it:** every one of the 6 vessels should clear the Q threshold
+within the window. A batch that releases too slowly — an over-compressed,
+"too hard" tablet, for instance — fails even if its assay is a perfect
+100%, which is exactly why dissolution and assay are *both* required.
+
+#### 4. Content uniformity — "does every single tablet carry the same dose?"
+
+**The drug:** ibuprofen 200 mg again (the test matters most for
+low-dose or potent drugs, but the principle is general).
+
+**What she is answering:** the assay above grinds 20 tablets *together*,
+so it only proves the **average** is right. Content uniformity proves no
+**individual** tablet is wildly off — a real risk if the powder blend
+wasn't perfectly mixed before it was pressed into tablets.
+
+**What she physically measures:** the dose in **10 individual tablets,
+assayed one at a time**.
+
+**How the sample is prepared:**
+
+1. Take **10 tablets separately** — *not* pooled and ground together.
+2. Put **each tablet in its own flask**, dissolve, dilute to the method's
+   working concentration, and filter into its **own** vial.
+3. Run all 10 (plus the standard) and calculate the **individual** dose
+   of each tablet.
+
+**Reading it:** all 10 must sit close to label claim, and the spread
+between them — rolled into an "acceptance value" from their mean and
+standard deviation — must be small. A single rogue tablet at 140% or 60%
+fails the batch even when the 10-tablet average looks fine.
+
+**Why every one of these ends in the same vial.** Notice the shape: the
+*questions* differ — total dose, impurity, release speed, tablet-to-
+tablet spread — and the *front* of each prep differs (grind 20 together;
+keep aspirin cold and fast; stir ibuprofen in a 37 °C bath; isolate 10
+tablets one by one). But they all funnel into the **identical last
+move**: a prepared solution drawn through a filter into a **2 mL vial**,
+capped, labelled, and loaded in worklist order. That convergence is the
+whole reason the arm is worth building — it lands exactly on the step
+every one of Priya's tests shares ([P5](#p5-filling-capping-and-labelling-vials)–[P6](#p6-building-the-tray-and-loading-the-instrument)),
+no matter which drug or which question started the day.
 
 ### P1. Sample receipt and login
 
