@@ -308,6 +308,10 @@ motion planning.
   scene; (2) request a plan from A7 to slot 12; (3) the planner returns a
   collision-free path or none; (4) execute it, or hand a no-plan back to
   orchestration to retry or flag.
+- **In the scene:** the planner mentally rehearses dozens of arm paths
+  around the freshly-added waste bin before a single joint moves,
+  discarding any that clip an obstacle; only a clean route from nest A7 to
+  slot 12 is handed to the arm to actually fly.
 - **Value:** the arm adapts to a bench that changed since yesterday instead
   of demanding a frozen world.
 
@@ -324,6 +328,10 @@ motion planning.
 - **Walkthrough:** (1) plan a free-space transit to just above the nest;
   (2) compute a pure-Z Cartesian approach down; (3) grasp the vial; (4)
   compute a pure-Z retreat back up before the next transit move.
+- **In the scene:** the gripper hovers a few centimetres above a vial
+  wedged among its neighbours, then descends dead straight down into the
+  nest, fingers closing, and rises dead straight back out — no sideways
+  drift that would clink the bottles packed beside it.
 - **Value:** tight nests are entered and exited without disturbing 95 other
   vials.
 
@@ -341,6 +349,10 @@ motion planning.
   (2) orchestration issues it as a new goal; (3) MoveIt plans from the live
   joint state; (4) the new trajectory preempts the old one through the
   Layer 02 action interface.
+- **In the scene:** halfway to a nest a corrected target blinks in 8 mm to
+  the side; the arm does not stop and restart — its path smoothly bends to
+  the new goal mid-flight, chasing the latest truth the cameras just
+  reported.
 - **Value:** small real-world misalignments are absorbed live, not turned
   into missed grasps.
 

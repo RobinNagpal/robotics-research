@@ -286,6 +286,10 @@ orchestration — the cell's conscience for the overnight run.
 - **Walkthrough:** (1) run the verify condition node; (2) on failure branch
   to quarantine-and-log; (3) skip the place for that vial; (4) tick on to
   the next worklist row.
+- **In the scene:** vial 53 fails its check and, instead of the run
+  grinding to a halt, the behaviour tree quietly routes it to a "set aside
+  and log" branch and moves straight on to vial 54 — the night's work flows
+  around the one bad apple.
 - **Value:** one bad vial costs one slot, not the night.
 
 #### Safe-stop and resume
@@ -301,6 +305,10 @@ orchestration — the cell's conscience for the overnight run.
 - **Walkthrough:** (1) the reactive guard sees `/estop`; (2) it preempts
   the running subtree; (3) the arm holds safely; (4) on clear, the tree
   re-checks state and resumes from where it paused.
+- **In the scene:** a hand breaks the light curtain mid-move; a guard
+  branch high in the tree instantly overrides everything below and the arm
+  holds. When the curtain clears, the tree re-checks where it was and
+  resumes the very vial it paused on.
 - **Value:** a safety event is a pause, not a ruined tray and a manual
   reset.
 
@@ -317,6 +325,10 @@ orchestration — the cell's conscience for the overnight run.
 - **Walkthrough:** (1) on boot read the persisted worklist progress; (2)
   perceive the actual tray and gripper; (3) reconcile intent against
   reality; (4) resume at the correct next vial without double-placing.
+- **In the scene:** the lab wakes to find the cell rebooted overnight after
+  a power blip — yet the tray is correct. On restart it read its own saved
+  place, looked at the real tray to confirm, and carried on from vial 85
+  rather than starting the night over.
 - **Value:** an unattended run survives an infrastructure hiccup instead of
   silently corrupting the tray.
 

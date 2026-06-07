@@ -328,6 +328,11 @@ middleware & control.
   Gazebo; (3) on hardware day swap that plugin for the myCobot driver;
   (4) re-run the same controllers unchanged and re-validate only the
   plugin.
+- **In the scene:** nothing visibly moves — this is the plumbing — but a
+  single line in a config file is the hinge the whole project swings on.
+  The same trajectory commands that drove a Gazebo arm a minute ago now
+  flow, unchanged, toward a real motor driver, the seam invisible to every
+  node above it.
 - **Value:** the only-code investment becomes the production control layer,
   not a throwaway prototype.
 
@@ -347,6 +352,10 @@ middleware & control.
   dispenser node goes silent; (3) the call returns a timeout error rather
   than blocking; (4) the gate logic retries, pauses, or alarms on that
   failed call.
+- **In the scene:** orchestration politely asks the balance "what do you
+  weigh?" and waits; the dispenser, meanwhile, has gone dark. A countdown
+  ticks, expires, and the request comes back marked "failed" rather than
+  hanging the whole cell on a station that simply stopped answering.
 - **Value:** one flaky device degrades to a handled exception, never a
   deadlocked cell.
 
@@ -366,6 +375,10 @@ middleware & control.
   `controller_manager` holds/deactivates its controller; (3) the node
   relaunches and DDS auto-discovery re-attaches it; (4) orchestration
   resumes from its own persisted state, no full restart.
+- **In the scene:** a station process dies and a corner of the graph goes
+  quiet; the arm freezes its controller rather than lurching. Seconds later
+  the process is back, the network quietly re-introduces it, and the loop
+  picks up its thread as if nothing happened.
 - **Value:** a single dead process is survivable and self-healing, not a
   night's run lost.
 

@@ -328,6 +328,10 @@ software, worklist & compliance layer — what makes the cell *trustable*.
 - **Walkthrough:** (1) on each action build a record; (2) hash it together
   with the previous entry's hash; (3) append it to the JSONL log; (4)
   re-verify the chain on read to detect any tampering.
+- **In the scene:** every action the cell takes drops a sealed entry into a
+  ledger, each one cryptographically knotted to the one before it. An
+  auditor months later can tug on the chain and instantly see whether a
+  single link was ever altered.
 - **Value:** the cell's actions become a defensible, *Original and Accurate*
   record — the precondition for a regulated lab using it at all.
 
@@ -344,6 +348,10 @@ software, worklist & compliance layer — what makes the cell *trustable*.
 - **Walkthrough:** (1) present results for review; (2) capture the
   reviewer's identity, timestamp, and the meaning of the signature; (3)
   bind that signature to the record; (4) lock it against any silent edit.
+- **In the scene:** a reviewer sits with the night's results, approves the
+  good ones and dispositions the two flagged vials, and their name, the
+  time, and the meaning of that approval are locked onto the record —
+  accountability fused to the data itself.
 - **Value:** accountability is built into the data, not bolted on in a
   spreadsheet afterwards.
 
@@ -361,6 +369,10 @@ software, worklist & compliance layer — what makes the cell *trustable*.
   the SiLA 2 interface (a mock now); (3) check the instrument's reply; (4)
   on a rejection surface an error instead of a silent tray/sequence
   mismatch.
+- **In the scene:** the finished, verified load order is handed across to
+  the HPLC over a standard interface; the instrument acknowledges, and the
+  cell checks that acknowledgement rather than blindly assuming the tray
+  and the sequence agree.
 - **Value:** the integration that usually blocks deployment is designed and
   proven before the instrument is even connected.
 

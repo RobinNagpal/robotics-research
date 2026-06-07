@@ -277,6 +277,10 @@ perception & vision.
 - **Walkthrough:** (1) detect the tray AprilTag in the overhead frame; (2)
   solve its 6-DoF pose via PnP; (3) add the fixed per-nest offsets; (4)
   publish a `PoseStamped` per nest for Layer 03 to reach.
+- **In the scene:** an operator sets the rack down a touch crooked; the
+  overhead camera catches the AprilTag on the tray, and in software the
+  entire 96-nest grid quietly rotates and shifts to follow it, so every
+  reach target lands back on centre.
 - **Value:** the cell tolerates a hand-placed rack instead of demanding
   micron-perfect fixturing.
 
@@ -293,6 +297,10 @@ perception & vision.
 - **Walkthrough:** (1) take the depth cloud over the rack; (2) fit a
   cylinder at each nest; (3) classify present vs empty and measure meniscus
   height; (4) emit per-nest presence and fill to the Layer 10 gate.
+- **In the scene:** the depth camera sweeps the rack and, slot by slot,
+  the software draws a cylinder where each vial should be and reads the
+  liquid line inside it — spotting the two empty nests and the one
+  suspiciously low meniscus before the arm wastes a single motion.
 - **Value:** the cell never picks an empty nest or loads an under-filled
   vial, catching prep errors a human would miss at 2 a.m.
 
@@ -312,6 +320,10 @@ perception & vision.
   collect tag-in-camera and arm-in-base pairs; (3) solve `calibrateHandEye`
   for the camera↔arm transform; (4) cross-check against depth and flag any
   offset over tolerance.
+- **In the scene:** the arm taps out a little choreography, touching
+  several known marker poses while the camera watches, and from that dance
+  the exact camera-to-arm offset is solved — then a deliberately planted
+  3 mm error is caught by the depth check, proving the safeguard bites.
 - **Value:** the calibration *procedure* is proven in sim and transfers to
   hardware, where it's the difference between reaching the vial and
   reaching past it.

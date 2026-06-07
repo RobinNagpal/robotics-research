@@ -300,6 +300,11 @@ The five above all matter; these three carry the most weight for grasping
   worklist; (2) align the jaws to the cylinder axis; (3) close to the
   force target validated in MuJoCo; (4) confirm jaw width matches the vial
   before lifting.
+- **In the scene:** two gripper fingers close on a smooth glass cylinder
+  and stop at a precise squeeze — firm enough that the vial won't slide,
+  light enough that the thin wall won't craze. The number behind that
+  squeeze was settled earlier in a contact simulator, not guessed at the
+  bench.
 - **Value:** the most failure-prone touch in the loop is made repeatable,
   removing the drop-or-crack risk a human babysits.
 
@@ -316,6 +321,10 @@ The five above all matter; these three carry the most weight for grasping
 - **Walkthrough:** (1) close and read jaw width; (2) cross-check with the
   wrist camera; (3) on disagreement re-enter the MTC pick stage; (4)
   re-verify before transit, and flag the vial after *N* failed tries.
+- **In the scene:** the fingers close but meet less resistance than a vial
+  should give — the jaws have shut on air, or the vial twisted away. The
+  wrist camera confirms the miss, and the arm calmly backs off and tries
+  the pick again instead of carrying nothing onward.
 - **Value:** a failed pick becomes a retry, not a dropped sample and a
   halted run.
 
@@ -332,6 +341,10 @@ The five above all matter; these three carry the most weight for grasping
 - **Walkthrough:** (1) engage the high-force hold grasp; (2) the decapper
   applies twist; (3) the cap-joint force-torque is watched throughout; (4)
   stop and flag on an over-torque, otherwise release after the cap is off.
+- **In the scene:** the gripper clamps down hard and holds while the
+  decapper grips the cap and twists; a torque gauge on the cap joint
+  watches the strain, and if a stuck cap fights back too hard the whole
+  move freezes rather than wrenching the vial out of its nest.
 - **Value:** decapping becomes a controlled, monitored action instead of a
   blind twist that risks shattering glass.
 

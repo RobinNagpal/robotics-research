@@ -264,6 +264,12 @@ digital twin, so each is worth unpacking.
   IK plus a short approach; (3) step physics and read the collision engine
   against the instrument and rack meshes; (4) write each nest's pass/fail
   and coordinates to a reachability map.
+- **In the scene:** on screen the simulated myCobot swings from nest to
+  nest across the virtual bench, a ghost-coloured collision mesh flashing
+  red the instant a link grazes the instrument housing. No glass, no
+  money, nothing real is at stake — it is pure geometry being
+  interrogated, slot by slot, until the whole 96-nest grid is either green
+  or flagged.
 - **Value:** a bad geometry costs a relaunch, not a bent arm and a
   re-ordered fixture.
 
@@ -285,6 +291,12 @@ digital twin, so each is worth unpacking.
   plugin; (3) read every object's ground-truth pose straight from the
   simulator; (4) save the frame with its auto-generated label and repeat
   thousands of times.
+- **In the scene:** the overhead camera view flickers through hundreds of
+  variations a second — lights swinging angle, vials appearing and
+  vanishing from nests, the tray nudged a few millimetres — while a folder
+  of perfectly labelled images piles up beside it. The "lab" here is a
+  rendering loop, manufacturing experience the real camera has not yet
+  lived.
 - **Value:** a dataset worth weeks of staged photography and hand-labelling
   appears overnight, covering corners real data rarely catches.
 
@@ -304,6 +316,11 @@ digital twin, so each is worth unpacking.
   fire the fault — delete a vial, detach one mid-lift, emit a torque spike,
   or flip `/estop`; (3) record how orchestration reacts; (4) assert the
   expected recovery and keep it as a regression test.
+- **In the scene:** mid-transfer the script yanks a vial out of the
+  gripper and it tumbles through the simulated air; a heartbeat later the
+  same run restarts and an `/estop` snaps the arm to a halt at exactly the
+  wrong moment. Disasters a real lab dreads are staged on purpose, over and
+  over, just to watch how the cell flinches.
 - **Value:** every recovery path is regression-locked before hardware, so
   the first real fault is one the cell has handled a hundred times.
 

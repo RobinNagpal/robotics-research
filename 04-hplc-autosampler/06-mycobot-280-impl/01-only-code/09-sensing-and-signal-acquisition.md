@@ -313,6 +313,10 @@ The five above all matter; these three carry the most weight for sensing
 - **Walkthrough:** (1) script a value timeline in the mock publisher; (2)
   publish it on the sensor's topic; (3) let the Layer 10 gate consume it;
   (4) assert the gate trips or holds exactly as intended.
+- **In the scene:** a mock sensor obediently plays out a scripted lie — a
+  fill level sagging vial by vial, a torque spike at a chosen instant — so
+  the gates downstream can be caught reacting, or failing to, long before a
+  real sensor exists.
 - **Value:** every gate is proven against the exact signal that should trip
   it, before any sensor is bought.
 
@@ -329,6 +333,10 @@ The five above all matter; these three carry the most weight for sensing
 - **Walkthrough:** (1) stamp every message with the sim `/clock`; (2) feed
   two streams into `message_filters`; (3) pair readings within the slop
   window; (4) hand the matched pair to the gate.
+- **In the scene:** two streams of readings, arriving at different speeds,
+  are stamped against one shared clock and lined up instant-for-instant, so
+  the torque spike and the gripper strain that happened together are seen
+  together, not smeared apart.
 - **Value:** fused decisions rest on a coherent snapshot of the cell, not a
   smear across time.
 
@@ -345,6 +353,10 @@ The five above all matter; these three carry the most weight for sensing
 - **Walkthrough:** (1) define the topic to the `sensor_msgs` / micro-ROS
   shape; (2) back it with a mock now; (3) on hardware swap in the real
   driver; (4) consumers above see no change at all.
+- **In the scene:** a mock publisher and a future real sensor are made to
+  speak in exactly the same words on exactly the same channel, so that on
+  the day the hardware arrives the swap is silent and nothing upstream even
+  notices.
 - **Value:** sensor bring-up swaps a publisher; it doesn't ripple a rewrite
   through the stack.
 

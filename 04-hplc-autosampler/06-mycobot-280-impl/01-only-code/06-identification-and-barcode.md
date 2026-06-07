@@ -249,6 +249,10 @@ identification — the cell's chain-of-custody check.
 - **Walkthrough:** (1) image the label head-on; (2) try an OpenCV decode on
   the flat strip; (3) if it fails, rotate the vial one step in the gripper;
   (4) re-image and combine reads until the full code resolves.
+- **In the scene:** a vial turns slowly in the gripper in front of the
+  scan camera, its barcode curling away around the glass; the software
+  reads what it can of the flat middle, then nudges the vial round a few
+  degrees and reads again until the whole code is pieced together.
 - **Value:** curvature, the most common lab-label problem, is handled by
   motion the cell already has, not a special scanner.
 
@@ -265,6 +269,10 @@ identification — the cell's chain-of-custody check.
 - **Walkthrough:** (1) decode with OpenCV; (2) fall back to ZBar; (3)
   re-present the vial at the scan pose up to *N* times; (4) flag it for
   human review if it is still unread.
+- **In the scene:** the first glance at a smudged label comes back blank;
+  the cell does not shrug and move on — it tries a second decoder,
+  re-presents the vial at the scan pose, and only after several honest
+  attempts sets the stubborn vial aside for a human.
 - **Value:** transient read failures self-heal; only the truly unreadable
   reach a human, keeping throughput up.
 
@@ -281,6 +289,10 @@ identification — the cell's chain-of-custody check.
 - **Walkthrough:** (1) decode the vial's ID; (2) look up the expected ID
   for that slot in the worklist; (3) compare the two; (4) on a mismatch,
   halt the vial and raise an audit event before any place action.
+- **In the scene:** a vial's barcode resolves to an ID that doesn't belong
+  in the slot it is about to fill; the arm stops dead, the vial is set
+  aside, and a flag goes up — a wrong sample caught in the act, before it
+  could ever become a wrong result.
 - **Value:** the highest-cost lab error — wrong sample, wrong result — is
   caught mechanically, the core reason a regulated lab would trust the cell.
 

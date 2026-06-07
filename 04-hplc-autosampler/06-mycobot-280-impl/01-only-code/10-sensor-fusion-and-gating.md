@@ -310,6 +310,10 @@ fusion & gating — the cell's conscience, vial by vial.
 - **Walkthrough:** (1) sync the wrist camera and gripper `JointState`; (2)
   test both are in band; (3) test that they agree; (4) return `Success`
   only if both pass, otherwise block the place.
+- **In the scene:** before the arm carries a vial away, two independent
+  observers — the gripper's own feel and the wrist camera's eye — must nod
+  in agreement that a vial is truly held; if one says "present" and the
+  other says "empty", the gate slams shut.
 - **Value:** "never carry nothing, never drop in transit" becomes a
   mechanical guarantee, not an assumption.
 
@@ -327,6 +331,9 @@ fusion & gating — the cell's conscience, vial by vial.
 - **Walkthrough:** (1) subscribe to the curtain and door with a deadline;
   (2) check both read clear; (3) check the readings are fresh; (4) block
   unless current and clear, otherwise hold.
+- **In the scene:** the arm asks permission to move and is refused — not
+  because danger was seen, but because the safety sensor has gone quiet, and
+  silence is treated as "unsafe". The gate would rather wait than guess.
 - **Value:** the gate fails closed, so a sensor dropout halts the arm
   instead of letting it move near a hand.
 
@@ -343,6 +350,10 @@ fusion & gating — the cell's conscience, vial by vial.
 - **Walkthrough:** (1) tag each witness with its stamp; (2) the
   synchronizer seeks a pair within slop; (3) no in-window pair means no
   decision; (4) the gate holds until a fresh matching pair arrives.
+- **In the scene:** a fresh gripper reading is about to be matched against a
+  camera frame that is a beat too old; the synchronizer notices the
+  timestamps don't line up, declines to decide, and waits a moment for a
+  properly matched pair.
 - **Value:** closes the exact gap the cheap latest-value cache leaves open,
   making fused decisions trustworthy in time as well as value.
 
