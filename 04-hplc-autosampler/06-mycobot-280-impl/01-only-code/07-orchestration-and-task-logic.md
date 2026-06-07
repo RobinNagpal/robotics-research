@@ -209,6 +209,64 @@ lineage is clear; it should not be chosen for this project.
   unchanged to the hardware mode. (Reach for py_trees when speed of
   iteration matters more than runtime performance.)
 
+## Realistic scenario & use cases
+
+> **Why this matters for automation.** Orchestration is the cell's brain:
+> it turns ten capable-but-dumb layers into a loop that runs **96 vials
+> unattended overnight** and, crucially, **does the right thing when
+> something goes wrong**. Its automation value is exactly the part a human
+> operator provides today — sequencing, judgement, and recovery — so the
+> bench can be left alone.
+
+**The scenario.** A 96-vial worklist runs overnight. Partway through,
+vial 53's **barcode mismatches** the worklist (Layer 06), vial 61's grasp
+**slips twice** (Layer 05), an **e-stop fires** during vial 70's transfer,
+the dispenser **times out** on vial 78 (Layer 02), and a **power blip**
+reboots the controller after vial 84. By morning the tray must be
+correctly loaded with only verified vials, every exception logged, and the
+two genuinely bad vials flagged — not a crashed cell at vial 53.
+
+The layer must therefore serve several **distinct use cases**:
+
+1. **Drive the per-vial loop deterministically.** Run
+   perceive → pick → decap → dispense → recap → scan → place for each
+   worklist row, in order, 96 times.
+   - *How the solution handles it:* a **behavior tree** iterates a per-vial
+     subtree over the worklist; `Sequence` nodes enforce the order and
+     each step only runs if the prior one succeeded.
+
+2. **React to a verification failure.** Halt the *affected* vial on a
+   barcode mismatch or failed fill-check, flag it, and carry on with the
+   rest of the tray.
+   - *How:* **condition nodes** gate each action; a failed identity check
+     routes that vial to a "quarantine + log" branch instead of the place
+     action, while the loop continues — vial 53 is isolated, not fatal.
+
+3. **Bounded retry then escalate.** A slip or no-read retries a few times,
+   then skips-and-flags rather than looping forever.
+   - *How:* a **retry decorator** with a hard cap wraps the fragile step;
+     on exhaustion a fallback branch parks the vial for human review (vial
+     61).
+
+4. **Safe-stop and resume.** An e-stop or open door mid-motion must halt
+   safely; clearing it resumes from the current vial.
+   - *How:* a high-priority **reactive guard** subtree watches `/estop` and
+     the Layer 10 gates and preempts everything below; when the gate
+     reopens the tree resumes ticking (vial 70).
+
+5. **Crash / power-blip recovery with durable state.** After a reboot,
+   resume at the right worklist row and never double-place.
+   - *How:* worklist progress is **persisted** (Layer 08); on boot the cell
+     reconciles the *actual* tray and gripper state via perception before
+     resuming, so vial 84 isn't placed twice or skipped.
+
+**Where the pick flexes.** BehaviorTree.CPP (best-practical) covers all
+five, and its **Groot2** monitor makes the overnight run — including every
+injected fault above — visible as it happens. When the priority is *speed
+of iterating* the tree against mocks rather than runtime performance,
+**py_trees** is the lighter pure-Python swap; the tree's logic is the same
+either way.
+
 ## Meta code
 
 The shape of the best-practical per-vial Behavior Tree — the same tree
