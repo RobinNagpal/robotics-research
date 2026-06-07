@@ -275,6 +275,10 @@ digital twin, so each is worth unpacking.
   is the make-or-break feasibility question — and it is far cheaper to
   settle in geometry than to discover a dead corner after the bench is
   built.
+- **In the full loop:** the reachability map produced here fixes the bench
+  layout — nest, tray, decapper, and dispenser positions — that Layers
+  03–10 all assume; a nest the twin marks unreachable is one the worklist
+  must never assign.
 - **Value:** a bad geometry costs a relaunch, not a bent arm and a
   re-ordered fixture.
 
@@ -307,6 +311,10 @@ digital twin, so each is worth unpacking.
   those on a real bench is slow and never covers the rare cases, whereas
   the twin knows ground truth for free and can over-represent the hard
   ones.
+- **In the full loop:** the labelled frames generated here are the
+  training and test set Layer 04 uses to localize trays and verify fill,
+  so this step sits upstream of every "where is the vial / is it full?"
+  decision the live loop makes.
 - **Value:** a dataset worth weeks of staged photography and hand-labelling
   appears overnight, covering corners real data rarely catches.
 
@@ -336,6 +344,10 @@ digital twin, so each is worth unpacking.
   you cannot safely or repeatably trigger a dropped vial or a mid-motion
   e-stop on real glass, so sim is the only place to prove the recovery
   first.
+- **In the full loop:** the faults rehearsed here are exactly the
+  exceptions Layer 07 must handle mid-run — dropped vial → re-pick, e-stop
+  → safe-stop/resume — so this is where the overnight loop's recovery
+  branches are proven before they are ever needed.
 - **Value:** every recovery path is regression-locked before hardware, so
   the first real fault is one the cell has handled a hundred times.
 

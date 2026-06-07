@@ -285,6 +285,9 @@ perception & vision.
   make the cell impractical for a real lab where humans place racks by
   hand; anchoring everything to a fiducial lets the cell absorb that human
   imprecision instead of failing on it.
+- **In the full loop:** this is the first step of every per-vial cycle —
+  it tells Layer 03 where to reach and Layer 05 where to grasp, so a wrong
+  pose here cascades into a missed pick downstream.
 - **Value:** the cell tolerates a hand-placed rack instead of demanding
   micron-perfect fixturing.
 
@@ -309,6 +312,10 @@ perception & vision.
   nest, but trays are prepared by people and are sometimes wrong; checking
   presence and fill before acting is what stops the cell injecting an
   empty or under-filled vial and silently corrupting a result.
+- **In the full loop:** this gates the cycle before work begins — its
+  presence/fill verdict feeds Layer 10's gate, which decides whether the
+  arm even attempts that nest, saving the pick/decap/dispense effort on a
+  bad vial.
 - **Value:** the cell never picks an empty nest or loads an under-filled
   vial, catching prep errors a human would miss at 2 a.m.
 
@@ -337,6 +344,10 @@ perception & vision.
   turns each grasp into a near-miss; building and *verifying* the
   calibration is the foundation the whole perception-to-motion chain
   stands on.
+- **In the full loop:** this underwrites accuracy for the whole loop —
+  every pose the perception layer publishes inherits the calibration, so
+  it connects perception's outputs to motion's inputs for every reach in
+  the run.
 - **Value:** the calibration *procedure* is proven in sim and transfers to
   hardware, where it's the difference between reaching the vial and
   reaching past it.

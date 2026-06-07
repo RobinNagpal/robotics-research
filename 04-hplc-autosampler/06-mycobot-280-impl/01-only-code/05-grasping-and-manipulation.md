@@ -309,6 +309,10 @@ The five above all matter; these three carry the most weight for grasping
   slippery, so the safe grip is a narrow band between drop and crack;
   controlling to a validated force rather than a fixed jaw position is
   what keeps the cell inside that band across normal vial tolerance.
+- **In the full loop:** this is the pick at the heart of each cycle — it
+  follows Layer 04's localization and Layer 03's approach, and it is the
+  precondition for the decap, dispense, scan, and place steps that follow;
+  nothing downstream happens until the vial is safely held.
 - **Value:** the most failure-prone touch in the loop is made repeatable,
   removing the drop-or-crack risk a human babysits.
 
@@ -333,6 +337,10 @@ The five above all matter; these three carry the most weight for grasping
   cell that didn't notice would carry on placing nothing — corrupting the
   tray order; detecting the miss and retrying is what makes the pick
   reliable enough to leave unattended.
+- **In the full loop:** this protects the rest of the cycle — by
+  confirming the hold before transit, it ensures Layers 03/06/07 aren't
+  operating on an empty gripper, so a slip is caught here rather than
+  discovered at the place step.
 - **Value:** a failed pick becomes a retry, not a dropped sample and a
   halted run.
 
@@ -357,6 +365,10 @@ The five above all matter; these three carry the most weight for grasping
   if the vial spins or the cap is stuck a blind twist can shatter glass or
   strip the cap; holding firmly and watching torque turns an open-loop
   wrench into a monitored, abortable step.
+- **In the full loop:** this enables the decap sub-step between pick and
+  dispense — holding against the decapper's torque is what lets the cap
+  come off so the dispenser can fill, before a recap and the scan-and-place
+  that follow.
 - **Value:** decapping becomes a controlled, monitored action instead of a
   blind twist that risks shattering glass.
 

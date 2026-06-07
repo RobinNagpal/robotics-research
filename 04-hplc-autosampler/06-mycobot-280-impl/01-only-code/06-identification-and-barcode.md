@@ -257,6 +257,9 @@ identification — the cell's chain-of-custody check.
   cylinders, so a single head-on shot rarely sees the whole code; using
   the arm's own rotation to present more of the label makes reading a
   curved vial reliable without buying a wrap-around scanner.
+- **In the full loop:** the scan happens after the pick (and dispense) and
+  before the place — this is where the held vial's identity is read so
+  Layer 07 can confirm it belongs in its slot.
 - **Value:** curvature, the most common lab-label problem, is handled by
   motion the cell already has, not a special scanner.
 
@@ -281,6 +284,9 @@ identification — the cell's chain-of-custody check.
   occasionally, and treating every miss as a hard stop would halt the tray
   constantly; a tiered retry lets common transient failures resolve
   themselves and reserves human attention for the genuinely unreadable.
+- **In the full loop:** this keeps the per-vial cycle moving — a transient
+  no-read would otherwise stall the place step, so recovery lets the loop
+  reach the identity check without constant human help.
 - **Value:** transient read failures self-heal; only the truly unreadable
   reach a human, keeping throughput up.
 
@@ -306,6 +312,9 @@ identification — the cell's chain-of-custody check.
   spend the most investigating; verifying identity against the worklist
   before placing is the guard that makes that error impossible to commit
   silently.
+- **In the full loop:** this is the gate between read and place — its
+  verdict tells Layer 07 whether to place the vial or quarantine it, the
+  last identity check before the vial joins the tray for the instrument.
 - **Value:** the highest-cost lab error — wrong sample, wrong result — is
   caught mechanically, the core reason a regulated lab would trust the cell.
 

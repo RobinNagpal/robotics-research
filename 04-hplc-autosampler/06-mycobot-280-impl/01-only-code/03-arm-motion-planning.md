@@ -316,6 +316,9 @@ motion planning.
   rearranged; hard-coding "safe" paths would make the cell brittle to any
   change and risk an expensive crash, so the planner reasons about the
   live obstacle set on every move.
+- **In the full loop:** this is the transit half of every pick-and-place —
+  after Layer 04 says where a vial is and Layer 05 picks it, this carries
+  it across the bench to the dispenser or its tray slot without a crash.
 - **Value:** the arm adapts to a bench that changed since yesterday instead
   of demanding a frozen world.
 
@@ -340,6 +343,10 @@ motion planning.
   planner is free to swing the gripper sideways on the way in;
   constraining the final approach to a straight line is what keeps the arm
   from knocking neighbours during the most delicate part of the move.
+- **In the full loop:** the delicate ends of each move — the approach
+  Layer 05 grasps on and the placement into a tray slot — are these
+  straight-line segments, bracketing every pick and every place in the
+  run.
 - **Value:** tight nests are entered and exited without disturbing 95 other
   vials.
 
@@ -365,6 +372,9 @@ motion planning.
   actually are, and a plan made a second ago can already be stale;
   replanning to the newest pose is how the arm stays accurate instead of
   committing to an out-of-date target and missing the grasp.
+- **In the full loop:** this closes the loop with Layer 04 — perception's
+  live corrections become motion here, so the arm tracks the real vial
+  through the pick rather than the nominal one.
 - **Value:** small real-world misalignments are absorbed live, not turned
   into missed grasps.
 

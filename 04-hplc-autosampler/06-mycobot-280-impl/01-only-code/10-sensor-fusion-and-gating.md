@@ -318,6 +318,9 @@ fusion & gating — the cell's conscience, vial by vial.
   by a reflection, the gripper by a jammed jaw — and acting on one witness
   risks carrying nothing or dropping a vial; requiring two independent
   agreements is what makes "is it held?" trustworthy.
+- **In the full loop:** this sits between Layer 05's pick and Layer 03's
+  transit — it is the gate that must pass before the arm carries a vial
+  anywhere, the checkpoint guarding every place in the loop.
 - **Value:** "never carry nothing, never drop in transit" becomes a
   mechanical guarantee, not an assumption.
 
@@ -342,6 +345,9 @@ fusion & gating — the cell's conscience, vial by vial.
   move on stale or missing safety data; designing the gate so that the
   absence of a fresh "clear" means "stop" is what guarantees a sensor
   dropout can never be read as permission.
+- **In the full loop:** this gates every motion in the loop on safety — it
+  sits above Layer 07's per-vial steps, so no pick, transit, or place
+  proceeds unless the cell is currently, freshly safe.
 - **Value:** the gate fails closed, so a sensor dropout halts the arm
   instead of letting it move near a hand.
 
@@ -366,6 +372,9 @@ fusion & gating — the cell's conscience, vial by vial.
   timestamps can pass a decision built on out-of-date data; refusing to
   decide until a properly time-matched pair exists is what makes the fused
   gate trustworthy in time, not just in value.
+- **In the full loop:** this underlies all the loop's gates — by ensuring
+  only time-matched witnesses decide, it keeps every per-vial grasp, fill,
+  and safety gate honest across the whole run.
 - **Value:** closes the exact gap the cheap latest-value cache leaves open,
   making fused decisions trustworthy in time as well as value.
 

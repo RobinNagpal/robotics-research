@@ -337,6 +337,10 @@ middleware & control.
   if the code carries to hardware; without the hardware_interface seam you
   would rebuild the control layer for the real arm and the months of sim
   work would be throwaway.
+- **In the full loop:** this is the spine the whole loop rides on — every
+  command from Layers 03/05/07 to the arm, and every sensor reading back,
+  crosses this interface, so the transfer guarantee is what lets the entire
+  proven loop move to hardware intact.
 - **Value:** the only-code investment becomes the production control layer,
   not a throwaway prototype.
 
@@ -364,6 +368,10 @@ middleware & control.
   messages; a cell that hangs on the first silent station cannot run
   unattended, so every cross-device call must have a bounded failure
   rather than an open-ended wait.
+- **In the full loop:** each per-vial step that calls a station — weigh,
+  dispense, decap — goes through this; a timeout here is what lets Layer
+  07's gate decide to retry or quarantine that vial instead of stalling
+  the run.
 - **Value:** one flaky device degrades to a handled exception, never a
   deadlocked cell.
 
@@ -391,6 +399,9 @@ middleware & control.
   crash; if a single dead node forced a full restart the cell would lose
   the night's work, so the architecture treats node loss as a recoverable
   event, not a fatal one.
+- **In the full loop:** across a 96-vial run any station may drop; this
+  layer's recovery is what keeps the graph alive between Layer 07's
+  per-vial steps, so one crash doesn't end the night.
 - **Value:** a single dead process is survivable and self-healing, not a
   night's run lost.
 

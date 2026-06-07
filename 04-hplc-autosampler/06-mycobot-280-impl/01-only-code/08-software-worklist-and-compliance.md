@@ -336,6 +336,10 @@ software, worklist & compliance layer — what makes the cell *trustable*.
   if its history is provably unaltered; a plain log can be quietly edited,
   so chaining each entry to the last is what turns the cell's record into
   evidence rather than mere notes.
+- **In the full loop:** this records every step of every per-vial cycle
+  from Layers 03–07 — each pick, scan, decision, and place becomes a
+  chained entry, so this is the layer that makes the whole loop accountable
+  after the fact.
 - **Value:** the cell's actions become a defensible, *Original and Accurate*
   record — the precondition for a regulated lab using it at all.
 
@@ -360,6 +364,9 @@ software, worklist & compliance layer — what makes the cell *trustable*.
   responsibility for releasing results; capturing identity, time, and
   intent on the record — rather than in a side spreadsheet — is what makes
   that accountability auditable and tamper-resistant.
+- **In the full loop:** this closes the loop after the run — once the tray
+  is built and the per-vial records exist, a human reviews and signs, the
+  gate between the cell's work and releasing results.
 - **Value:** accountability is built into the data, not bolted on in a
   spreadsheet afterwards.
 
@@ -386,6 +393,10 @@ software, worklist & compliance layer — what makes the cell *trustable*.
   deployments usually stall; building against the real SiLA 2 interface
   from day one, and checking the instrument's reply, is what de-risks that
   last mile.
+- **In the full loop:** this is the loop's final output step — after the
+  tray is loaded and verified, the load order goes to the instrument over
+  SiLA 2, connecting the cell's prep loop to the HPLC's own injection
+  sequence.
 - **Value:** the integration that usually blocks deployment is designed and
   proven before the instrument is even connected.
 

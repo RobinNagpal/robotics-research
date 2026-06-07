@@ -294,6 +294,10 @@ orchestration — the cell's conscience for the overnight run.
   a single failure aborted the whole tray the cell would rarely finish a
   run, so isolating the bad vial and continuing is what makes overnight
   throughput real.
+- **In the full loop:** this is the loop's response to any Layer-04/06/10
+  failure on a vial — it decides per-vial pass-or-quarantine and keeps the
+  worklist advancing, the control flow that turns ten capable layers into
+  one resilient run.
 - **Value:** one bad vial costs one slot, not the night.
 
 ### Safe-stop and resume
@@ -317,6 +321,10 @@ orchestration — the cell's conscience for the overnight run.
   safety must always win instantly; but if every safety trip meant
   scrapping the tray the cell would be unusable, so a clean
   pause-and-resume keeps it both safe and practical.
+- **In the full loop:** this wraps the entire per-vial loop in a safety
+  envelope — any motion from Layers 03/05 can be preempted here on a
+  Layer-10 safety gate and then resumed, so safety overrides the loop
+  without ending it.
 - **Value:** a safety event is a pause, not a ruined tray and a manual
   reset.
 
@@ -341,6 +349,9 @@ orchestration — the cell's conscience for the overnight run.
   it after a power blip; without durable state and reconciliation a hiccup
   would silently corrupt the tray, so resuming from verified reality is
   what lets the lab trust an unwatched run.
+- **In the full loop:** this spans whole runs — it ties the persisted
+  state from Layer 08 to the live tray via Layer 04, so the loop can be
+  interrupted at any vial and still finish the tray correctly.
 - **Value:** an unattended run survives an infrastructure hiccup instead of
   silently corrupting the tray.
 

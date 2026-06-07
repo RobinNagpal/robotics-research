@@ -321,6 +321,9 @@ The five above all matter; these three carry the most weight for sensing
   been seen to trip on the real failure signatures, and several of those
   sensors have no natural simulator; scripting their signals is the only
   way to exercise the gate logic before the hardware exists.
+- **In the full loop:** this provides the signals Layer 10's gates consume
+  during every cycle — by exercising those gates here, it ensures the
+  sensing-to-gating path the live loop relies on actually fires.
 - **Value:** every gate is proven against the exact signal that should trip
   it, before any sensor is bought.
 
@@ -345,6 +348,9 @@ The five above all matter; these three carry the most weight for sensing
   they describe the same instant, and sensors publish at different rates;
   stamping and aligning them is what prevents the cell from fusing a fresh
   reading with a stale one and deciding wrongly.
+- **In the full loop:** this serves Layer 10 directly — every two-witness
+  gate in the loop depends on the aligned readings produced here, so it
+  underlies the grasp, fill, and safety checks at each vial.
 - **Value:** fused decisions rest on a coherent snapshot of the cell, not a
   smear across time.
 
@@ -369,6 +375,9 @@ The five above all matter; these three carry the most weight for sensing
   force changes up the stack; pinning every topic to the shape the real
   device will publish is what keeps bring-up to a driver swap instead of a
   rewrite.
+- **In the full loop:** this spans the whole project's transfer — because
+  every per-vial sensor read uses these contracts, the entire
+  sensing-and-gating chain moves to hardware untouched.
 - **Value:** sensor bring-up swaps a publisher; it doesn't ripple a rewrite
   through the stack.
 
