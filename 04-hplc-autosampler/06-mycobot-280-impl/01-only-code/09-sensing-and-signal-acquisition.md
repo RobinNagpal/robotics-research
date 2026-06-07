@@ -299,138 +299,117 @@ the exact faults of use case 3.
 The five above all matter; these three carry the most weight for sensing
 & signal acquisition — the cell's nervous system.
 
-## Scriptable fault rehearsal
+## Heterogeneous timestamped acquisition
 
-An experienced lab assistant catches the subtle warning signs before they
-become failures — a dispenser that's running low and slowly under-filling,
-a cap that's fighting back harder than usual, a balance reading that's
-drifting. The cell needs the same alarms (its Layer 10 gates), and this
-use case is how those alarms are tested: by playing scripted "lies" onto
-the sensor topics — a fill level sagging vial by vial, a torque spike at a
-chosen moment — to confirm the gates react.
+A lab assistant takes in the whole bench at once — eyes on the rack, a
+hand feeling the cap, an ear for the dispenser, a glance at the balance
+readout — a dozen different senses, all live, all the time. The cell needs
+the same: every one of its sensors (cameras, force-torque, gripper, limit
+switches, presence, plus the level and balance readings) available as a
+live, timestamped stream. This use case is acquiring all of them as
+standard topics, so the rest of the cell can read any sense it needs.
 
-The bigger experiment is the unattended overnight HPLC batch, where no
-human is present to notice the subtle signs. Every safety and quality gate
-the cell relies on has to have been proven to trip on the exact signal
-it's meant to catch — otherwise an under-fill or a stuck cap would sail
-through unnoticed. Rehearsing those signals in software is the only way to
-prove the gates before the sensors that would produce them even exist.
+The bigger experiment is the HPLC batch, where every decision the cell
+makes — is the vial there, is it held, is it safe — draws on one or more
+of these senses. Making each sensor a faithful, standard, timestamped
+topic is what lets perception, gating, and orchestration consume them
+uniformly, with no concern for which device (or sim plugin) produced the
+bytes.
 
-The lab assistant encounters these subtle warning signs occasionally but
-routinely — a drifting balance or a low dispenser perhaps a few times a
-week. The fault rehearsal itself is an engineering activity, run on demand
-during development and on every code change, precisely so that when the
-real signs appear during a run, the cell's gates respond exactly as
-designed.
+The assistant's senses are always on — continuously, every second of every
+shift. The cell's acquisition runs identically: every sensor publishes
+continuously throughout every run, dozens of streams updating many times a
+second. It is the always-on substrate the whole loop stands on.
 
-- **The moment:** the gates in Layer 10 must be tested against a gradual
-  under-fill, a torque spike, a curtain blip, and creeping gripper effort —
-  none of which a clean sim produces on its own.
-- **How, in depth:** the **rclpy mock publishers** drive exact value
-  timelines for the four non-simulatable sensors (safety #10/#11, level #8,
-  balance #6), so any fault is reproduced precisely and repeatably.
-- **Edge case it survives:** a *slow drift* rather than a sharp fault — the
-  mock can ramp the level reading down over many vials, exercising the
-  trend logic a single bad reading wouldn't trigger.
-- **Walkthrough:** (1) script a value timeline in the mock publisher; (2)
-  publish it on the sensor's topic; (3) let the Layer 10 gate consume it;
-  (4) assert the gate trips or holds exactly as intended.
-- **In the scene:** a mock sensor obediently plays out a scripted lie — a
-  fill level sagging vial by vial, a torque spike at a chosen instant — so
-  the gates downstream can be caught reacting, or failing to, long before a
-  real sensor exists.
-- **Why it's done this way:** the gates are only trustworthy once they've
-  been seen to trip on the real failure signatures, and several of those
-  sensors have no natural simulator; scripting their signals is the only
-  way to exercise the gate logic before the hardware exists.
-- **In the full loop:** this provides the signals Layer 10's gates consume
-  during every cycle — by exercising those gates here, it ensures the
-  sensing-to-gating path the live loop relies on actually fires.
-- **Value:** every gate is proven against the exact signal that should trip
-  it, before any sensor is bought.
+- **The moment:** the cell is running; every sensor — cameras, IMU,
+  force-torque, gripper, limit switches, presence, level, balance — must
+  be live as a standard, timestamped topic.
+- **How, in depth:** Gazebo plugins render the simulatable sensors,
+  `ros2_control` reads the joints, and rclpy mocks fill the rest, all
+  bridged into standard `sensor_msgs` so consumers see one uniform
+  interface.
+- **Edge case it survives:** a consumer that doesn't care which sensors
+  are simulated vs mocked — because all twelve present the identical topic
+  interface, nothing above knows or cares.
+- **Walkthrough:** (1) launch the sensor plugins + ros2_control + mock
+  publishers; (2) bridge them into standard message types; (3) each sensor
+  appears as a live, timestamped topic; (4) any layer subscribes to the
+  senses it needs.
+- **In the scene:** a dozen topics tick steadily — images at 10 Hz, joint
+  states fast, torque fast, safety booleans latched — the cell's full
+  sensory field live on the graph at once.
+- **Why it's done this way:** every gate and decision needs a trustworthy,
+  current reading through one uniform interface; standardizing acquisition
+  is what makes all twelve sensors usable the same way.
+- **In the full loop:** this is the always-on layer every other layer
+  reads from — perception, gating, and orchestration all subscribe to
+  these streams continuously.
+- **Value:** every sense the cell has is live, standard, and timestamped,
+  all run long, so any layer can read any sensor uniformly.
 
 ### Meta code
 
-This meta is a small timeline player whose only job is to put precise,
-repeatable signals onto the real sensor topics. A fault is described
-declaratively as a set of segments, each saying: over this time window,
-drive this topic from this value to that value. A flat segment holds a
-value; a sloped one ramps it.
+This meta's job is to make a heterogeneous collection of sensors — some
+simulatable in physics, some not — all appear as uniform, standard,
+timestamped ROS topics. It does this by routing each sensor through
+whichever source can produce it, then normalizing every output to a
+standard message type.
 
-That ramp-versus-step distinction is what lets the same simple mechanism
-reproduce very different faults. A long, gentle ramp on the level topic
-reproduces a gradual under-fill that only a trend-watching gate would
-catch; a sharp two-sample step on the curtain topic reproduces a 200 ms
-blip; a spike on the torque topic reproduces a stuck cap.
+The simulatable sensors (cameras, depth, IMU, force-torque, presence) come
+from Gazebo plugins; the arm's own senses (gripper width and effort, limit
+switches) come from `ros2_control` reading the joints; and the sensors
+with no physical analogue in sim (the safety booleans, the level, the
+balance) come from small rclpy mock publishers. Three different sources,
+one goal.
 
-A fixed-rate timer advances a playback clock and, on each tick, finds the
-segments active at the current time, interpolates each one's value, and
-publishes it on its topic. Because the player drives the *same* topics a
-real sensor would, the gates downstream can't tell the signal is staged.
+Their outputs are bridged into standard `sensor_msgs` types on well-known
+topic names, so a consumer subscribing to, say, the force-torque stream
+gets the same message whether it was rendered by a plugin or faked by a
+mock. Each message carries a timestamp, which is what later lets readings
+be fused across sensors.
 
-The result is that any fault — including ones no real sensor can produce
-on demand — can be played out exactly and identically as often as needed,
-which is what makes the Layer 10 gates testable before hardware. The
-player in pseudocode:
+The result is that the cell's entire sensory field is live on the graph as
+a uniform set of topics, and every layer above simply subscribes to the
+senses it needs. The acquisition in pseudocode:
 
 ```text
-# define a fault timeline: segments (t_start, t_end, topic, type, v_start, v_end)
-# on a fixed timer (e.g. 10 Hz), advance a playback clock:
-#     for each active segment -> linearly interpolate v_start -> v_end over its window
-#     publish the value on the sensor's real topic                 (ramp = drift, step = blip)
-# so a gradual under-fill, a torque spike, and a 200 ms curtain blip play out
-#     exactly + repeatably -> the Layer 10 gates see them and react
+# bring up every sensor as a live, standard, timestamped ROS topic:
+#     Gazebo plugins   -> cameras (#1-3), depth, IMU (#12), force-torque (#5), presence (#7)
+#     ros2_control     -> gripper width/effort (#4), limit switches (#9)  (from the joints)
+#     rclpy mocks      -> safety (#10/#11), level (#8), balance (#6)       (no sim analogue)
+# bridge all of them into standard sensor_msgs on well-known topic names
+# every message carries a timestamp (for later cross-sensor fusion)
+# any layer above subscribes to the senses it needs -> one uniform interface
 ```
 
 ### Real code
 
-A node that plays a scripted fault timeline (ramps and steps) onto the
-real sensor topics. **Illustrative teaching code** — re-verify before use;
-every line is commented.
+A launch file that brings up the sim-sensor bridge and the mock publishers
+— the whole sensor field, live. **Illustrative teaching code** — re-verify
+before use; every line is commented.
 
 ```python
-import rclpy                                            # ROS 2 Python client library
-from rclpy.node import Node                             # base class for a ROS 2 program
-from std_msgs.msg import Float64, Bool                  # level/balance values + safety booleans
+import os                                               # (paths to assets, if needed)
+from launch import LaunchDescription                    # the object a launch file returns
+from launch_ros.actions import Node                     # start a ROS 2 node
 
-# (t_start, t_end, topic, kind, v_start, v_end): ramp v_start->v_end over [t_start, t_end]
-TIMELINE = [(0.0, 12.0, "/level", "f", 1.00, 0.40),     # fill level drifts low over 12 s (under-fill)
-            (5.0, 5.2, "/light_curtain_clear", "b", 1, 0),   # 200 ms curtain blip at t = 5 s
-            (5.2, 99.0, "/light_curtain_clear", "b", 1, 1)]  # curtain clear again afterwards
-
-
-class FaultPlayer(Node):                                # plays a scripted fault timeline onto topics
-    def __init__(self):                                 # one-time setup
-        super().__init__("fault_player")                # register on the ROS 2 graph
-        self.pubs = {}                                  # cache one publisher per topic
-        self.t = 0.0                                    # elapsed playback time (seconds)
-        self.dt = 0.1                                   # tick period -> 10 Hz playback
-        self.create_timer(self.dt, self.tick)           # advance + publish every dt
-
-    def _pub(self, topic, kind):                        # get (or lazily make) a publisher for a topic
-        if topic not in self.pubs:                      # first time we touch this topic?
-            msg_t = Float64 if kind == "f" else Bool    # float value vs boolean state
-            self.pubs[topic] = self.create_publisher(msg_t, topic, 10)  # create + cache it
-        return self.pubs[topic]                         # the cached publisher
-
-    def tick(self):                                     # runs at 10 Hz: publish the scheduled values
-        for t0, t1, topic, kind, a, b in TIMELINE:      # consider every scheduled segment
-            if t0 <= self.t <= t1:                       # is this segment active right now?
-                frac = (self.t - t0) / max(t1 - t0, 1e-6)  # how far through the segment (0..1)
-                val = a + (b - a) * frac                  # linearly interpolate a -> b (ramp or step)
-                if kind == "f":                          # a float sensor (level / balance)...
-                    self._pub(topic, "f").publish(Float64(data=float(val)))  # ...publish the value
-                else:                                    # a boolean sensor (curtain / door)...
-                    self._pub(topic, "b").publish(Bool(data=bool(round(val))))  # ...publish state
-        self.t += self.dt                                # advance our playback clock
+# one ros_gz bridge entry per simulatable sensor (ros_type[gz_type):
+BRIDGE = [                                              # carry these Gazebo topics into ROS 2:
+    "/overhead/image_raw@sensor_msgs/msg/Image[gz.msgs.Image",       # overhead camera  (#1)
+    "/wrist/image_raw@sensor_msgs/msg/Image[gz.msgs.Image",          # wrist camera     (#3)
+    "/decapper/wrench@geometry_msgs/msg/WrenchStamped[gz.msgs.Wrench",  # cap torque    (#5)
+    "/imu@sensor_msgs/msg/Imu[gz.msgs.IMU"]             # base IMU         (#12)
 
 
-def main():                                             # standard ROS 2 entry point
-    rclpy.init(); rclpy.spin(FaultPlayer()); rclpy.shutdown()  # start, run, clean up
-
-
-if __name__ == "__main__":                              # run directly
-    main()
+def generate_launch_description():                      # bring up the whole sensor field
+    bridge = Node(                                      # carry the sim sensors into ROS 2...
+        package="ros_gz_bridge", executable="parameter_bridge",  # the standard topic bridge
+        arguments=BRIDGE, output="screen")             # one bridged topic per sensor above
+    # mock the sensors with no sim analogue (safety #10/#11, level #8, balance #6):
+    mocks = Node(package="hplc_sim", executable="mock_sensors",  # our rclpy mock publishers
+                 name="mock_sensors", output="screen") # publish standard timestamped topics
+    # ros2_control (gripper #4, limit switches #9) is started by the arm bring-up, not here
+    return LaunchDescription([bridge, mocks])          # the full standard sensor field, live
 ```
 
 ## Cross-sensor time synchronization
@@ -553,124 +532,131 @@ if __name__ == "__main__":                              # run directly
     main()
 ```
 
-## Hardware-faithful contracts
+## Right-rate streaming with QoS
 
-A lab assistant trained on standard instruments can walk into any lab that
-uses the same equipment and get to work — the dials and outputs are the
-same, so the skill transfers. This use case builds the same
-interchangeability into the cell's sensors: every simulated sensor
-publishes in exactly the format and on exactly the channel a real device
-would, so a mock and a real sensor are interchangeable from the cell's
-point of view.
+A lab assistant pays attention to different things at different rates —
+they keep a continuous eye on the vial they're handling but only glance at
+the room's safety state now and then, and they remember the last "all
+clear" rather than needing it re-announced every second. This use case is
+the cell tuning each sensor's stream the same way: fast where it matters
+(torque during a decap), moderate for cameras, and latched for safety
+booleans, so the graph carries what's needed without drowning in data.
 
-The bigger experiment, ultimately, is moving the whole cell from
-simulation to a real bench so it can prepare real HPLC batches. That
-transfer only stays cheap if the day the real sensors arrive, nothing
-above them has to change. Pinning every sensor topic to the standard
-message a real device will publish is what keeps bring-up to a driver swap
-instead of a stack-wide rewrite.
+The bigger experiment is the HPLC batch, run on a modest computer that
+must keep up with a dozen sensors for hours. If every sensor streamed at
+maximum rate, the graph would flood and the cell would lag exactly when a
+gate needs a timely reading. Matching each sensor's rate and delivery
+guarantee (its QoS) to its purpose is what keeps the cell responsive
+across a long run.
 
-For the assistant, this portability matters at a career level — every time
-they change benches or labs. For the cell, the sensor swap happens once,
-at hardware bring-up; but because the contract underpins every single
-sensor reading the cell makes during every run, getting it right up front
-is what makes that one-time swap silent rather than disruptive.
+The assistant's attention is always on, but allocated continuously — and
+so is the cell's streaming. Every sensor publishes at its tuned rate
+throughout every run: cameras tens of times a second, torque faster,
+safety latched. It's a continuous, always-on concern, not a one-time
+setting, because the right rates keep every downstream gate fed without
+overload.
 
-- **The moment:** the day real sensors arrive, nothing above this layer
-  should change.
-- **How, in depth:** every topic is designed now to the **micro-ROS /
-  `sensor_msgs`** shape the real device will publish, so a mock and a real
-  sensor are interchangeable from the consumer's side.
-- **Edge case it survives:** a real sensor with extra fields or different
-  units — pinning to the standard message type forces the conversion into
-  the driver, keeping perception and gating untouched.
-- **Walkthrough:** (1) define the topic to the `sensor_msgs` / micro-ROS
-  shape; (2) back it with a mock now; (3) on hardware swap in the real
-  driver; (4) consumers above see no change at all.
-- **In the scene:** a mock publisher and a future real sensor are made to
-  speak in exactly the same words on exactly the same channel, so that on
-  the day the hardware arrives the swap is silent and nothing upstream even
-  notices.
-- **Why it's done this way:** the only-code work is wasted if real sensors
-  force changes up the stack; pinning every topic to the shape the real
-  device will publish is what keeps bring-up to a driver swap instead of a
-  rewrite.
-- **In the full loop:** this spans the whole project's transfer — because
-  every per-vial sensor read uses these contracts, the entire
-  sensing-and-gating chain moves to hardware untouched.
-- **Value:** sensor bring-up swaps a publisher; it doesn't ripple a rewrite
-  through the stack.
+- **The moment:** a dozen sensors are streaming for hours; each must
+  publish often enough to be useful but not so often it floods the graph.
+- **How, in depth:** each sensor gets a publish rate and a QoS profile
+  suited to its role — cameras 10–30 Hz, torque fast, safety booleans
+  latched/reliable so a late subscriber still sees the current state.
+- **Edge case it survives:** a subscriber that starts late — a latched
+  (transient-local) safety topic delivers the last value immediately, so
+  the new subscriber isn't blind until the next message.
+- **Walkthrough:** (1) set each sensor's publish rate to match its
+  purpose; (2) choose a QoS profile (reliability, history, deadline) per
+  topic; (3) safety/state topics latch; (4) high-rate streams stay
+  best-effort to avoid backlog.
+- **In the scene:** the camera ticks a few dozen times a second, the
+  torque stream races during a decap, and the safety booleans sit quietly
+  latched — each stream paced to its job, the graph busy but not flooded.
+- **Why it's done this way:** a modest computer can't carry every sensor
+  at full rate, and a gate needs the right reading at the right time;
+  tuning rate and QoS per sensor is what keeps the cell timely without
+  overload.
+- **In the full loop:** this shapes every sensor stream the loop consumes,
+  so it underlies the responsiveness of every gate, all run long.
+- **Value:** every sensor is fast enough to be useful and lean enough not
+  to flood, so the cell stays responsive across a multi-hour run.
 
 ### Meta code
 
-This meta makes "a mock now, a real device later" safe by pinning down a
-contract that both must satisfy. It chooses the standard message type the
-real device will publish — a ROS sensor message of a fixed shape — and
-uses exactly that type, on exactly the topic name and at the rate the
-consumers above expect.
+This meta tunes two independent dials for every sensor: how often it
+publishes (its rate) and how ROS guarantees delivery (its QoS profile).
+Getting both right per sensor is what keeps a dozen streams useful on a
+modest machine without overwhelming it.
 
-The contract is more than the message type; it includes the fields that
-must be correctly populated, such as a meaningful `frame_id` and a real
-(non-zero) timestamp, and the publish rate. These are the things a
-downstream gate quietly assumes, so they are made explicit and checkable.
+Rate is matched to purpose. A force-torque stream that gates a decap must
+be fast to catch a torque spike; a camera at 10–30 Hz is plenty for
+localizing a static rack; a balance reading every tenth of a second is
+ample. Over-publishing any of them wastes bandwidth and CPU the cell needs
+elsewhere.
 
-The mock publisher fills exactly those fields and, before publishing,
-asserts that its own message conforms to the contract — so if the mock
-ever drifts from the agreed shape, it fails loudly during development
-rather than silently misleading the consumers.
+QoS is matched to meaning. High-rate sensor streams use best-effort,
+history-limited delivery, so a dropped frame is simply skipped rather than
+queued into a growing backlog. Safety and state topics, by contrast, are
+reliable and latched (transient-local), so a subscriber that joins late
+immediately receives the current "clear" or "door closed" rather than
+waiting blind for the next update.
 
-On hardware, a real driver publishes the same type on the same topic; any
-difference in the device's native units or fields is converted *inside*
-the driver, so perception and gating subscribers are byte-for-byte
-unchanged. The contract in pseudocode:
+Together, rate and QoS per sensor keep the graph busy but not flooded, and
+ensure every gate gets a current reading when it needs one. The streaming
+in pseudocode:
 
 ```text
-# pick the STANDARD message type the real device will publish (sensor_msgs / micro-ROS shape)
-# back the topic with a mock now that fills exactly those fields, same topic name + QoS + rate
-# define a conforms() contract: required frame_id, a non-zero stamp, expected units
-# on hardware: a real driver publishes the SAME type on the SAME topic
-#     -> any unit/field difference is converted INSIDE the driver
-#     -> perception + gating subscribers are byte-for-byte unchanged
+# for each sensor, set two dials:
+#   RATE (Hz)  -> match the sensor's purpose:
+#       force-torque (decap gate)  -> fast
+#       cameras (static rack)      -> 10-30 Hz
+#       level / balance            -> ~10 Hz
+#   QoS profile -> match the data's meaning:
+#       high-rate streams -> BEST_EFFORT + small history   (drop, don't backlog)
+#       safety / state    -> RELIABLE + TRANSIENT_LOCAL     (latched: late subscriber sees current)
+# result: every gate gets a timely reading; the graph stays busy but not flooded
 ```
 
 ### Real code
 
-A mock that publishes the exact standard message a real sensor would, with
-a contract assertion. **Illustrative teaching code** — re-verify before
-use; every line is commented.
+A node that publishes a fast best-effort stream and a latched safety
+topic. **Illustrative teaching code** — re-verify before use; every line
+is commented.
 
 ```python
 import rclpy                                            # ROS 2 Python client library
 from rclpy.node import Node                             # base class for a ROS 2 program
-from geometry_msgs.msg import WrenchStamped             # the STANDARD type the real sensor will use
-
-CONTRACT_FRAME = "cap_joint"                            # the frame_id every publisher MUST set
-CONTRACT_RATE_HZ = 50                                   # the rate the gate logic above expects
-
-
-def conforms(msg: WrenchStamped) -> bool:               # the contract a real driver must ALSO satisfy
-    return (msg.header.frame_id == CONTRACT_FRAME and   # correct frame_id, and...
-            msg.header.stamp.sec != 0)                  # ...a real (non-zero) timestamp present
+from rclpy.qos import (QoSProfile, QoSReliabilityPolicy,  # the QoS knobs we tune per sensor...
+                       QoSDurabilityPolicy, QoSHistoryPolicy)
+from std_msgs.msg import Bool, Float64                  # a latched safety bool + a high-rate value
 
 
-class MockTorque(Node):                                 # stands in for the real cap force-torque sensor
+def best_effort(depth=5):                               # QoS for high-rate streams: drop, don't queue
+    return QoSProfile(reliability=QoSReliabilityPolicy.BEST_EFFORT,  # tolerate dropped samples
+                      history=QoSHistoryPolicy.KEEP_LAST, depth=depth)  # keep only the newest few
+
+
+def latched():                                          # QoS for safety/state: late subscriber sees current
+    return QoSProfile(reliability=QoSReliabilityPolicy.RELIABLE,      # must be delivered
+                      durability=QoSDurabilityPolicy.TRANSIENT_LOCAL,  # latch the last value
+                      history=QoSHistoryPolicy.KEEP_LAST, depth=1)    # only the current state matters
+
+
+class TunedSensors(Node):                               # publishes each sensor at its right rate + QoS
     def __init__(self):                                 # one-time setup
-        super().__init__("mock_torque")                 # register on the ROS 2 graph
-        self.pub = self.create_publisher(               # publish on the SAME topic the real one uses
-            WrenchStamped, "/decapper/wrench", 10)
-        self.create_timer(1.0 / CONTRACT_RATE_HZ, self.tick)  # at the contracted rate
+        super().__init__("tuned_sensors")               # register on the ROS 2 graph
+        self.torque = self.create_publisher(            # a fast, droppable stream...
+            Float64, "/decapper/torque", best_effort())  # ...for the decap gate
+        self.curtain = self.create_publisher(           # a latched safety state...
+            Bool, "/light_curtain_clear", latched())    # ...so late subscribers see "clear"
+        self.curtain.publish(Bool(data=True))           # publish the initial latched "clear"
+        self.create_timer(1 / 200, self.fast)           # torque at 200 Hz (catch a spike)
 
-    def tick(self):                                     # emit one fully-populated, stamped message
-        msg = WrenchStamped()                           # the standard message type
-        msg.header.stamp = self.get_clock().now().to_msg()  # a real timestamp (contract requirement)
-        msg.header.frame_id = CONTRACT_FRAME            # the contracted frame_id
-        msg.wrench.torque.z = 0.1                       # a benign idle torque (N*m)
-        assert conforms(msg), "mock violates the sensor contract"  # fail loudly if we ever drift
-        self.pub.publish(msg)                           # publish; consumers can't tell mock from real
+    def fast(self):                                     # the high-rate sensor tick
+        self.torque.publish(Float64(data=0.1))          # publish a torque sample (best-effort)
 
 
 def main():                                             # standard ROS 2 entry point
-    rclpy.init(); rclpy.spin(MockTorque()); rclpy.shutdown()  # start, run, clean up
+    rclpy.init(); rclpy.spin(TunedSensors()); rclpy.shutdown()  # start, run, clean up
 
 
 if __name__ == "__main__":                              # run directly
