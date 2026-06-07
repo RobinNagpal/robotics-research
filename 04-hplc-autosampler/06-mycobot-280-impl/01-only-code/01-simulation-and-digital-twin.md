@@ -246,313 +246,239 @@ bottleneck.
 The five above all matter; these three carry the most weight for the
 digital twin, so each is worth unpacking.
 
-## Reach & collision validation
+## Run the full prep→load loop in the twin
 
-In the lab, a QC analyst or lab assistant spends much of the morning
-reaching into vial racks and the autosampler tray — lifting each 2 mL
-vial from its nest and setting it down at the next station (the balance,
-the dispenser, the cap station, the tray). Every reach has to land on the
-exact nest centre; a vial fumbled, or a hand that brushes a neighbour,
-means a re-do. This use case is the robot's equivalent of that skill:
-before any hardware is bought, the digital twin checks that the arm can
-physically reach every one of those positions on *this* particular bench,
-with a capped vial in its grip, without colliding.
+A lab assistant runs the same loop all day — prepare a vial, place it,
+move to the next — batch after batch. The cell has to reproduce that
+entire loop, and the twin is where developers watch it happen: spin up the
+simulated cell and let it work a whole tray from the first vial to the
+loaded autosampler, with no hardware in the room. This use case is that
+end-to-end run — the smoke-test that proves the pick-drive-place loop
+still holds together after a change.
 
-The bigger experiment behind all the reaching is a single HPLC analysis
-batch — typically a tray of 60–100 vials (samples plus calibration
-standards, blanks, and QC checks) that the instrument injects one after
-another, often overnight. The whole point of the prep is to get every
-vial into its correct tray slot so the instrument reads the right sample
-in the right order; if even one nest is unreachable, that slot can never
-be filled by the robot, so the layout has to be proven before the build.
+The bigger experiment is the HPLC batch itself, simulated end to end.
+Every other layer — perception, motion, grasping, gating, orchestration —
+only proves its worth when they run together as the loop the assistant
+performs; the twin is the only place that whole loop can be exercised
+before hardware exists. Running it is how the team turns ten separate
+layers into one working cell.
 
-A lab assistant performs the underlying reach-and-place motion constantly
-— on the order of a few hundred times a day, every working day, across
-the batches they prepare. The reach-validation sweep itself is run by the
-cell's developers only when the bench layout changes (a new station, a
-moved rack — a handful of times during bring-up, then rarely), but it
-stands behind every one of those daily reaches.
+The lab assistant runs their loop hundreds of times a day. For the
+developers, running the loop in the twin is the most frequent thing they
+do — many times a day, on every meaningful change — because it's the
+fastest way to see whether the cell as a whole still does its job. It is
+the development equivalent of the assistant's per-vial cadence.
 
-- **The moment:** before a myCobot is ordered, the twin is asked to touch
-  all 96 nests, the tray, the decapper, and the dispenser for *this*
-  layout; nest D11 comes back unreachable and A1's approach clips the
-  instrument housing.
-- **How, in depth:** a script walks the worklist, solves IK and a short
-  approach for each nest, and Gazebo's collision engine reports any
-  contact with the static instrument/rack meshes — producing a
-  reachability map of the bench, not a guess.
-- **Edge case it survives:** a nest reachable empty-handed but *not* with
-  a capped vial in the gripper — the test grasps a vial model first, so
-  reach is checked with the payload that actually flies.
-- **Walkthrough:** (1) load the world and URDF and grasp a capped-vial
-  model so the payload is included; (2) for each of the 96 nest poses solve
-  IK plus a short approach; (3) step physics and read the collision engine
-  against the instrument and rack meshes; (4) write each nest's pass/fail
-  and coordinates to a reachability map.
-- **In the scene:** on screen the simulated myCobot swings from nest to
-  nest across the virtual bench, a ghost-coloured collision mesh flashing
-  red the instant a link grazes the instrument housing. No glass, no
-  money, nothing real is at stake — it is pure geometry being
-  interrogated, slot by slot, until the whole 96-nest grid is either green
-  or flagged.
-- **Why it's done this way:** the 280 has a small (~280 mm) reach
-  envelope and the cell is dense, so whether every nest is even reachable
-  is the make-or-break feasibility question — and it is far cheaper to
-  settle in geometry than to discover a dead corner after the bench is
-  built.
-- **In the full loop:** the reachability map produced here fixes the bench
-  layout — nest, tray, decapper, and dispenser positions — that Layers
-  03–10 all assume; a nest the twin marks unreachable is one the worklist
-  must never assign.
-- **Value:** a bad geometry costs a relaunch, not a bent arm and a
-  re-ordered fixture.
+- **The moment:** after changing a layer, a developer needs to know the
+  whole pick-drive-place loop still works — so they run a full tray in the
+  twin.
+- **How, in depth:** the twin launches the cell world and arm, and a
+  scripted worklist drives the per-vial loop through every layer, with
+  mock stations standing in for devices.
+- **Edge case it survives:** a regression in one layer surfaces as a
+  failed run here, not as a surprise on hardware — the loop breaks in sim
+  where it's cheap.
+- **Walkthrough:** (1) launch the twin (world + arm + sensor plugins +
+  mock stations); (2) feed a worklist; (3) let orchestration run the
+  per-vial loop end to end; (4) check the tray ends correctly loaded.
+- **In the scene:** on screen the simulated arm works steadily down a tray
+  — pick, decap, dispense, scan, place — vial after vial, the whole cell
+  exercised in fast-forward with nothing real at risk.
+- **Why it's done this way:** the layers only matter when they run
+  together; the twin is the one place the full loop can be exercised
+  repeatedly, cheaply, before any hardware exists.
+- **In the full loop:** this *is* the full loop, run in simulation — every
+  other layer is exercised through it, so it's the integration point the
+  whole project is built around.
+- **Value:** the entire pick-drive-place loop is provable on demand, in
+  software, as often as the team changes the code.
 
 ### Meta code
 
-The pipeline answers one question — "for *this* bench, can the arm reach
-every place it needs to, carrying what it will actually carry, without
-hitting anything?" — and it answers it as pure geometry, before any
-motion-planning subtlety. It begins by loading the cell's world (bench,
-rack, tray, stations, and the instrument body) and the arm's own URDF into
-a physics simulator, then welds a capped-vial model into the gripper so
-that every reach is tested with the real payload, not an empty hand.
+This meta is integration, not a single algorithm: it stands up the whole
+simulated cell and lets the real orchestration drive it through a
+worklist, exactly as it would on hardware. It launches the Gazebo world
+(bench, stations, sensor plugins), spawns the arm, starts the controllers,
+and brings up the mock station nodes — so every topic and service the
+upper layers expect exists.
 
-It then walks the bench's list of target positions — the 96 rack nests
-plus the decapper, dispenser, and tray slots — and for each one asks the
-inverse-kinematics solver whether a joint configuration even exists that
-puts the gripper there. A nest with no solution is outside the 280's reach
-envelope and is recorded as `UNREACHABLE` straight away, with no further
-work; this is the cheap half of the check.
+With the cell alive, a worklist is fed in and the Layer 07 behaviour tree
+begins ticking the per-vial loop: perceive, pick, decap, dispense, scan,
+verify, place, repeat. Each layer does its real work against the simulated
+devices, so the run exercises perception, motion, grasping,
+identification, gating, and orchestration together rather than in
+isolation.
 
-For the nests that *are* reachable, the pipeline snaps the arm into the
-solved configuration and steps the physics one frame so the collision
-engine can report any contact between the arm's links (and its payload)
-and the static furniture — most importantly the instrument housing the arm
-must never strike. A contact turns the nest's verdict into `COLLISION`; a
-clean pose makes it `OK`.
+Because nothing is real, the run is fast, repeatable, and free of risk — a
+vial dropped in sim costs nothing, and the same tray can be run a hundred
+times. The developer watches it interactively (or replays a recording) to
+see where the loop succeeds or stalls.
 
-The output is a single reachability map — nest by nest, `OK` /
-`UNREACHABLE` / `COLLISION` — that the worklist builder reads so it never
-assigns a vial to a position the arm can't safely service. Re-running it
-after a layout change costs seconds, which is what makes "try a different
-bench arrangement" a software decision rather than a workshop afternoon.
-
-The pipeline in pseudocode:
+The run ends by checking the simulated tray against the worklist: every
+vial that should be loaded is in its slot, every quarantined vial
+accounted for. That end-state check is what turns "it looked like it
+worked" into a definite pass or fail. The run in pseudocode:
 
 ```text
-# load the cell world + the myCobot URDF into the physics sim          (the twin)
-# attach a capped-vial model to the gripper so reach includes the payload
-# for each nest/station pose in the bench layout:
-#     solve inverse kinematics for the gripper to reach that pose       (joint angles)
-#     if no IK solution exists -> mark the nest UNREACHABLE             (out of envelope)
-#     else snap the joints there and step the physics                  (move the twin)
-#         read the collision engine for arm<->instrument/rack contacts  (geometry check)
-#         contact -> mark COLLISION, else -> mark OK
-# write {nest: status} to a reachability map                           (feeds the worklist)
+# launch the twin: Gazebo world + arm + sensor plugins + mock station nodes
+# wait until every expected topic/service is up                      (the cell is "alive")
+# feed a worklist (the tray to build)
+# start the Layer 07 behaviour tree; for each worklist row it ticks:
+#     perceive -> pick -> decap -> dispense -> recap -> scan -> verify -> place
+# let it run to the end of the worklist                              (the whole loop, in sim)
+# assert the simulated tray matches the worklist                     (pass / fail)
 ```
 
 ### Real code
 
-A complete **PyBullet** reach-and-collision checker (PyBullet is this
-layer's cheapest pick, ideal for IK/collision sweeps). **Illustrative
-teaching code** — re-verify APIs before relying on it; every line is
-commented.
+The harness that feeds a worklist and checks the tray once the loop has
+run it. **Illustrative teaching code** — re-verify before use; every line
+is commented.
 
 ```python
-import pybullet as p                                   # the Bullet physics engine's Python API
-import pybullet_data                                   # ships sample URDFs + a ground plane
-import json                                            # to dump the reachability map at the end
-
-ARM_URDF = "mycobot_280.urdf"                          # the twin's description (links + joints)
-VIAL_URDF = "capped_vial.urdf"                         # a 2 mL vial model attached to the gripper
-EEF_LINK = 6                                            # index of the gripper/flange link in the URDF
-NESTS = {"A1": [0.18, 0.10, 0.08],                     # nest centres as [x, y, z] gripper targets...
-         "D11": [0.26, -0.14, 0.08]}                   # ...(only two shown; populated for all 96)
+import rclpy                                            # ROS 2 Python client library
+from rclpy.node import Node                             # base class for a ROS 2 program
+from std_msgs.msg import String                         # publish the worklist; read placements
+import csv, sys                                         # load the worklist; read the path argument
 
 
-def main():                                            # run the whole reach/collision sweep
-    p.connect(p.DIRECT)                                # headless physics (no GUI) for a batch check
-    p.setAdditionalSearchPath(pybullet_data.getDataPath())  # so plane.urdf etc. are findable
-    p.loadURDF("plane.urdf")                           # a floor so nothing falls to infinity
-    arm = p.loadURDF(ARM_URDF, [0, 0, 0.75], useFixedBase=True)   # the arm, bolted to the bench
-    inst = p.loadURDF("instrument.urdf", [0.3, 0, 0.75], useFixedBase=True)  # the obstacle body
-    vial = p.loadURDF(VIAL_URDF, [0, 0, 1.0])          # the payload, spawned then welded below
-    p.createConstraint(arm, EEF_LINK, vial, -1,        # weld the vial to the gripper link so...
-                       p.JOINT_FIXED, [0, 0, 0], [0, 0, 0.02], [0, 0, 0])  # ...reach includes it
+class WorklistRunner(Node):                             # feeds a worklist and checks the tray at the end
+    def __init__(self, path):                           # path = the tray CSV to build
+        super().__init__("worklist_runner")             # register on the ROS 2 graph
+        self.expected = [r["slot"]                      # the slots that must end loaded...
+                         for r in csv.DictReader(open(path))]  # ...one per worklist row
+        self.loaded = set()                             # slots the loop reports as placed
+        self.pub = self.create_publisher(String, "/worklist", 10)  # hand the tray to orchestration
+        self.create_subscription(                       # the loop reports each placement...
+            String, "/tray/placed", self.on_placed, 10)  # ...as a slot id
+        self.started = False                            # so we publish the worklist only once
+        self.create_timer(1.0, self.start_once)         # publish shortly after startup
 
-    reach_map = {}                                     # nest -> "OK" | "UNREACHABLE" | "COLLISION"
-    for name, target in NESTS.items():                 # test every nest in the layout
-        joints = p.calculateInverseKinematics(arm, EEF_LINK, target)  # IK: angles to reach the nest
-        if joints is None:                             # some IK backends return None on failure
-            reach_map[name] = "UNREACHABLE"            # nest is outside the 280's envelope
-            continue                                   # nothing to step; on to the next nest
-        for j, angle in enumerate(joints):             # apply the IK solution joint by joint
-            p.resetJointState(arm, j, angle)           # snap the twin into the reaching pose
-        p.stepSimulation()                             # refresh contacts for the new configuration
-        hits = p.getContactPoints(arm, inst)           # any arm<->instrument contact in this pose?
-        reach_map[name] = "COLLISION" if hits else "OK"  # record the verdict for this nest
+    def start_once(self):                               # kick off the run once the graph is up
+        if not self.started:                            # only on the first timer tick
+            self.pub.publish(String(data=",".join(self.expected)))  # send the tray to build
+            self.started = True                         # don't publish again
 
-    with open("reach_map.json", "w") as fh:            # persist the result for the worklist builder
-        json.dump(reach_map, fh, indent=2)             # human-readable map of nest -> status
-    p.disconnect()                                     # tear down the physics server
+    def on_placed(self, msg):                           # runs each time the loop places a vial
+        self.loaded.add(msg.data)                       # record the slot it just filled
+        if set(self.expected) <= self.loaded:           # every expected slot now loaded?
+            print("RUN PASSED: tray fully loaded")      # the end-state check succeeded
+            rclpy.shutdown()                            # end the run cleanly
 
 
-if __name__ == "__main__":                             # run only when invoked directly
-    main()                                             # ...do the sweep
-```
-
-## Synthetic perception data
-
-A lab assistant barely notices it, but a huge part of the job is
-*looking*: glancing across a rack to see which nests hold a vial, spotting
-one that is under-filled or empty, checking a vial is seated straight
-before picking it. Those split-second visual judgments are what the cell's
-camera has to learn to make. This use case is how the learning material is
-manufactured — the twin renders thousands of labelled images of racks
-under varied lighting and fill levels, so the perception layer can be
-trained and tested without a single real photograph.
-
-The bigger experiment is the same HPLC batch: before the instrument can
-run, every vial in the tray must be confirmed present, correctly filled,
-and correctly placed. The lab assistant does that confirmation by eye; the
-robot does it with a camera trained on this synthetic data. Getting the
-dataset right here is what lets the live cell catch a missing or
-under-filled vial before it wastes a move — exactly the check the
-assistant makes dozens of times per tray.
-
-The assistant makes these visual checks more or less continuously — every
-time they touch the rack — so many dozens to a few hundred times a day.
-The data-generation run itself is an engineering task done once up front
-(and re-run occasionally when new vial types or lighting appear), but it
-underpins a recognition the cell then performs on every vial, every run.
-
-- **The moment:** Layer 04 needs labelled images but no real photos exist
-  yet; the twin renders thousands of rack frames under varied light, fill
-  levels, and pose jitter, each auto-labelled with ground truth.
-- **How, in depth:** the camera plugins publish the same image/point-cloud
-  topics a real camera would, while a domain-randomization loop varies
-  lighting and which nests are filled; the simulator already knows every
-  pose, so each frame ships a perfect label for free (Isaac Sim for
-  photoreal glass).
-- **Edge case it survives:** meniscus glare that fools a detector —
-  randomizing light angle *generates* the glare cases, training against
-  the failure that would otherwise appear only on the bench.
-- **Walkthrough:** (1) randomize lighting, textures, and which nests are
-  filled; (2) render an RGB and depth frame from the overhead camera
-  plugin; (3) read every object's ground-truth pose straight from the
-  simulator; (4) save the frame with its auto-generated label and repeat
-  thousands of times.
-- **In the scene:** the overhead camera view flickers through hundreds of
-  variations a second — lights swinging angle, vials appearing and
-  vanishing from nests, the tray nudged a few millimetres — while a folder
-  of perfectly labelled images piles up beside it. The "lab" here is a
-  rendering loop, manufacturing experience the real camera has not yet
-  lived.
-- **Why it's done this way:** perception needs labelled examples of the
-  exact lighting and clutter it will face; collecting and hand-labelling
-  those on a real bench is slow and never covers the rare cases, whereas
-  the twin knows ground truth for free and can over-represent the hard
-  ones.
-- **In the full loop:** the labelled frames generated here are the
-  training and test set Layer 04 uses to localize trays and verify fill,
-  so this step sits upstream of every "where is the vial / is it full?"
-  decision the live loop makes.
-- **Value:** a dataset worth weeks of staged photography and hand-labelling
-  appears overnight, covering corners real data rarely catches.
-
-### Meta code
-
-The pipeline is a generate-and-label loop whose job is to manufacture
-perception training data the real bench can't cheaply provide: thousands
-of camera frames of racks of vials, each paired with the exact ground
-truth of what it contains. Because the scene lives in the simulator, every
-object's true pose and fill level is known for free, so the labels are
-perfect and instantaneous — the expensive, error-prone step of
-hand-labelling real photographs disappears entirely.
-
-Each iteration begins by randomizing the scene the way the real world
-varies: the direction and intensity of the light, the textures, and —
-critically — which nests hold a vial and how full each one is. This
-"domain randomization" is what makes a model trained on the data robust;
-by deliberately generating the awkward cases (glare on the glass, a low
-meniscus, a slightly shifted tray) the loop teaches the perception layer
-to handle exactly the situations that would otherwise only appear,
-unlabelled, on the real bench.
-
-The simulator then renders the overhead camera's view — both an RGB image
-and a depth image, the same two products a real RGB-D camera publishes —
-and the loop reads each vial's true pose and fill straight out of the
-physics world to write alongside the image as its label. One pass produces
-one perfectly-labelled training sample.
-
-Repeated tens of thousands of times overnight, this builds a dataset large
-and varied enough to develop and test the Layer 04 perception code
-against, long before a real camera exists. When photoreal glass
-reflections matter more than geometry, the identical scene is re-rendered
-in a higher-fidelity simulator, but the shape of the loop is unchanged.
-
-The loop in pseudocode:
-
-```text
-# for each frame we want to generate:
-#     randomize the scene:
-#         pick a random light direction + intensity                    (domain randomization)
-#         choose which nests hold a vial and each vial's fill level     (presence + meniscus)
-#         jitter the tray pose a few mm/deg                            (real racks aren't exact)
-#     render an RGB image + a depth image from the overhead camera     (sensor #1 viewpoint)
-#     read each spawned vial's true pose + fill from the simulator      (ground truth, free)
-#     write the images + a label file {poses, fills}                    (one labelled sample)
-# stop after N samples -> a labelled dataset for Layer 04               (no photography needed)
-```
-
-### Real code
-
-A complete **PyBullet** domain-randomized dataset generator. **Illustrative
-teaching code** — re-verify before use; every line is commented.
-
-```python
-import pybullet as p                                   # physics + a built-in camera renderer
-import pybullet_data                                   # sample assets (plane, etc.)
-import numpy as np                                     # arrays for the rendered images
-import random, json, os                                # randomization, label files, paths
-
-VIAL_URDF = "capped_vial.urdf"                         # the vial model placed into nests
-NEST_XY = {"A1": (0.18, 0.10), "A2": (0.20, 0.10)}     # nest centres (x, y); ...all 96 in practice
-OUT = "synthetic/"                                     # folder the dataset is written into
+def main():                                             # standard ROS 2 entry point
+    rclpy.init()                                         # start the client library
+    rclpy.spin(WorklistRunner(sys.argv[1]))             # run until the tray is complete (or killed)
 
 
-def render_one(i):                                     # build, render, and label a single frame
-    p.resetSimulation()                                # clear the previous frame's scene
-    p.loadURDF("plane.urdf")                           # neutral floor
-    light = [random.uniform(-1, 1) for _ in range(3)]  # random light direction (randomization)
-    labels = {}                                        # nest -> {pose, fill} ground truth
-    for nest, (x, y) in NEST_XY.items():               # decide each nest independently
-        if random.random() < 0.2:                      # ~20% of nests left empty (realistic tray)
-            continue                                   # no vial here -> simply absent from the label
-        p.loadURDF(VIAL_URDF, [x, y, 0.80])            # drop a vial into this nest
-        fill = round(random.uniform(0.3, 1.0), 2)      # random fill (low = under-filled case)
-        labels[nest] = {"pose": [x, y, 0.80], "fill": fill}  # record the ground truth
-    view = p.computeViewMatrix([0.2, 0, 1.3], [0.2, 0, 0.8], [1, 0, 0])  # overhead camera pose
-    proj = p.computeProjectionMatrixFOV(60, 1.0, 0.1, 2.0)  # 60 deg FOV, square frame
-    _, _, rgb, depth, _ = p.getCameraImage(            # render the scene from that camera...
-        640, 640, view, proj, lightDirection=light)    # ...640x640 RGB + depth with our light
-    np.save(os.path.join(OUT, f"{i}_rgb.npy"), rgb)    # save the RGB frame (image input)
-    np.save(os.path.join(OUT, f"{i}_depth.npy"), depth)  # save the depth frame (geometry input)
-    with open(os.path.join(OUT, f"{i}.json"), "w") as fh:  # save the matching label file
-        json.dump(labels, fh)                          # ground-truth poses + fills for this frame
-
-
-def main():                                            # generate the whole dataset
-    p.connect(p.DIRECT)                                # headless; we only need rendered pixels
-    p.setAdditionalSearchPath(pybullet_data.getDataPath())  # find plane.urdf
-    os.makedirs(OUT, exist_ok=True)                    # ensure the output folder exists
-    for i in range(10000):                             # 10k labelled frames overnight
-        render_one(i)                                  # ...one randomized, labelled sample each
-    p.disconnect()                                     # done
-
-
-if __name__ == "__main__":                             # run directly to build the dataset
+if __name__ == "__main__":                              # run directly: pass the worklist path
     main()
+```
+
+## Headless regression run in CI
+
+A good lab doesn't just run samples — it runs controls and standards every
+batch to prove the process itself is still working before trusting any
+result. The cell's developers need the same assurance about their
+software, and they get it from a headless regression: on every code
+change, a machine runs the full prep→load loop in the twin, with no screen
+and no human, and checks the tray came out right. It's the cell's "is the
+process still valid?" control, run automatically.
+
+The bigger experiment is, again, the simulated HPLC batch — but here it's
+run as a gate on every commit rather than watched interactively. Because
+the loop is exercised end to end automatically, a change that breaks any
+layer is caught within minutes, in software, instead of weeks later on
+hardware. The regression is what keeps the whole integrated loop
+trustworthy as the code evolves.
+
+A QC lab runs its controls every single batch — many times a day. The
+headless regression runs even more often: on every push, every pull
+request, every merge — potentially dozens of times a day across a team. It
+is the most frequently-executed run of the whole loop, precisely because
+it's automatic.
+
+- **The moment:** a developer pushes a change; before it can merge, CI
+  must prove the full loop still builds a correct tray.
+- **How, in depth:** a CI job launches the twin headless (no GUI), runs a
+  scripted worklist through the loop, and asserts the final tray, failing
+  the build on any mismatch.
+- **Edge case it survives:** a subtle regression that only shows up in
+  integration — it fails CI here, blocking the merge, instead of reaching
+  hardware.
+- **Walkthrough:** (1) CI launches Gazebo headless; (2) runs the worklist
+  runner; (3) the loop builds the tray; (4) the job exits non-zero if the
+  tray isn't correct, failing the build.
+- **In the scene:** no screen, no human — just a CI log scrolling as a
+  simulated arm that no one watches loads a tray, ending in a green check
+  or a red X.
+- **Why it's done this way:** integration bugs are cheapest to catch
+  automatically and early; gating every change on a full simulated run
+  keeps the loop from silently rotting.
+- **In the full loop:** this runs the entire loop, headless, as a guard on
+  every change — the regression net under all the other layers.
+- **Value:** every code change is proven against a full simulated run
+  before it lands, so the integrated loop stays correct as it evolves.
+
+### Meta code
+
+This meta is the same end-to-end run as the interactive one, with two
+changes that make it suitable as an automatic gate: it runs headless
+(Gazebo with no GUI, so it works on a CI server) and it reports its
+verdict as a process exit code (zero for pass, non-zero for fail) that CI
+can act on.
+
+A CI job checks out the change, builds the workspace, and launches the
+twin headless. Once the cell is up, the same worklist runner from the
+interactive case feeds a tray and drives the per-vial loop, but now with
+no human watching — everything is asserted automatically.
+
+The decisive step is the end-state assertion: the runner compares the
+final simulated tray to the worklist and exits non-zero if any vial is
+missing or misplaced. That non-zero exit is what fails the build and
+blocks the merge.
+
+Because the whole thing is scripted and deterministic, it can run on every
+push, giving fast, repeatable feedback; a flaky or slow loop would
+undermine the gate, so the run is kept lean. The regression in pseudocode:
+
+```text
+# (CI) check out the change + build the workspace
+# launch the twin HEADLESS (Gazebo server only, no GUI)
+# run the worklist runner on a fixed demo tray:
+#     it drives the full per-vial loop through every layer
+#     it asserts the final tray == the worklist
+# exit code: 0 if the tray is correct, non-zero otherwise
+# CI fails the build (blocks the merge) on a non-zero exit
+```
+
+### Real code
+
+A CI test that runs the headless loop and fails the build if the tray is
+wrong. **Illustrative teaching code** — re-verify before use; every line
+is commented.
+
+```python
+import subprocess                                       # run the headless sim + runner as a process
+import sys                                              # propagate the pass/fail exit code
+
+WORKLIST = "trays/ci_demo.csv"                          # the fixed demo tray CI always builds
+
+
+def test_full_loop_builds_tray():                       # the CI regression: run the loop, check the tray
+    proc = subprocess.run(                              # launch the twin headless AND the runner...
+        ["ros2", "launch", "hplc_sim", "ci_run.launch.py",  # a launch file that starts both...
+         f"worklist:={WORKLIST}", "headless:=true"],    # ...with no GUI, on the CI demo tray
+        timeout=600,                                    # cap the run so a hang fails rather than blocks
+        capture_output=True, text=True)                 # collect logs for the CI report
+    # the launch is configured to exit non-zero if the runner's tray assertion fails:
+    assert proc.returncode == 0, (                      # a non-zero code means the tray was wrong...
+        f"full-loop regression FAILED\n{proc.stdout}\n{proc.stderr}")  # ...fail the build, with logs
+
+
+if __name__ == "__main__":                              # allow running it directly (not just pytest)
+    test_full_loop_builds_tray()                        # raises AssertionError -> non-zero exit on fail
+    sys.exit(0)                                         # explicit success exit for CI
 ```
 
 ## Fault-injection rehearsal
