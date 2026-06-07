@@ -311,7 +311,7 @@ before any MCU exists.
 The five above all matter; these three carry the most weight for
 middleware & control.
 
-### One-plugin sim-to-hardware transfer
+## One-plugin sim-to-hardware transfer
 
 - **The moment:** months of only-code work must run on the real myCobot
   without a rewrite; the day the arm arrives, the team swaps one plugin
@@ -344,7 +344,63 @@ middleware & control.
 - **Value:** the only-code investment becomes the production control layer,
   not a throwaway prototype.
 
-### Device-as-service with timeouts
+### Meta code
+
+The shape of the transfer seam, before any library detail:
+
+```text
+# define the arm's hardware_interface ONCE, with a swappable backend plugin:
+#     sim:      <plugin>gz_ros2_control/GazeboSimSystem</plugin>     (Gazebo plays the motors)
+#     hardware: <plugin>mycobot_hw/MyCobotSystem</plugin>            (real driver, same interface)
+# configure controllers ONCE in YAML (controller_manager + joint_trajectory_controller)
+# on start-up controller_manager loads + activates the controller    (arm accepts trajectories)
+# everything above (planner, orchestration) talks to the controller, never the plugin
+# -> sim -> hardware = change ONLY the <plugin> line; nothing above is touched
+```
+
+### Real code
+
+The transfer lives in config, not Python: one controllers YAML, plus the
+one URDF block whose plugin line is all that changes for hardware.
+**Illustrative teaching code** — re-verify names before relying on it;
+every line is commented.
+
+```yaml
+# controllers.yaml — read by the controller_manager at start-up
+controller_manager:                        # the node that owns and runs all controllers
+  ros__parameters:                         # its ROS parameters block
+    update_rate: 100                        # control-loop frequency in Hz (same sim and hardware)
+    joint_trajectory_controller:            # register a controller by this name...
+      type: joint_trajectory_controller/JointTrajectoryController  # ...of this standard type
+
+joint_trajectory_controller:                # parameters for that controller instance
+  ros__parameters:                          # its ROS parameters block
+    joints:                                 # the six myCobot 280 joints it drives...
+      - joint1                              # ...the identical list in sim and on hardware
+      - joint2
+      - joint3
+      - joint4
+      - joint5
+      - joint6
+    command_interfaces: [position]          # it writes position commands to the hardware_interface
+    state_interfaces: [position, velocity]  # it reads these back from the hardware_interface
+```
+
+```xml
+<!-- mycobot_280.urdf.xacro: the ONE block that changes for hardware -->
+<ros2_control name="mycobot_system" type="system">   <!-- declares the arm's hardware_interface -->
+  <hardware>                                          <!-- the swappable backend lives here -->
+    <plugin>gz_ros2_control/GazeboSimSystem</plugin>  <!-- only-code uses this line... -->
+    <!-- <plugin>mycobot_hw/MyCobotSystem</plugin> -->  <!-- ...uncomment on the real arm -->
+  </hardware>
+  <joint name="joint1">                               <!-- one entry per joint (joint2..6 omitted) -->
+    <command_interface name="position"/>              <!-- the controller writes a target here -->
+    <state_interface name="position"/>                <!-- and reads the measured angle back -->
+  </joint>
+</ros2_control>
+```
+
+## Device-as-service with timeouts
 
 - **The moment:** orchestration calls `weigh` and reads `/balance/mass`;
   mid-run the dispenser controller goes silent for 2 s and the loop must
@@ -375,7 +431,65 @@ middleware & control.
 - **Value:** one flaky device degrades to a handled exception, never a
   deadlocked cell.
 
-### Graceful degradation on a lost node or e-stop
+### Meta code
+
+The shape of the bounded station call, before any library detail:
+
+```text
+# create a service client for "weigh" + a subscriber for /balance/mass (QoS with a deadline)
+# when orchestration needs a mass:
+#     send the weigh request with a bounded timeout
+#     pump callbacks up to that timeout:
+#         reply arrives -> return the mass                           (happy path)
+#         timeout fires -> raise StationTimeout the gate can act on  (retry / pause / alarm)
+# the /balance/mass deadline event flags a stream that went stale    (slow, not silent)
+```
+
+### Real code
+
+A client that calls the `weigh` service with a bounded timeout and watches
+`/balance/mass` for a stale stream. **Illustrative teaching code** —
+re-verify before use; every line is commented.
+
+```python
+import rclpy                                            # ROS 2 Python client library
+from rclpy.node import Node                             # base class for a ROS 2 program
+from rclpy.qos import QoSProfile, QoSReliabilityPolicy  # to attach a deadline to the stream
+from rclpy.duration import Duration                     # express the deadline as a time span
+from std_srvs.srv import Trigger                        # the "weigh" request/reply service type
+from std_msgs.msg import Float64                        # the /balance/mass stream message type
+
+
+class StationTimeout(Exception):                        # raised when a station doesn't answer in time
+    pass                                                # the gate logic catches this to retry/pause
+
+
+class WeighClient(Node):                                # calls a station service without ever hanging
+    def __init__(self):                                 # one-time setup
+        super().__init__("weigh_client")                # register on the ROS 2 graph
+        self.cli = self.create_client(Trigger, "weigh")  # a client for the balance's weigh service
+        qos = QoSProfile(depth=10,                      # a small inbox...
+                         reliability=QoSReliabilityPolicy.BEST_EFFORT,  # sensor streams: best-effort
+                         deadline=Duration(seconds=1))  # expect a sample at least once a second
+        self.create_subscription(                       # watch the live mass stream...
+            Float64, "/balance/mass", self.on_mass, qos)  # ...so we can tell if it goes stale
+        self.last_mass = None                           # the most recent reading we trusted
+
+    def on_mass(self, msg):                             # runs on each /balance/mass sample
+        self.last_mass = msg.data                       # cache the latest mass for quick reads
+
+    def weigh(self, timeout_s=2.0):                     # ask for a fresh mass, but never block forever
+        if not self.cli.wait_for_service(timeout_sec=timeout_s):  # is the service even up?
+            raise StationTimeout("weigh service absent")  # no -> a handled failure, not a hang
+        future = self.cli.call_async(Trigger.Request())  # send the request without blocking
+        rclpy.spin_until_future_complete(               # pump callbacks until the reply or...
+            self, future, timeout_sec=timeout_s)        # ...the timeout, whichever comes first
+        if not future.done():                           # the deadline fired before a reply arrived
+            raise StationTimeout("weigh timed out")     # -> the gate retries / pauses / alarms
+        return future.result().message                  # the reply text (the mass) on success
+```
+
+## Graceful degradation on a lost node or e-stop
 
 - **The moment:** a station node crashes or `/estop` fires mid-trajectory;
   the arm must hold/stop safely and the graph must recover when the node
@@ -405,87 +519,80 @@ middleware & control.
 - **Value:** a single dead process is survivable and self-healing, not a
   night's run lost.
 
-## Meta code
+### Meta code
 
-The shape of the best-practical layer (ROS 2 + `ros2_control`, wired
-into Gazebo by the `gz_ros2_control` plugin, plus a mock station node
-that exposes a device as a *service* and streams a sensor *topic*),
-before any library-specific detail:
+The shape of the station watchdog, before any library detail:
 
 ```text
-# (in the URDF) declare the gz_ros2_control plugin + the arm's joints     (the sim hardware_interface)
-# (in YAML) configure the controller_manager + a joint_trajectory_controller
-# on start-up the controller_manager loads and activates that controller  (now the arm accepts paths)
-# a mock station node (here the balance, sensor #6) does two things:
-#     it offers a service "weigh"           -> request/reply: "give me a mass reading now"
-#     it publishes a topic /balance/mass    -> continuous stream of the current reading
-# orchestration (Layer 07) calls the service before trusting a fill        (two-witness with the level)
-# everything talks ROS 2 topics/services, identical to what real HW shows
+# watch each station's heartbeat topic with a deadline QoS           (liveliness)
+# on a missed deadline (node died):
+#     call controller_manager /switch_controller -> deactivate/hold   (arm stops safely)
+#     mark the station DOWN                                           (orchestration pauses it)
+# on the heartbeat returning (node relaunched, DDS re-discovers it):
+#     call /switch_controller -> reactivate the controller            (arm resumes)
+#     mark the station UP                                             (loop continues)
 ```
 
-## Real code
+### Real code
 
-The best-practical pick is **ROS 2 + `ros2_control` with
-`gz_ros2_control`**; the snippet below shows the *mock station* side of
-it — a `rclpy` node that exposes a device as a service and streams a
-sensor topic, the pattern every simulated station follows. This is
-**illustrative teaching code**: client-library and message/service
-names drift between versions, so re-verify before relying on it. Every
-line carries an inline comment explaining exactly what it does.
+A watchdog that holds the arm's controller when a station's heartbeat
+stops and resumes it when the node returns. **Illustrative teaching
+code** — re-verify before use; every line is commented.
 
 ```python
-import rclpy                                          # ROS 2 Python client library (the robot framework)
-from rclpy.node import Node                           # base class every ROS 2 program ("node") builds on
-from std_msgs.msg import Float64                      # the message type we use for a single mass reading
-from std_srvs.srv import Trigger                      # a ready-made request/reply: ask, get success + text
-import random                                          # used only to fake a slightly noisy mass in sim
+import rclpy                                            # ROS 2 Python client library
+from rclpy.node import Node                             # base class for a ROS 2 program
+from rclpy.qos import QoSProfile, QoSReliabilityPolicy  # for a deadline on the heartbeat stream
+from rclpy.qos_event import SubscriptionEventCallbacks  # lets us react to a missed deadline
+from rclpy.duration import Duration                     # express the deadline as a time span
+from std_msgs.msg import Header                         # the station heartbeat message type
+from controller_manager_msgs.srv import SwitchController  # to activate/deactivate controllers
+
+ARM_CTRL = "joint_trajectory_controller"               # the controller that drives the arm
 
 
-class MockBalance(Node):                              # the simulated analytical balance (sensor #6)
-    def __init__(self):                               # set-up that runs once, when the node is created
-        super().__init__("mock_balance")              # register on the ROS 2 graph as "mock_balance"
-        self.mass_g = 0.0                             # the current reading in grams; updated each tick
-        self.pub = self.create_publisher(             # open an outgoing channel for the live mass stream
-            Float64, "/balance/mass", 10)             # type, topic name others read, inbox queue depth
-        self.timer = self.create_timer(               # arrange to run a function on a fixed schedule
-            0.1, self.tick)                           # every 0.1 s (10 Hz) call self.tick to refresh+publish
-        self.srv = self.create_service(               # offer a request/reply service others can call
-            Trigger, "weigh", self.on_weigh)          # service type, its name, the handler to run per call
+class StationWatchdog(Node):                            # holds/resumes the arm on station loss/recovery
+    def __init__(self):                                 # one-time setup
+        super().__init__("station_watchdog")            # register on the ROS 2 graph
+        self.up = True                                  # current belief about the station's health
+        self.switch = self.create_client(               # client to the controller_manager's switcher
+            SwitchController, "/controller_manager/switch_controller")
+        qos = QoSProfile(depth=1,                       # only the newest heartbeat matters...
+                         reliability=QoSReliabilityPolicy.RELIABLE,  # heartbeats must arrive
+                         deadline=Duration(seconds=1))  # ...at least once per second
+        events = SubscriptionEventCallbacks(            # hook QoS events on this subscription
+            deadline=lambda info: self.on_missed())     # a missed deadline => heartbeat overdue
+        self.create_subscription(                       # subscribe to the dispenser's heartbeat
+            Header, "/dispenser/heartbeat",             # the topic the station pings on
+            self.on_beat, qos, event_callbacks=events)  # on_beat = recovery, deadline = loss
 
-    def tick(self):                                    # runs ten times a second, on the timer above
-        self.mass_g = 12.50 + random.uniform(-0.01, 0.01)  # fake a ~12.5 g vial with tiny sim noise
-        msg = Float64()                               # make the empty message we are about to fill in
-        msg.data = self.mass_g                        # put the current mass into the message
-        self.pub.publish(msg)                         # send it out on /balance/mass for anyone listening
+    def on_beat(self, _msg):                            # a heartbeat arrived -> station is alive
+        if not self.up:                                 # only act on the up-edge (once)
+            self.up = True                              # mark the station UP again
+            self._switch(activate=[ARM_CTRL])           # let the arm move again
 
-    def on_weigh(self, request, response):             # runs whenever another node calls the "weigh" service
-        response.success = True                       # report that the weighing completed without error
-        response.message = f"{self.mass_g:.3f} g"     # return the latest mass as text in the reply
-        self.get_logger().info(                       # print a tidy, time-stamped status line
-            f"weigh requested -> {response.message}")  # show what reading we just reported
-        return response                               # hand the filled reply back to the caller
+    def on_missed(self):                                # a heartbeat deadline was missed -> node dead
+        if self.up:                                     # only act on the down-edge (once)
+            self.up = False                             # mark the station DOWN
+            self._switch(deactivate=[ARM_CTRL])         # hold the arm safely
 
-
-def main():                                            # the standard ROS 2 program entry point
-    rclpy.init()                                       # start up the ROS 2 client library (must come first)
-    node = MockBalance()                               # build our node, which runs its __init__ set-up
-    rclpy.spin(node)                                   # keep serving the topic + service until Ctrl-C
-    node.destroy_node()                                # remove the node from the graph on shutdown
-    rclpy.shutdown()                                   # close the ROS 2 client library cleanly
+    def _switch(self, activate=(), deactivate=()):      # ask controller_manager to flip controllers
+        req = SwitchController.Request()                # build the switch request
+        req.activate_controllers = list(activate)       # controllers to start (empty if none)
+        req.deactivate_controllers = list(deactivate)   # controllers to stop (empty if none)
+        req.strictness = SwitchController.Request.BEST_EFFORT  # tolerate a partial switch
+        self.switch.call_async(req)                     # fire it without blocking the watchdog
 
 
-if __name__ == "__main__":                             # only run if this file is launched directly
-    main()                                             # ...then start everything above
+def main():                                             # standard ROS 2 entry point
+    rclpy.init()                                         # start the client library
+    rclpy.spin(StationWatchdog())                       # run the watchdog until Ctrl-C
+    rclpy.shutdown()                                     # clean shutdown
+
+
+if __name__ == "__main__":                              # run directly
+    main()
 ```
-
-The arm half of this layer is configuration, not code: the
-`gz_ros2_control` plugin is declared in the myCobot URDF (so Gazebo
-plays the `hardware_interface`), and a `joint_trajectory_controller` is
-spelled out in a controller YAML the `controller_manager` loads at
-start-up. Those files are what let a planned path become timed joint
-commands; the mock-station node above shows the *other* thing this layer
-carries — a device exposed as a service plus a sensor streamed as a
-topic, exactly as [`../sensor-suite.md`](../sensor-suite.md) describes.
 
 ## See also
 
