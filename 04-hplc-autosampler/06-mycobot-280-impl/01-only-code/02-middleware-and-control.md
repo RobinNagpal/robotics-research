@@ -240,6 +240,72 @@ at hardware bring-up:
   real architecture proven in Gazebo at zero hardware cost; moving to
   hardware swaps a single plugin and nothing above it changes.
 
+## Realistic scenario & use cases
+
+> **Why this matters for automation.** Middleware is invisible when it
+> works and catastrophic when it doesn't: it is what keeps the arm,
+> cameras, decapper, dispenser, balance, and safety chain talking without
+> any one of them knowing about the others. Its automation value is
+> **decoupling** — you can add, swap, mock, or lose a part without
+> rewriting the rest — and a **clean boundary** so today's sim code is
+> tomorrow's hardware code.
+
+**The scenario.** Mid-run, the cell is transferring vial 47 while the
+overhead camera streams point clouds at 10 Hz and orchestration waits on
+a weigh result. At that instant the **dispenser station controller (a
+mocked micro-ROS node) goes silent for ~2 seconds**, a developer **adds a
+second wrist camera** to the graph, and the lab asks to **swap the
+transport from CycloneDDS to Zenoh** for an upcoming remote-console
+trial. The cell must not deadlock, the arm must finish or safely hold its
+trajectory, the new camera must appear without touching planner code, and
+the transport swap must change nothing above it. Every one of those is a
+middleware/control job.
+
+The layer must therefore serve several **distinct use cases**:
+
+1. **Hot add / replace of a node.** Bring the second wrist camera online,
+   or swap a mock station for a better one, with zero edits to
+   orchestration or planning.
+   - *How the solution handles it:* everything publishes/subscribes on
+     **named topics**, so a new `/wrist2/points` publisher is simply one
+     more topic; subscribers that don't care never notice.
+
+2. **Sim-to-hardware transfer with one plugin swap.** The same
+   controllers, actions, and YAML that drive Gazebo today must drive the
+   real myCobot later.
+   - *How:* the `ros2_control` **hardware_interface** boundary means
+     `gz_ros2_control` (sim) and the myCobot driver (hardware) are
+     interchangeable underneath an unchanged `joint_trajectory_controller`.
+
+3. **Timed trajectory execution with preemption.** Turn a planned path
+   into smooth, on-time joint commands — and cleanly replace it if Layer
+   03 issues a new plan mid-motion (e.g. a re-grasp).
+   - *How:* the `joint_trajectory_controller` consumes a
+     `FollowJointTrajectory` **action**, which supports goal preemption,
+     so a new goal cancels and supersedes the old without a stop-start jerk.
+
+4. **Device-as-service, sensor-as-topic — with timeouts.** Orchestration
+   calls `weigh` / `decap` services and reads `/balance/mass`; if the
+   station is unresponsive it must get a **timeout**, never a hang.
+   - *How:* services carry call timeouts and topics carry **QoS deadlines**,
+     so the silent dispenser surfaces as a failed call the gate logic can
+     act on (retry, pause, alarm) rather than a frozen graph.
+
+5. **Graceful degradation on a lost node or e-stop.** If a station node
+   dies or `/estop` fires mid-trajectory, controllers must hold/stop
+   safely and the graph must recover when the node returns.
+   - *How:* **lifecycle-managed** nodes plus the `controller_manager` let
+     a controller be deactivated/held on fault and reactivated on
+     recovery, while DDS auto-discovery re-attaches the returning node.
+
+**Where the pick flexes.** The best-practical stack (ROS 2 + ros2_control
++ gz_ros2_control) covers all five directly. The transport swap in the
+scenario is exactly where **CycloneDDS → Zenoh** matters — and because
+that is an **RMW** choice (an environment variable), use case 1's "change
+nothing above it" promise holds. The silent dispenser is the stand-in for
+real **micro-ROS** station firmware, mocked now so the contract is proven
+before any MCU exists.
+
 ## Meta code
 
 The shape of the best-practical layer (ROS 2 + `ros2_control`, wired
