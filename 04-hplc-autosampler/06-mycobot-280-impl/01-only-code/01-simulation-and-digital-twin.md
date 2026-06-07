@@ -248,6 +248,31 @@ digital twin, so each is worth unpacking.
 
 ## Reach & collision validation
 
+In the lab, a QC analyst or lab assistant spends much of the morning
+reaching into vial racks and the autosampler tray — lifting each 2 mL
+vial from its nest and setting it down at the next station (the balance,
+the dispenser, the cap station, the tray). Every reach has to land on the
+exact nest centre; a vial fumbled, or a hand that brushes a neighbour,
+means a re-do. This use case is the robot's equivalent of that skill:
+before any hardware is bought, the digital twin checks that the arm can
+physically reach every one of those positions on *this* particular bench,
+with a capped vial in its grip, without colliding.
+
+The bigger experiment behind all the reaching is a single HPLC analysis
+batch — typically a tray of 60–100 vials (samples plus calibration
+standards, blanks, and QC checks) that the instrument injects one after
+another, often overnight. The whole point of the prep is to get every
+vial into its correct tray slot so the instrument reads the right sample
+in the right order; if even one nest is unreachable, that slot can never
+be filled by the robot, so the layout has to be proven before the build.
+
+A lab assistant performs the underlying reach-and-place motion constantly
+— on the order of a few hundred times a day, every working day, across
+the batches they prepare. The reach-validation sweep itself is run by the
+cell's developers only when the bench layout changes (a new station, a
+moved rack — a handful of times during bring-up, then rarely), but it
+stands behind every one of those daily reaches.
+
 - **The moment:** before a myCobot is ordered, the twin is asked to touch
   all 96 nests, the tray, the decapper, and the dispenser for *this*
   layout; nest D11 comes back unreachable and A1's approach clips the
@@ -284,7 +309,35 @@ digital twin, so each is worth unpacking.
 
 ### Meta code
 
-The shape of the reach/collision sweep, before any library detail:
+The pipeline answers one question — "for *this* bench, can the arm reach
+every place it needs to, carrying what it will actually carry, without
+hitting anything?" — and it answers it as pure geometry, before any
+motion-planning subtlety. It begins by loading the cell's world (bench,
+rack, tray, stations, and the instrument body) and the arm's own URDF into
+a physics simulator, then welds a capped-vial model into the gripper so
+that every reach is tested with the real payload, not an empty hand.
+
+It then walks the bench's list of target positions — the 96 rack nests
+plus the decapper, dispenser, and tray slots — and for each one asks the
+inverse-kinematics solver whether a joint configuration even exists that
+puts the gripper there. A nest with no solution is outside the 280's reach
+envelope and is recorded as `UNREACHABLE` straight away, with no further
+work; this is the cheap half of the check.
+
+For the nests that *are* reachable, the pipeline snaps the arm into the
+solved configuration and steps the physics one frame so the collision
+engine can report any contact between the arm's links (and its payload)
+and the static furniture — most importantly the instrument housing the arm
+must never strike. A contact turns the nest's verdict into `COLLISION`; a
+clean pose makes it `OK`.
+
+The output is a single reachability map — nest by nest, `OK` /
+`UNREACHABLE` / `COLLISION` — that the worklist builder reads so it never
+assigns a vial to a position the arm can't safely service. Re-running it
+after a layout change costs seconds, which is what makes "try a different
+bench arrangement" a software decision rather than a workshop afternoon.
+
+The pipeline in pseudocode:
 
 ```text
 # load the cell world + the myCobot URDF into the physics sim          (the twin)
@@ -350,6 +403,29 @@ if __name__ == "__main__":                             # run only when invoked d
 
 ## Synthetic perception data
 
+A lab assistant barely notices it, but a huge part of the job is
+*looking*: glancing across a rack to see which nests hold a vial, spotting
+one that is under-filled or empty, checking a vial is seated straight
+before picking it. Those split-second visual judgments are what the cell's
+camera has to learn to make. This use case is how the learning material is
+manufactured — the twin renders thousands of labelled images of racks
+under varied lighting and fill levels, so the perception layer can be
+trained and tested without a single real photograph.
+
+The bigger experiment is the same HPLC batch: before the instrument can
+run, every vial in the tray must be confirmed present, correctly filled,
+and correctly placed. The lab assistant does that confirmation by eye; the
+robot does it with a camera trained on this synthetic data. Getting the
+dataset right here is what lets the live cell catch a missing or
+under-filled vial before it wastes a move — exactly the check the
+assistant makes dozens of times per tray.
+
+The assistant makes these visual checks more or less continuously — every
+time they touch the rack — so many dozens to a few hundred times a day.
+The data-generation run itself is an engineering task done once up front
+(and re-run occasionally when new vial types or lighting appear), but it
+underpins a recognition the cell then performs on every vial, every run.
+
 - **The moment:** Layer 04 needs labelled images but no real photos exist
   yet; the twin renders thousands of rack frames under varied light, fill
   levels, and pose jitter, each auto-labelled with ground truth.
@@ -386,7 +462,36 @@ if __name__ == "__main__":                             # run only when invoked d
 
 ### Meta code
 
-The shape of the synthetic-data generator, before any library detail:
+The pipeline is a generate-and-label loop whose job is to manufacture
+perception training data the real bench can't cheaply provide: thousands
+of camera frames of racks of vials, each paired with the exact ground
+truth of what it contains. Because the scene lives in the simulator, every
+object's true pose and fill level is known for free, so the labels are
+perfect and instantaneous — the expensive, error-prone step of
+hand-labelling real photographs disappears entirely.
+
+Each iteration begins by randomizing the scene the way the real world
+varies: the direction and intensity of the light, the textures, and —
+critically — which nests hold a vial and how full each one is. This
+"domain randomization" is what makes a model trained on the data robust;
+by deliberately generating the awkward cases (glare on the glass, a low
+meniscus, a slightly shifted tray) the loop teaches the perception layer
+to handle exactly the situations that would otherwise only appear,
+unlabelled, on the real bench.
+
+The simulator then renders the overhead camera's view — both an RGB image
+and a depth image, the same two products a real RGB-D camera publishes —
+and the loop reads each vial's true pose and fill straight out of the
+physics world to write alongside the image as its label. One pass produces
+one perfectly-labelled training sample.
+
+Repeated tens of thousands of times overnight, this builds a dataset large
+and varied enough to develop and test the Layer 04 perception code
+against, long before a real camera exists. When photoreal glass
+reflections matter more than geometry, the identical scene is re-rendered
+in a higher-fidelity simulator, but the shape of the loop is unchanged.
+
+The loop in pseudocode:
 
 ```text
 # for each frame we want to generate:
@@ -452,6 +557,30 @@ if __name__ == "__main__":                             # run directly to build t
 
 ## Fault-injection rehearsal
 
+Every experienced lab assistant has a set of reflexes for when things go
+wrong: a vial slips and they catch it or re-pour it, a cap won't budge and
+they set that vial aside, someone walks into the bay and they stop what
+they're doing. Those recoveries are second nature to a person but have to
+be deliberately engineered into the cell. This use case is where that
+happens — the twin stages dropped vials, missing vials, stuck caps, and
+emergency stops *on purpose*, so the cell's recovery logic can be built
+and proven against them.
+
+The bigger experiment is the unattended overnight HPLC batch: the entire
+value of automating prep is that the tray gets built correctly while no
+one is watching. That only holds if the cell handles the mishaps the
+assistant would otherwise catch by hand. Rehearsing each fault in
+simulation is how the team makes sure a dropped vial becomes a re-pick and
+an e-stop becomes a safe pause — rather than a corrupted tray discovered
+in the morning.
+
+For the lab assistant these mishaps are occasional but routine — a stuck
+cap or a fumbled vial perhaps a few times a day across a busy bench, an
+interruption now and then. The fault-injection rehearsal itself is run
+repeatedly during development and regression-tested on every code change,
+precisely so the cell is ready for the handful of real faults each day
+will bring.
+
 - **The moment:** the team must know the loop survives a dropped vial, a
   missing vial, a stuck cap, and an e-stop mid-motion — none of which a
   real arm will do on cue.
@@ -485,7 +614,35 @@ if __name__ == "__main__":                             # run directly to build t
 
 ### Meta code
 
-The shape of the fault injector, before any library detail:
+This pipeline is deliberately the inverse of normal control code: instead
+of trying to make the cell succeed, it sets out to make it *fail*, on cue
+and identically every time. It watches the running per-vial loop announce
+its state — which vial, which phase — so that a fault can be fired at an
+exact, repeatable moment rather than whenever a real mishap happens to
+occur.
+
+Behind it sits a small catalogue of fault functions, each of which
+perturbs the twin in a way that mirrors a real failure: deleting the
+constraint that holds a vial to the gripper reproduces a *drop*; removing
+a vial model reproduces a *missing vial*; publishing an abnormally high
+torque on the decapper's force-torque topic reproduces a *stuck cap*;
+flipping the safety boolean reproduces an *emergency stop*. Each one drives
+the very same topics a real sensor or event would, so nothing downstream
+can tell the fault is staged.
+
+A script maps "(vial, phase)" triggers to those fault functions, and the
+injector fires each trigger exactly once when the loop reaches it. Because
+the timing is exact, the nastiest cases — an e-stop in the same 200 ms a
+vial is being released — become reproducible on demand, which no physical
+bench can promise.
+
+The payoff is that orchestration's recovery branches (re-pick a dropped
+vial, safe-stop-and-resume on an e-stop, quarantine a bad vial) can be
+exercised, observed, and locked in as regression tests before any hardware
+exists — so the first time a real fault occurs, the cell has already
+handled it a hundred times in simulation.
+
+The injector in pseudocode:
 
 ```text
 # subscribe to the running loop's state (which vial, which phase)
