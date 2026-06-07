@@ -77,6 +77,12 @@ variable touch, it drifts toward Human-led.*
 
 ## Person 1. Priya, a pharmaceutical QC analyst
 
+> **Where you've already met her work:** every tablet in your bathroom
+> cabinet — the paracetamol you take for a headache, your grandparent's
+> blood-pressure pill, your child's antibiotic — was checked by someone
+> doing Priya's job before a regulator allowed it onto a shelf. When the
+> box says *500 mg*, she is the reason you can believe it.
+
 Priya works in the quality-control (QC) lab of a mid-size generic-drug
 manufacturer. Everything she touches is under **GMP** (Good Manufacturing
 Practice), every record is governed by **21 CFR Part 11** (the US rule
@@ -265,6 +271,13 @@ properly.
 
 ## Person 2. Marco, a contract-lab sample-prep technician
 
+> **Where you've already met his work:** the glass of water from your
+> tap, the fish in your freezer, the soil dug up for a new school
+> playground, the bag of pre-washed salad — someone doing Marco's job
+> tested them for lead, pesticides, or sewage before anyone certified
+> them safe. Every "results came back clean" headline starts at his
+> bench.
+
 Marco works in a large **environmental contract-testing lab** — the kind
 of operation that runs inside a Eurofins, SGS, or regional equivalent,
 where outside clients (municipalities, engineering firms, factories) send
@@ -415,6 +428,13 @@ cartridge disposal, and restocking the high-burn consumables.
 ---
 
 ## Person 3. Sarah, an R&D method-development scientist
+
+> **Where you've already met her work:** before any of those checks can
+> exist, someone has to invent them. The new weight-loss injection
+> everyone is talking about, a next-generation sunscreen, a reformulated
+> vitamin gummy — each needs a brand-new test designed and proven first.
+> That is Sarah's job: she builds the test that Priya later runs every
+> day.
 
 Sarah works in **analytical development** in pharma R&D. She doesn't
 *follow* methods — she **invents and validates** them. When a new drug
