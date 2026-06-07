@@ -59,6 +59,7 @@ variable touch, it drifts toward Human-led.*
 - [Why this matters to you](#why-this-matters-to-you-even-if-youve-never-seen-a-lab)
 - [How to read this](#how-to-read-this)
 - [Person 1. Priya, a pharmaceutical QC analyst](#person-1-priya-a-pharmaceutical-qc-analyst)
+  - [What Priya actually tests — three familiar drugs](#what-priya-actually-tests--three-drugs-from-your-bathroom-cabinet)
   - [P1. Sample receipt and login](#p1-sample-receipt-and-login)
   - [P2. Weighing and measuring](#p2-weighing-and-measuring)
   - [P3. Sample preparation](#p3-sample-preparation)
@@ -71,6 +72,7 @@ variable touch, it drifts toward Human-led.*
   - [P10. Housekeeping and cleanup](#p10-housekeeping-and-cleanup)
   - [Priya summary table](#priya-summary-table)
 - [Person 2. Marco, a contract-lab sample-prep technician](#person-2-marco-a-contract-lab-sample-prep-technician)
+  - [What Marco actually tests — three everyday samples](#what-marco-actually-tests--three-samples-from-everyday-life)
   - [M1. Sample receipt and accessioning](#m1-sample-receipt-and-accessioning)
   - [M2. Aliquoting and batching](#m2-aliquoting-and-batching)
   - [M3. Adding surrogates and internal standards](#m3-adding-surrogates-and-internal-standards)
@@ -83,6 +85,7 @@ variable touch, it drifts toward Human-led.*
   - [M10. Cleanup and waste](#m10-cleanup-and-waste)
   - [Marco summary table](#marco-summary-table)
 - [Person 3. Sarah, an R&D method-development scientist](#person-3-sarah-an-rd-method-development-scientist)
+  - [What Sarah actually builds — the test behind a familiar pill](#what-sarah-actually-builds--inventing-the-test-behind-a-familiar-pill)
   - [S1. Designing the experiment](#s1-designing-the-experiment)
   - [S2. Forced-degradation sample prep](#s2-forced-degradation-sample-prep)
   - [S3. Standards and serial dilutions](#s3-standards-and-serial-dilutions)
@@ -136,6 +139,184 @@ autosampler, and started a run that finishes overnight. The afternoon is
 and reviewing yesterday's chromatograms** — including any result that
 fell outside specification and triggered an investigation. The arm would
 empty out her morning; it barely touches her afternoon.
+
+### What Priya actually tests — three drugs from your bathroom cabinet
+
+Priya's four staple tests sound abstract until you pin each one to a
+tablet you have actually swallowed. So here is every test made concrete
+on a **very familiar drug** — the exact question it answers, what she is
+physically measuring, and step by step how the sample travels from the
+blister pack to the 2 mL vial.
+
+> **Numbers are illustrative.** Weights, volumes, wavelengths, and limits
+> below are representative of published pharmacopoeial methods (USP and
+> equivalents) but **vary by monograph, strength, and lab**. Treat every
+> figure as `~` and check the current monograph before quoting it.
+
+A one-line orientation on the four tests, each tied to its example below:
+
+| Test | The plain-English question | Example drug |
+|---|---|---|
+| **Assay** | Is the labelled dose really in there? | Paracetamol 500 mg |
+| **Related substances** | Has any of it turned into something harmful? | Aspirin ~300 mg |
+| **Dissolution** | Will it release in your body in time? | Ibuprofen 200 mg |
+| **Content uniformity** | Does *every* tablet carry the same dose? | Ibuprofen 200 mg |
+
+#### 1. Assay — "is there really 500 mg in this paracetamol tablet?"
+
+**The drug:** plain paracetamol (US name: acetaminophen; brands Panadol,
+Tylenol) — the 500 mg tablet in nearly every home.
+
+**What she is answering:** does each tablet hold **90–110%** of its
+labelled 500 mg of active ingredient? Below that the patient is
+under-dosed; above it edges toward the dose that harms the liver. The
+assay is the test that would catch a mixing or compression error that
+left a whole batch sitting at, say, 430 mg or 560 mg a tablet.
+
+**What she physically measures:** the **size of the paracetamol peak**
+from the sample, compared with the peak from a known-weight **reference
+standard**. The HPLC separates paracetamol from everything else in the
+tablet (binder, filler, coating), and the detector — set to **~243 nm**,
+the wavelength paracetamol absorbs strongly — draws one clean peak whose
+**area is proportional to how much drug is present**.
+
+**How the sample is prepared** — the chain Priya runs at the bench:
+
+1. **Sample the batch fairly.** Take **≥20 tablets** at random from the
+   batch, weigh them all together, and grind to a fine, even powder, so
+   one scoop represents the *average* tablet, not one lucky pill.
+2. **Weigh out one tablet's worth.** If the average tablet weighs
+   ~600 mg, weigh ~600 mg of the powder (≈500 mg of paracetamol) on the
+   0.1 mg balance into a **500 mL volumetric flask**.
+3. **Dissolve.** Add ~350 mL of **diluent** (typically a water/methanol
+   mix), **sonicate** ~10–15 min to break up the powder and dissolve the
+   drug, then let it cool back to room temperature.
+4. **Make to the mark.** Top the flask up to exactly the 500 mL line and
+   mix. The solution is now nominally **~1 mg/mL** of paracetamol.
+5. **Dilute into range.** The detector would be saturated at 1 mg/mL, so
+   she pipettes **5 mL into a 50 mL flask** and fills to the mark
+   (→ ~0.1 mg/mL), often repeating once more to land near the method's
+   working **~0.01 mg/mL**.
+6. **Filter into the vial.** Draw the final solution through a 0.45 µm
+   syringe filter into a 2 mL vial (first ~0.5 mL to waste so the filter
+   is rinsed), cap, and barcode-label it.
+7. **Prepare the standard identically.** Weigh ~50 mg of **USP
+   Acetaminophen Reference Standard** and carry it through the *same*
+   dilution chain to the *same* ~0.01 mg/mL, so sample and standard are
+   directly comparable.
+
+**Reading it:** % of label ≈ (sample peak area ÷ standard peak area) ×
+(standard concentration ÷ sample's nominal concentration) × 100,
+corrected for the exact weights used. A result of **99.2%** passes;
+**112%** or **88%** fails and triggers an out-of-spec investigation (see
+[P8](#p8-data-review-and-reporting)).
+
+#### 2. Related substances — "is this aspirin turning into something harsher?"
+
+**The drug:** aspirin (acetylsalicylic acid), the ~300 mg tablet.
+
+**The everyday hook:** that **vinegar smell from an old bottle of
+aspirin** is this test made audible. Aspirin slowly **hydrolyses** back
+into **salicylic acid** (harsher on the stomach) plus acetic acid (the
+vinegar smell). The "related substances" test measures exactly how much
+salicylic acid has formed.
+
+**What she is answering:** is **free salicylic acid** below its limit —
+typically **~0.3%** of the aspirin content? This is the safety-and-
+stability test: run on fresh batches, and again on samples pulled from
+storage at 3, 6, 12 months to set the **expiry date**.
+
+**What she physically measures:** a **tiny** salicylic-acid peak sitting
+beside the huge aspirin peak. Because the impurity is hundreds of times
+smaller than the drug, the prep is *flipped* from the assay: she injects
+a **concentrated** sample (so a small impurity is actually visible) and
+compares it against a **very dilute** salicylic-acid standard set right
+at the limit.
+
+**How the sample is prepared:**
+
+1. Powder **≥20 tablets** as before.
+2. Weigh powder equal to **~1 tablet (~300 mg aspirin)** into a flask and
+   dissolve in a **cold** diluent — kept cold and run **quickly**,
+   because warmth and standing time create *more* salicylic acid and
+   would fail a good batch by accident.
+3. Make to volume at a **high** concentration — no big dilution this
+   time; she *wants* the impurity visible.
+4. Separately make a **limit standard**: a salicylic-acid solution at
+   ~0.3% of the sample's aspirin concentration.
+5. Filter both into vials, cap, label, and run them **promptly**.
+
+**Reading it:** if the salicylic-acid peak in the sample is **smaller
+than** the peak from the 0.3% limit standard, the batch passes; bigger,
+and it fails. The same logic guards the paracetamol above against
+**4-aminophenol** (a toxic process/breakdown residue, limit on the order
+of ~50 ppm) — a tiny impurity peak checked against a tiny standard.
+
+#### 3. Dissolution — "will this ibuprofen actually release in time?"
+
+**The drug:** ibuprofen 200 mg (Advil, Nurofen).
+
+**What she is answering:** a tablet with the perfect dose is useless if
+it passes straight through you without dissolving. Dissolution asks: does
+**≥80%** (the method's **"Q"** value) of the ibuprofen **release within
+~30–45 minutes** under conditions that mimic the gut?
+
+**What she physically measures:** how much drug has dissolved into a
+warm, stirred bath over time. This test *starts* on a **dissolution
+apparatus**, not the HPLC:
+
+1. Drop **one tablet into each of 6 vessels**, each holding **~900 mL**
+   of a **pH ~7.2 phosphate buffer** (an intestine stand-in), held at
+   **37 °C** (body temperature).
+2. A **paddle stirs at ~50 rpm**. At set times (e.g. 30, 45, 60 min) she
+   **withdraws a few mL** from each vessel.
+3. Each withdrawn aliquot is **filtered** straight into a 2 mL vial — and
+   from here it is the **same vial-prep loop** as the assay.
+4. HPLC (or a direct UV reading) measures the ibuprofen concentration in
+   each time-point vial; multiplied by the ~900 mL volume, that gives the
+   **% released** at each time.
+
+**Reading it:** every one of the 6 vessels should clear the Q threshold
+within the window. A batch that releases too slowly — an over-compressed,
+"too hard" tablet, for instance — fails even if its assay is a perfect
+100%, which is exactly why dissolution and assay are *both* required.
+
+#### 4. Content uniformity — "does every single tablet carry the same dose?"
+
+**The drug:** ibuprofen 200 mg again (the test matters most for
+low-dose or potent drugs, but the principle is general).
+
+**What she is answering:** the assay above grinds 20 tablets *together*,
+so it only proves the **average** is right. Content uniformity proves no
+**individual** tablet is wildly off — a real risk if the powder blend
+wasn't perfectly mixed before it was pressed into tablets.
+
+**What she physically measures:** the dose in **10 individual tablets,
+assayed one at a time**.
+
+**How the sample is prepared:**
+
+1. Take **10 tablets separately** — *not* pooled and ground together.
+2. Put **each tablet in its own flask**, dissolve, dilute to the method's
+   working concentration, and filter into its **own** vial.
+3. Run all 10 (plus the standard) and calculate the **individual** dose
+   of each tablet.
+
+**Reading it:** all 10 must sit close to label claim, and the spread
+between them — rolled into an "acceptance value" from their mean and
+standard deviation — must be small. A single rogue tablet at 140% or 60%
+fails the batch even when the 10-tablet average looks fine.
+
+**Why every one of these ends in the same vial.** Notice the shape: the
+*questions* differ — total dose, impurity, release speed, tablet-to-
+tablet spread — and the *front* of each prep differs (grind 20 together;
+keep aspirin cold and fast; stir ibuprofen in a 37 °C bath; isolate 10
+tablets one by one). But they all funnel into the **identical last
+move**: a prepared solution drawn through a filter into a **2 mL vial**,
+capped, labelled, and loaded in worklist order. That convergence is the
+whole reason the arm is worth building — it lands exactly on the step
+every one of Priya's tests shares ([P5](#p5-filling-capping-and-labelling-vials)–[P6](#p6-building-the-tray-and-loading-the-instrument)),
+no matter which drug or which question started the day.
 
 ### P1. Sample receipt and login
 
@@ -333,6 +514,164 @@ anything. It is repetitive, deadline-driven, chemical-heavy work — and
 several of its steps are the strongest case in this whole document for an
 arm.
 
+### What Marco actually tests — three samples from everyday life
+
+Marco's day sounds abstract — "8270," "SPE," "surrogates" — until you pin
+it to water or dirt you would actually worry about. So here are three
+real contaminants, each in a sample you can picture, walked from the
+cooler to the GC-MS vial: the legal question each answers, what he is
+physically measuring, and exactly how the sample is prepared. Marco's
+prep **pipeline** is the constant — aliquot, spike, extract, concentrate,
+vial — and each example shows a different *shape* of it.
+
+> **Numbers are illustrative.** Limits, volumes, and holding times below
+> are representative of US EPA methods and their drinking-water limits
+> (**MCLs**, maximum contaminant levels) but **vary by method, state, and
+> revision**. Treat every figure as `~` and check the current method
+> before quoting it.
+
+| Sample you can picture | The plain-English question | Example contaminant |
+|---|---|---|
+| Well / tap water | Did a fuel leak reach the water? | **Benzene** |
+| Drinking water | Is weed-killer in the supply? | **Atrazine** |
+| Garden / playground soil | Is soot-borne carcinogen in the dirt? | **Benzo[a]pyrene** |
+
+#### 1. Volatiles — "did a petrol leak reach this well water?"
+
+**The sample:** a 40 mL vial of water from a private well or tap near a
+leaking fuel station or buried tank.
+
+**The everyday hook:** when a buried petrol tank or pipeline leaks, one
+of the first things to reach groundwater is **benzene** — a component of
+gasoline and a known human carcinogen. It is the lead actor in countless
+"contaminated well water" stories.
+
+**What he is answering:** is benzene below its drinking-water limit — in
+the US, an **MCL of ~5 µg/L (5 ppb)**? At those vanishing levels, "a few
+parts per billion" *is* the whole question.
+
+**What he physically measures:** benzene and its gasoline cousins —
+toluene, ethylbenzene, xylenes, together **"BTEX"** — pulled *out* of the
+water as vapour and counted on a **GC-MS** (EPA 8260 / 524 style).
+
+**How the sample is prepared** — note there is barely any "prep," and
+that is the point:
+
+1. **Collect with zero headspace.** Volatiles escape into any air gap, so
+   the **40 mL VOA vial** is filled to a reverse meniscus with **no
+   bubbles**, preserved with a drop of acid, and kept **≤6 °C**. A single
+   trapped bubble can void the result — which is why receipt (M1) is so
+   fussy.
+2. **Don't open it.** Marco does not pour or pipette this sample; opening
+   it loses the analyte. Instead the instrument's **purge-and-trap** draws
+   a fixed **~5–25 mL** straight from the vial.
+3. **Purge.** Inert gas (helium) bubbles through the water, sweeping the
+   volatiles out of the liquid.
+4. **Trap and desorb.** The swept-out vapour is caught on a small sorbent
+   trap, then **flash-heated** to inject it as one sharp plug into the
+   GC-MS.
+5. **Spike first.** Before purging, fixed **surrogates and internal
+   standards** are added (M3) so recovery can be proven.
+
+**Reading it:** the GC-MS separates BTEX in time and identifies each by
+its mass spectrum; benzene's peak area against its standard gives µg/L.
+Above ~5 ppb, the water fails its limit.
+
+#### 2. Pesticides — "is weed-killer in the drinking water?"
+
+**The sample:** ~1 litre of finished drinking water.
+
+**The everyday hook:** **atrazine** is one of the most common weed-killers
+sprayed on corn and lawns, and it runs off into the rivers and reservoirs
+that feed taps — a perennial drinking-water headline.
+
+**What he is answering:** is atrazine below its **MCL of ~3 µg/L
+(3 ppb)**? Again the answer lives in parts per billion, far too dilute to
+inject straight — so the contaminant must be **pulled out of a whole
+litre and concentrated** first.
+
+**What he physically measures:** atrazine (often alongside other
+pesticides in the same run) on a GC-MS or LC-MS (EPA 525 style), after
+**solid-phase extraction (SPE)**.
+
+**How the sample is prepared** — this is the SPE shape of the pipeline:
+
+1. **Aliquot the litre** (M2) and spike **surrogate standards** (M3) so
+   recovery is tracked from the very start.
+2. **Pull it through a cartridge.** The whole ~1 L is drawn through a
+   small **SPE cartridge** packed with C18 sorbent; the atrazine
+   **sticks** to the sorbent while the water passes to waste (M4). One
+   litre becomes a loaded cartridge the size of a thumb.
+3. **Dry and elute.** The cartridge is dried, then a few mL of solvent
+   (e.g. dichloromethane / ethyl acetate) **washes the atrazine back
+   off**, now in a tiny volume.
+4. **Concentrate.** That extract is blown down under nitrogen (M5) to
+   **~1 mL** — turning a litre of tap water into one millilitre carrying
+   all of its atrazine.
+5. **Add internal standard, then vial.** A fixed internal standard goes
+   in, and the ~1 mL is transferred into a **2 mL GC vial** (M6), capped
+   and labelled.
+
+**Reading it:** the GC-MS gives atrazine's concentration in the final
+1 mL; dividing back by the litre extracted gives µg/L. The **surrogate
+recovery** (did the spiked marker come back at, say, ~70–130%?) proves
+the extraction itself worked — without it, a clean result could just mean
+the analyte was lost on the way.
+
+#### 3. Semi-volatiles — "is there soot-borne carcinogen in this soil?"
+
+**The sample:** ~30 g of soil from a garden, playground, or old
+industrial lot.
+
+**The everyday hook:** **benzo[a]pyrene** is a **PAH** (polycyclic
+aromatic hydrocarbon) — the same family of compounds in soot, char,
+creosote-soaked railway sleepers, and diesel exhaust. It is a potent
+carcinogen and it lingers in soil for decades, which is why ground for a
+new school or playground gets tested before children play on it.
+
+**What he is answering:** is benzo[a]pyrene below the site's cleanup
+limit (often **single-digit µg/kg up to low mg/kg**, depending on how the
+land will be used)?
+
+**What he physically measures:** benzo[a]pyrene and its PAH relatives on
+a GC-MS (EPA 8270 style), after **solvent extraction** of the soil.
+
+**How the sample is prepared** — the solid-matrix shape, the heaviest
+prep of the three:
+
+1. **Weigh out the soil** (M2): ~30 g into an extraction vessel, with a
+   separate portion dried to correct the result to **dry weight** (wet
+   soil would dilute the answer).
+2. **Spike surrogates** (M3) — typically **deuterated PAHs** (heavy
+   look-alikes that behave like the real thing but are told apart by
+   mass), so their recovery proves the extraction.
+3. **Extract** (M4): soak and agitate the soil in **dichloromethane** (by
+   sonication, shaking, or Soxhlet), pulling the PAHs out of the dirt and
+   into the solvent.
+4. **Clean up and concentrate** (M5): filter off the soil, optionally
+   pass the extract through a cleanup column to strip interferences, then
+   blow it down under nitrogen to **~1 mL** — *watched* so it is never
+   taken to dryness, which would lose the lighter PAHs.
+5. **Vial** (M6): the ~1 mL extract goes into a 2 mL GC vial — often with
+   a **micro-insert** because the final volume is so small — capped and
+   labelled.
+
+**Reading it:** the GC-MS quantifies benzo[a]pyrene in the final extract;
+back-calculated against the 30 g and corrected to dry weight, that gives
+µg/kg of soil. Surrogate recovery again vouches for the whole prep.
+
+**Why every one of these ends in the same vial.** Three very different
+front-ends — *don't even open* the volatile water, pull a litre through a
+cartridge, soak grams of dirt in solvent — but all three converge on the
+**same last move**: a ~1 mL extract in a **2 mL GC vial**, capped,
+labelled, and racked in batch order on a 96-position autosampler. The
+chemistry that gets there is Marco's; the **fixed-volume spiking
+([M3](#m3-adding-surrogates-and-internal-standards)), the vialling
+([M6](#m6-filling-capping-and-labelling-vials)), and the rack loading
+([M7](#m7-loading-the-autosamplers))** that bracket it are the
+repetitive, identical motions the arm is built for — which is why his
+job, chemically nothing like Priya's, lights up the same green band.
+
 ### M1. Sample receipt and accessioning
 
 Coolers are opened, the internal **temperature is checked** (many methods
@@ -495,6 +834,138 @@ runs; prepare **serial dilutions** for a linearity check; and iterate —
 read, adjust, re-run — several times before lunch and again after. The
 arm can't do her thinking, but it can erase the **repetitive prep between
 her decisions**, which is where her day leaks time.
+
+### What Sarah actually builds — inventing the test behind a familiar pill
+
+Sarah doesn't follow a recipe; she **writes** it. The clearest way to see
+her day is to watch her build the very method **Priya** will later run
+every morning — using drugs you already know. Here are three slices of
+that work, with the sample prep spelled out, all on familiar tablets.
+
+> **Numbers are illustrative** (`~`), and method-development conditions
+> change by the hour — that churn *is* the nature of the job.
+
+| Slice of method development | The plain-English question | Example drug |
+|---|---|---|
+| **Forced degradation** | Can the test *see* the drug breaking down? | Paracetamol |
+| **Separating a combo** | Can it tell apart everything in the pill? | Paracetamol + caffeine |
+| **Linearity / validation** | Are the numbers trustworthy across the range? | Ibuprofen |
+
+#### 1. Forced degradation — "can the test even see paracetamol breaking down?"
+
+**The drug:** paracetamol — the same one Priya assays, but here Sarah is
+*proving the test works* before Priya ever touches it.
+
+**What she is answering:** is the method **stability-indicating** — can it
+**see** the drug decomposing, rather than reporting a degraded sample as
+still-perfect? A method that can't see degradation is worse than useless:
+it would quietly pass an expired, harmful batch.
+
+**What she does to the drug:** she deliberately **abuses** a paracetamol
+solution under five separate stresses, each for a controlled time, to
+*force* it to break down so she can check the method catches the
+products:
+
+1. **Acid** — heat it with dilute HCl.
+2. **Base** — heat it with dilute NaOH.
+3. **Oxidation** — mix it with hydrogen peroxide.
+4. **Heat** — hold the dry drug hot.
+5. **Light** — leave it under UV.
+
+**How the samples are prepared:**
+
+1. Make a stock paracetamol solution at the assay concentration.
+2. Split it; to each portion add the stress reagent (acid, base, peroxide)
+   or apply the condition (heat, UV) for a **timed** interval — timing
+   matters, because too much stress destroys everything and too little
+   shows nothing.
+3. **Neutralize** the acid and base portions (so they don't keep reacting
+   or attack the column) and **dilute** every portion back to the
+   method's working concentration.
+4. Filter into vials — the **same canonical loop** — and run them quickly.
+5. Run an **unstressed control** alongside for comparison.
+
+**Reading it:** on each chromatogram she checks that the **paracetamol
+peak shrank** and **new degradant peaks appeared** (e.g.
+**4-aminophenol** — the very impurity Priya's "related substances" test
+then polices), that those new peaks are **fully separated** from
+paracetamol, and that **peak purity** (via the photodiode-array or MS)
+confirms nothing is hiding *underneath* the main peak. She also checks
+**mass balance**: drug lost ≈ degradants gained. If all that holds, the
+method is stability-indicating.
+
+#### 2. Separating a combo — "can it tell apart everything in a cold-and-flu pill?"
+
+**The drug:** a **paracetamol + caffeine** tablet — the familiar
+cold-and-flu / "extra-strength" combination.
+
+**What she is answering:** a combo pill needs **one** method that measures
+*every* active at once and keeps each one — plus all their degradation
+products — **separated** from the others. The challenge is **resolution**:
+paracetamol, caffeine, and their breakdown peaks must not overlap.
+
+**What she physically measures:** the **resolution** (the gap) between
+adjacent peaks, as she **screens conditions** trying to spread them out.
+
+**How she works the problem** (this is the "iterate" loop):
+
+1. Prepare a mixed standard of paracetamol + caffeine at known levels,
+   plus the stressed samples from above.
+2. **Screen variables one at a time** — try a different **column**
+   chemistry, change the **mobile-phase** organic ratio or pH, adjust the
+   **gradient** or temperature — running a short sequence after each
+   change.
+3. Each screening run is a few freshly prepared vials: standards plus a
+   sample or two, the **same fill-cap-label loop**, just small batches
+   prepared **often**.
+4. Read the chromatogram, keep the change that pushed two peaks apart,
+   and **repeat** — many short cycles a day.
+
+**Reading it:** she is hunting for a condition where **every** peak — both
+actives and all degradants — is **baseline-separated** (a clean gap,
+usually resolution ≥ ~2.0 between the closest pair). The prep between
+each try is identical and repetitive; the **decision** of what to change
+next is hers alone.
+
+#### 3. Linearity & validation — "are the numbers trustworthy across the range?"
+
+**The drug:** ibuprofen — proving the finished method before handover.
+
+**What she is answering:** does the detector respond **proportionally**
+across the whole range the method must cover — typically **50% to 150%**
+of the target concentration — so any reading can be trusted to convert
+into a real dose?
+
+**What she physically measures:** a **calibration curve** — peak area vs.
+concentration — built from a **serial dilution**.
+
+**How the samples are prepared:**
+
+1. From one accurately weighed ibuprofen stock, prepare a ladder of
+   concentrations at, say, **50, 80, 100, 120, 150%** of target by
+   precise, fixed-volume dilution.
+2. Add precision **replicates** at each level (the same prep made
+   independently several times).
+3. Filter each into its own vial — a **textbook liquid-handling task**,
+   and the step most exposed to dilution error.
+4. Run the ladder; plot area vs. concentration; the points should fall on
+   a **straight line** (correlation near 1.000).
+
+**Reading it:** a straight, tight line means the method is linear and the
+arithmetic Priya later uses is valid. A kink or scatter usually traces
+back to **dilution error** — exactly the step automation removes — which
+is why this prep is the strongest **Full-auto** case in Sarah's day.
+
+**Why even the inventor's bench ends in the same vial.** Sarah's value is
+the *thinking* — which stress to apply, which column to try, when a
+separation is good enough — and no arm touches that. But look at what
+surrounds every decision: timed neutralize-and-dilute, serial dilutions,
+small standard sets, all funnelled into the **same fill-cap-label-load
+loop** as Priya and Marco, just in **frequent small batches** instead of
+one big overnight tray. The arm can't invent her method, but by erasing
+the repetitive prep *between* her decisions it hands her **more shots per
+day** — and the method she ships is the one Priya then runs on the drugs
+in your cabinet.
 
 ### S1. Designing the experiment
 
