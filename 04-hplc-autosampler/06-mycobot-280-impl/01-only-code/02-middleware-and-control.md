@@ -313,6 +313,28 @@ middleware & control.
 
 ## One-plugin sim-to-hardware transfer
 
+When a lab assistant moves from one autosampler bench to another, their
+trained movements carry over — the hands already know how to grip a vial
+and seat it in a tray; only the surroundings change. This use case is the
+cell's version of that portability. Everything the arm does in simulation
+— every trajectory, every gripper command, every station call — is
+written against one fixed *interface* so that, on the day the real myCobot
+arrives, the same control code drives it unchanged.
+
+The bigger experiment is the same HPLC batch the whole cell exists to
+prepare. Whether the arm is simulated or real, it must execute the
+identical sequence — reach the nest, grip the vial, carry it to the
+dispenser, place it in the tray — so the instrument receives a correctly
+built tray. This layer is the conduit those commands and sensor readings
+travel through; getting its boundary right is what lets months of
+simulated prep become real prep without a rewrite.
+
+The lab assistant performs the underlying motions this layer carries
+hundreds of times a day, every working day. The sim-to-hardware transfer
+itself happens once — at hardware bring-up — but it is the single most
+consequential moment in the project, because it decides whether all the
+earlier work transfers or has to be rebuilt.
+
 - **The moment:** months of only-code work must run on the real myCobot
   without a rewrite; the day the arm arrives, the team swaps one plugin
   and the same controllers drive it.
@@ -346,7 +368,31 @@ middleware & control.
 
 ### Meta code
 
-The shape of the transfer seam, before any library detail:
+This meta is almost entirely about a *boundary* rather than an algorithm.
+The middleware framework (ROS 2 with `ros2_control`) defines a single
+abstraction — the **hardware_interface** — that sits between the parts of
+the cell that decide what the arm should do (planners, orchestration) and
+the part that actually drives the joints. Everything above the boundary is
+written once and never changes; everything specific to "is this a
+simulated arm or a real one?" lives in one swappable plugin below it.
+
+In only-code mode that plugin is `gz_ros2_control`, which makes the Gazebo
+simulator play the part of the motors: when a controller commands a joint
+position, the plugin moves the simulated joint and reports the simulated
+state back. The controllers, the trajectory follower, and the action
+interfaces above all behave exactly as they will on hardware, because they
+are talking to the abstraction, not to Gazebo.
+
+The whole arrangement is declared in two places — the arm's URDF, where
+the plugin is named, and a controller YAML, where the `controller_manager`
+and the `joint_trajectory_controller` are configured against the joints.
+Crucially, the joint list, the command and state interfaces, and the
+controller configuration are identical for sim and for hardware; only the
+single plugin line differs.
+
+So "moving to hardware" reduces to swapping that one plugin for the real
+myCobot driver and re-validating just that component, while every node
+above it is byte-for-byte unchanged. The seam in pseudocode:
 
 ```text
 # define the arm's hardware_interface ONCE, with a swappable backend plugin:
@@ -402,6 +448,28 @@ joint_trajectory_controller:                # parameters for that controller ins
 
 ## Device-as-service with timeouts
 
+A lab assistant is constantly asking the bench's instruments for something
+and waiting on the answer — placing a vial on the balance and waiting for
+a stable mass, triggering the dispenser and waiting for it to finish. But
+a person never waits forever: if the balance won't settle or the dispenser
+jams, they notice, set the sample aside, and keep the batch moving. This
+use case gives the cell that same instinct — it calls a station (weigh,
+dispense, decap) and, if the station goes silent, gets a clean timeout
+instead of freezing.
+
+The bigger experiment is the HPLC batch, where every single vial passes
+through several of these station interactions before it reaches the tray.
+A weigh that never returns, on a cell that waits forever, would stall the
+entire overnight run on one bad device. Bounding every station call is
+what keeps the run flowing — a silent dispenser costs one vial's retry,
+not the night.
+
+The assistant leans on these stations for essentially every vial they
+prepare — weighing, diluting, dispensing — so the underlying "ask a
+station and wait for it" happens dozens to a few hundred times a day. The
+cell makes the same calls at the same cadence, which is exactly why each
+one has to fail gracefully rather than hang.
+
 - **The moment:** orchestration calls `weigh` and reads `/balance/mass`;
   mid-run the dispenser controller goes silent for 2 s and the loop must
   not freeze.
@@ -433,7 +501,28 @@ joint_trajectory_controller:                # parameters for that controller ins
 
 ### Meta code
 
-The shape of the bounded station call, before any library detail:
+The meta for a bounded station call is about never trusting a remote
+device to answer. A station like the balance is exposed two ways: a
+*service* for actions you ask it to perform ("weigh now, and reply") and a
+*topic* for the continuous stream it produces ("here is the mass, ten
+times a second"). The pipeline uses both, but it treats every interaction
+as something that might silently fail.
+
+When orchestration needs a fresh mass, it sends the weigh request
+asynchronously and then waits — but only up to a fixed timeout. If the
+reply arrives in time, it returns the value; if the timeout expires first,
+it raises a specific error rather than blocking. That single design choice
+is what turns a dead station from a frozen cell into a handled exception
+the gate logic can act on (retry, pause, alarm).
+
+The streaming side gets the same treatment through QoS deadlines: the
+subscription expects a sample at least every so often, so a stream that
+goes quiet — a station that is technically alive but no longer producing —
+is detected as stale rather than assumed good. A slow station and a dead
+one both surface, instead of one of them sneaking through.
+
+The net effect is that no single cross-device call can ever hang the loop.
+The call in pseudocode:
 
 ```text
 # create a service client for "weigh" + a subscriber for /balance/mass (QoS with a deadline)
@@ -491,6 +580,28 @@ class WeighClient(Node):                                # calls a station servic
 
 ## Graceful degradation on a lost node or e-stop
 
+When a piece of bench equipment hiccups mid-batch — a balance reboots, a
+dispenser locks up for a moment — an experienced lab assistant doesn't
+scrap the whole tray. They pause, let the device recover or switch to a
+spare, and pick up where they left off. This use case engineers that
+resilience into the cell: if one of the cell's software stations crashes,
+the arm holds safely rather than lurching, and the loop resumes once the
+station comes back.
+
+The bigger experiment is the unattended overnight HPLC batch, which can
+run for many hours across dozens of vials. Over that long a stretch, some
+component will inevitably stumble. If a single crashed station forced the
+whole run to abort, the cell would rarely finish a tray; treating a lost
+station as a recoverable pause rather than a fatal error is what makes
+leaving it unattended realistic.
+
+For the lab assistant, an equipment hiccup is occasional but normal —
+perhaps a few times a week across a busy bench, more on aging instruments.
+The cell faces the software equivalent (a node crash, a dropped
+connection) on a similar scale over long runs, so the recovery path here
+is built to be exercised routinely, not treated as a once-a-year
+emergency.
+
 - **The moment:** a station node crashes or `/estop` fires mid-trajectory;
   the arm must hold/stop safely and the graph must recover when the node
   returns.
@@ -521,7 +632,28 @@ class WeighClient(Node):                                # calls a station servic
 
 ### Meta code
 
-The shape of the station watchdog, before any library detail:
+The watchdog's meta is built around *liveliness*: rather than waiting for
+a station to actively report a failure, it watches for the station to go
+quiet. Each station emits a heartbeat on a topic, and the watchdog
+subscribes with a deadline QoS that fires an event the moment a heartbeat
+is overdue.
+
+On that missed-deadline event — the station has died — the watchdog acts
+immediately on the one thing that matters for safety: it asks the
+`controller_manager` to deactivate (hold) the arm's trajectory controller,
+so the arm stops cleanly instead of continuing a motion that depended on
+the now-dead station. It also marks the station down so orchestration can
+pause the affected step.
+
+Recovery is the mirror image. When the crashed node relaunches, the
+middleware's automatic peer discovery re-attaches it and its heartbeats
+resume; the watchdog sees the stream return and asks the
+`controller_manager` to reactivate the controller, letting the arm move
+again. Because the topic and service contracts never changed, the rest of
+the graph resumes from its own state with no restart.
+
+The result is a cell that treats a lost station as a brief, self-healing
+pause. The watchdog in pseudocode:
 
 ```text
 # watch each station's heartbeat topic with a deadline QoS           (liveliness)
