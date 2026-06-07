@@ -651,5 +651,13 @@ build narrow and still land broad — and why the **first project stays
 deliberately on HPLC**: nail the shared core on one workflow before
 reaching for the assisted and human-led bands or other instruments.
 
+**The bottom line, for the reader who started at the top:** the robot we
+are building is the thing that fills, caps, labels, and loads the little
+vials behind the dose in your painkiller, the safety of your tap water,
+and the expiry date on your medicine. It does not replace the scientist's
+judgement — it hands back the hours they currently lose to the same five
+hand-motions, so they can spend that time deciding what the results
+actually mean.
+
 Next: the per-layer breakdown of how that cell is actually built lives in
 [`03-high-level-solution/README.md`](03-high-level-solution/README.md).
