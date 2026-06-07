@@ -235,6 +235,65 @@ plugins require and the mock publishers (which already speak native ROS
   balance gaps. Bridged into standard `sensor_msgs`, this stands up all
   twelve for `~$0` and transfers cleanly to hardware later.
 
+## Realistic scenario & use cases
+
+> **Why this matters for automation.** This layer is the cell's nervous
+> system: it makes every sensor *exist* as a faithful, timestamped ROS 2
+> topic so the gates above (Layer 10) have something to trust. Its
+> automation value is making the cell **observable** — and, in only-code,
+> making every fault **reproducible on demand**, which no real bench can.
+
+**The scenario.** During an overnight run the cell faces a set of faults
+no single sensor catches alone: the dispenser is **gradually
+under-filling** (the level reading drifts low over several vials), the
+decapper hits a **stuck cap** (a torque spike), an operator's hand trips
+the **light curtain for ~200 ms**, the gripper effort creeps **high**
+(about to over-squeeze the glass), and the balance reports a vial **0.3 g
+lighter** than its worklist expectation (wrong or empty vial). Every one
+of those signals must be acquired faithfully, at the right rate, on a
+common clock, so Layer 10 can fuse them into a decision.
+
+The layer must therefore serve several **distinct use cases**:
+
+1. **Acquire heterogeneous sensors as standard, timestamped topics.**
+   Cameras, IMU, force-torque, gripper, limit switches, presence, plus the
+   mock safety/level/balance signals — all as standard messages.
+   - *How the solution handles it:* Gazebo plugins render the simulatable
+     sensors, `ros2_control` reads the joints, and rclpy mocks fill the
+     rest, all **bridged into `sensor_msgs`** so consumers see one
+     uniform interface.
+
+2. **Right-rate streaming with sane QoS.** Stream cameras at 10–30 Hz,
+   torque fast, and the safety booleans as **latched** state — without
+   flooding the graph.
+   - *How:* a per-sensor publish rate and QoS profile; safety topics are
+     reliable/latched so a late subscriber still sees the current state.
+
+3. **Scriptable fault rehearsal.** Inject the under-fill drift, the torque
+   spike, the 200 ms curtain blip, and the high gripper effort to exercise
+   the gates before any hardware exists.
+   - *How:* the **rclpy mock publishers** drive exact value timelines —
+     which is precisely why the four non-simulatable sensors (safety #10/
+     #11, level #8, balance #6) are mocks by design.
+
+4. **Time synchronization across sensors.** Stamp readings on a common
+   clock so the torque spike and the gripper-effort creep can be lined up
+   at the same instant.
+   - *How:* every message carries a stamp from the shared ROS clock
+     (sim `/clock`), ready for `message_filters` time-alignment in Layer 10.
+
+5. **Hardware-faithful contracts.** Every topic matches what the real
+   device will publish, so nothing above changes at bring-up.
+   - *How:* topics are designed now to the **micro-ROS / `sensor_msgs`**
+     shape the real acquisition path will use.
+
+**Where the pick flexes.** The best-practical mix (Gazebo plugins +
+ros2_control + a few rclpy mocks) stands up all twelve sensors for `~$0`
+and covers every use case in only-code. The best-in-class **micro-ROS** is
+the *real* acquisition path for use case 5 — stubbed here, swapped in at
+hardware — while the pure-mock route stays the cheapest way to rehearse
+the exact faults of use case 3.
+
 ## Meta code
 
 The shape of "stand up every sensor as a topic," before any
