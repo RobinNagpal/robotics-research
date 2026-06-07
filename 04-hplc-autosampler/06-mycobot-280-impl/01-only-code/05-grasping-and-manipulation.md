@@ -285,7 +285,7 @@ next section lays out.
 The five above all matter; these three carry the most weight for grasping
 & manipulation — the layer that physically touches the glass.
 
-### Force-safe pinch of a glass vial
+## Force-safe pinch of a glass vial
 
 - **The moment:** the gripper closes on a smooth 2 mL glass vial — too soft
   and it slips, too hard and it cracks.
@@ -316,7 +316,66 @@ The five above all matter; these three carry the most weight for grasping
 - **Value:** the most failure-prone touch in the loop is made repeatable,
   removing the drop-or-crack risk a human babysits.
 
-### Slip detection and re-grasp
+### Meta code
+
+The shape of the force-limited pinch, before any library detail:
+
+```text
+# read the vial type from the worklist -> diameter, grip height, safe force (MuJoCo-validated)
+# align the gripper to the vial's cylinder axis at the grip height
+# close the jaws toward the target FORCE (not a fixed width):
+#     stop as soon as measured force >= safe force          (force-limited, won't crush glass)
+# confirm the closed jaw width ~ vial diameter              (we hold glass, not air)
+#     mismatch -> report a failed grasp                      (-> slip / re-grasp path)
+```
+
+### Real code
+
+A node that closes the gripper to a safe force, then checks the jaw width
+confirms a vial is held. **Illustrative teaching code** — re-verify before
+use; every line is commented.
+
+```python
+import rclpy                                            # ROS 2 Python client library
+from rclpy.node import Node                             # base class for a ROS 2 program
+from rclpy.action import ActionClient                   # to send a gripper command goal
+from control_msgs.action import GripperCommand          # position + max-effort gripper action
+from sensor_msgs.msg import JointState                  # to read the actual jaw width back
+
+VIALS = {"2mL_screw": {"dia": 0.0118, "force": 5.0},    # per-type diameter (m) + safe force (N)...
+         "2mL_crimp": {"dia": 0.0115, "force": 4.5}}    # ...both validated in MuJoCo beforehand
+WIDTH_TOL = 0.002                                       # jaw width must match the vial within 2 mm
+
+
+class ForceSafePinch(Node):                             # closes on a vial to a force, then verifies
+    def __init__(self):                                 # one-time setup
+        super().__init__("force_safe_pinch")            # register on the ROS 2 graph
+        self.cli = ActionClient(self, GripperCommand,   # action client to the gripper controller
+                                "/gripper_controller/gripper_cmd")
+        self.jaw = None                                 # latest measured jaw width (metres)
+        self.create_subscription(                       # read the gripper's joint state...
+            JointState, "/joint_states", self.on_js, 10)  # ...to learn the actual jaw width
+
+    def on_js(self, msg):                               # runs on each joint-state update
+        if "gripper_finger_joint" in msg.name:          # is the finger joint reported here?
+            i = msg.name.index("gripper_finger_joint")  # find its index...
+            self.jaw = msg.position[i] * 2.0            # ...total width ~ 2x one finger's travel
+
+    def pinch(self, vial_type: str) -> bool:            # close on a vial of this type; True if held
+        spec = VIALS[vial_type]                         # diameter + safe force for this vial
+        goal = GripperCommand.Goal()                    # the command we send the gripper
+        goal.command.position = spec["dia"] - 0.004     # aim just inside the diameter (a squeeze)
+        goal.command.max_effort = spec["force"]         # but never exceed the safe glass force
+        self.cli.wait_for_server()                      # ensure the gripper controller is up
+        self.cli.send_goal_async(goal)                  # close to that position OR force, first wins
+        rclpy.spin_once(self, timeout_sec=1.0)          # let a fresh /joint_states arrive
+        if self.jaw is None or abs(self.jaw - spec["dia"]) > WIDTH_TOL:  # closed on air, not glass?
+            self.get_logger().warn("grasp width off -> failed pinch")  # likely empty / slipped
+            return False                                # -> hand to the slip / re-grasp use case
+        return True                                     # jaw width matches the vial: we hold glass
+```
+
+## Slip detection and re-grasp
 
 - **The moment:** vial 61 shifts on first contact and the pick fails; the
   arm must notice and retry, not carry nothing to the dispenser.
@@ -344,7 +403,71 @@ The five above all matter; these three carry the most weight for grasping
 - **Value:** a failed pick becomes a retry, not a dropped sample and a
   halted run.
 
-### Anti-rotation hold for decap/recap
+### Meta code
+
+The shape of the two-witness slip guard, before any library detail:
+
+```text
+# after a pinch attempt, gather two witnesses, time-matched:
+#     gripper: jaw width ~ vial diameter?    (closed on glass vs closed on air)
+#     wrist camera: is a vial at the gripper line?
+# both agree "held" -> tell MTC to PROCEED to transit
+# disagree / both empty:
+#     tries < N -> tell MTC to REPICK (re-enter the pick stage)
+#     tries >= N -> FLAG the vial for human review (don't loop forever)
+```
+
+### Real code
+
+A node that two-witnesses the grasp (gripper width + wrist camera) and
+drives a bounded retry. **Illustrative teaching code** — re-verify before
+use; every line is commented.
+
+```python
+import rclpy                                            # ROS 2 Python client library
+from rclpy.node import Node                             # base class for a ROS 2 program
+from sensor_msgs.msg import JointState                  # witness 1: the gripper jaw width
+from std_msgs.msg import Bool, String                   # witness 2: wrist "vial present"; + command
+from message_filters import Subscriber, ApproximateTimeSynchronizer  # pair the witnesses in time
+
+VIAL_DIA = 0.0118                                       # expected jaw width when holding a vial (m)
+WIDTH_TOL = 0.002                                       # within 2 mm counts as "holding glass"
+MAX_TRIES = 3                                           # give up (flag) after this many retries
+
+
+class SlipGuard(Node):                                  # two-witness grasp check with bounded retry
+    def __init__(self):                                 # one-time setup
+        super().__init__("slip_guard")                  # register on the ROS 2 graph
+        self.tries = 0                                  # how many pick attempts on this vial so far
+        self.cmd = self.create_publisher(String, "/mtc/command", 10)  # PROCEED / REPICK / FLAG
+        jaw = Subscriber(self, JointState, "/joint_states")   # witness 1: the gripper
+        cam = Subscriber(self, Bool, "/wrist/vial_present")   # witness 2: the wrist camera
+        self.sync = ApproximateTimeSynchronizer(        # pair the two witnesses in time...
+            [jaw, cam], queue_size=10, slop=0.1, allow_headerless=True)
+        self.sync.registerCallback(self.on_pair)        # ...and judge each matched pair
+
+    def on_pair(self, js, present):                     # runs on a time-matched (gripper, camera) pair
+        held = ("gripper_finger_joint" in js.name and   # the gripper says "holding glass" when...
+                abs(js.position[js.name.index("gripper_finger_joint")] * 2 - VIAL_DIA) <= WIDTH_TOL)
+        if held and present.data:                       # BOTH witnesses agree a vial is held
+            self.tries = 0                              # reset the counter for the next vial
+            self.cmd.publish(String(data="PROCEED"))    # tell MTC to carry on to transit
+        elif self.tries < MAX_TRIES:                    # they disagree / both empty -> retry
+            self.tries += 1                             # count this failed attempt
+            self.cmd.publish(String(data="REPICK"))     # tell MTC to re-enter the pick stage
+        else:                                           # too many failures on this vial
+            self.cmd.publish(String(data="FLAG"))       # park it for human review (never loop)
+
+
+def main():                                             # standard ROS 2 entry point
+    rclpy.init(); rclpy.spin(SlipGuard()); rclpy.shutdown()  # start, run, clean up
+
+
+if __name__ == "__main__":                              # run directly
+    main()
+```
+
+## Anti-rotation hold for decap/recap
 
 - **The moment:** the decapper applies torque to unscrew a cap; if the vial
   spins in the jaws nothing comes off and the cap may strip.
@@ -371,6 +494,73 @@ The five above all matter; these three carry the most weight for grasping
   that follow.
 - **Value:** decapping becomes a controlled, monitored action instead of a
   blind twist that risks shattering glass.
+
+### Meta code
+
+The shape of the monitored decap, before any library detail:
+
+```text
+# engage the high-force HOLD grasp (firmer than a transport pinch)
+# tell the decapper to start twisting the cap
+# while twisting, watch the cap-joint force-torque (sensor #5):
+#     torque rose then collapsed below FREE -> cap broke free -> stop, release   (success)
+#     torque exceeds STUCK limit -> stuck cap -> stop, flag, do NOT wrench        (abort safely)
+# on success: release the hold; on abort: leave the vial in the nest + flag
+```
+
+### Real code
+
+A node that holds the vial firmly and supervises the un-cap by torque,
+aborting on a stuck cap. **Illustrative teaching code** — re-verify before
+use; every line is commented.
+
+```python
+import rclpy                                            # ROS 2 Python client library
+from rclpy.node import Node                             # base class for a ROS 2 program
+from rclpy.action import ActionClient                   # to command the gripper hold
+from control_msgs.action import GripperCommand          # gripper position + max-effort
+from geometry_msgs.msg import WrenchStamped             # the cap-joint force-torque (sensor #5)
+from std_srvs.srv import Trigger                        # start/stop the decapper twisting
+
+HOLD_FORCE = 8.0                                        # firmer than a transport pinch (N)
+STUCK_NM = 4.0                                          # abort above this un-cap torque (N*m)
+FREE_NM = 0.5                                           # torque falling below this -> cap is off
+
+
+class AntiRotationDecap(Node):                          # holds the vial and supervises the un-cap
+    def __init__(self):                                 # one-time setup
+        super().__init__("anti_rotation_decap")         # register on the ROS 2 graph
+        self.grip = ActionClient(self, GripperCommand,  # action client for the gripper hold
+                                 "/gripper_controller/gripper_cmd")
+        self.start = self.create_client(Trigger, "/decapper/start")  # start the decapper twist
+        self.stop = self.create_client(Trigger, "/decapper/stop")    # stop it (success or abort)
+        self.peak = 0.0                                 # highest torque seen this decap
+        self.done = False                               # latch so we judge/stop only once
+        self.create_subscription(                       # watch the cap-joint force-torque...
+            WrenchStamped, "/decapper/wrench", self.on_wrench, 10)
+
+    def decap(self):                                    # begin one monitored decap
+        goal = GripperCommand.Goal()                    # the firm HOLD command
+        goal.command.position = 0.010                   # close onto the vial body...
+        goal.command.max_effort = HOLD_FORCE            # ...with the higher hold force
+        self.grip.wait_for_server()                     # ensure the gripper controller is up
+        self.grip.send_goal_async(goal)                 # engage and hold the vial against twist
+        self.start.call_async(Trigger.Request())        # tell the decapper to start unscrewing
+
+    def on_wrench(self, msg):                           # runs on each cap-joint torque sample
+        if self.done:                                   # already finished this decap?
+            return                                      # ignore further samples
+        tz = abs(msg.wrench.torque.z)                   # the un-cap torque about the cap axis
+        self.peak = max(self.peak, tz)                  # remember the peak for the success test
+        if tz > STUCK_NM:                               # the cap is fighting back too hard
+            self.done = True                            # latch: stop reacting
+            self.stop.call_async(Trigger.Request())     # STOP twisting -> never wrench the vial out
+            self.get_logger().error("stuck cap -> abort + flag")  # leave it in the nest, flag it
+        elif self.peak > FREE_NM and tz < FREE_NM:      # torque rose then collapsed...
+            self.done = True                            # latch: success path
+            self.stop.call_async(Trigger.Request())     # stop the now freely-spinning decapper
+            self.get_logger().info("cap free -> release hold")  # release the vial; decap done
+```
 
 ## The learned upgrade path — VLA / generalist policies
 
@@ -408,99 +598,6 @@ regulated lab (21 CFR Part 11 / IQ-OQ-PQ; see
 when the lab needs **generalization** — many vial types, novel labware,
 spoken instructions — which is exactly the later milestone this stack
 defers learned methods to.
-
-## Meta code
-
-The best-practical pick wraps the analytical pinch in **MoveIt Task
-Constructor** stages. The heart of the "close gripper" stage is the
-**two-witness "did we get it?"** check: close the jaws, then read the
-gripper's own servo feedback (#4 — jaw width + effort) to decide
-*held* vs *empty* before the lift fires.
-
-```text
-# command the gripper to close on the vial             (the analytical pinch pose)
-# read the gripper's servo feedback                    (sensor #4: joint state + effort)
-#     jaw width  = how far apart the jaws ended up      (position of the gripper joint)
-#     effort     = how hard the motor is pushing        (current/torque on that joint)
-# decide held vs empty from a band:
-#     if jaws closed all the way (width ~0):            (nothing between them)
-#         -> EMPTY: the pinch missed                     (-> branch to retry)
-#     if jaws stopped at ~vial width AND effort is high: (glass is resisting the squeeze)
-#         -> HELD: a vial is in the jaws                  (-> lift stage may fire)
-#     otherwise (too wide, or no resistance):           (slipped / wrong object)
-#         -> EMPTY: do not trust the grasp               (-> branch to retry)
-# (the wrist camera #3 is the second witness; both must agree before lifting)
-```
-
-## Real code
-
-A minimal but complete ROS 2 (`rclpy`) node for the grasp-verification
-witness — the analytical pinch is sequenced by **MoveIt Task
-Constructor**, and this node reads **`ros2_control`** gripper feedback
-(sensor #4) to confirm the catch. This is **illustrative teaching
-code**: library and message names drift between versions, so re-verify
-before relying on it. Every line carries an inline comment.
-
-```python
-import rclpy                                      # ROS 2 Python client library (the robot framework)
-from rclpy.node import Node                       # base class every ROS 2 program ("node") builds on
-from sensor_msgs.msg import JointState            # message carrying each joint's position + effort
-from std_msgs.msg import String                   # simple text message we use to report held / empty
-
-# --- known facts about the gripper and the 2 mL vial it pinches ---
-GRIPPER_JOINT = "gripper_finger_joint"             # the joint whose position = how far the jaws are open
-CLOSED_WIDTH = 0.002                                # jaws this closed (~2 mm) mean they met: nothing held
-VIAL_WIDTH_LO = 0.010                               # a gripped ~12 mm vial leaves the jaws at least this open
-VIAL_WIDTH_HI = 0.014                               # ...and at most this open: the expected jaw-width band
-HOLD_EFFORT = 0.5                                   # this much motor effort (N·m-ish) means glass is resisting
-
-
-class GraspWitness(Node):                          # our grasp-verification node, built on the ROS 2 Node class
-    def __init__(self):                            # set-up that runs once, when the node is created
-        super().__init__("grasp_witness")          # register on the ROS 2 graph under the name "grasp_witness"
-        self.sub = self.create_subscription(       # start listening to the gripper's feedback (sensor #4)
-            JointState, "/joint_states",           # message type, then the topic ros2_control publishes on
-            self.on_joints, 10)                     # call self.on_joints per update; 10 = inbox queue depth
-        self.pub = self.create_publisher(          # open an outgoing channel to report the verdict
-            String, "/grasp/held", 10)             # type, topic the MTC "close" stage reads, queue depth
-
-    def on_joints(self, msg):                       # runs automatically each time joint feedback arrives
-        if GRIPPER_JOINT not in msg.name:          # does this update even mention the gripper joint?
-            return                                  # no -> ignore it (it was about the arm joints)
-        i = msg.name.index(GRIPPER_JOINT)          # find where the gripper joint sits in the parallel lists
-        width = msg.position[i]                    # jaw opening right now, in metres (how far apart the jaws)
-        effort = abs(msg.effort[i])                # how hard the gripper motor is pushing (its current/torque)
-        verdict = self.classify(width, effort)     # turn those two numbers into "held" or "empty"
-        self.pub.publish(String(data=verdict))     # send the verdict out for the MTC sequence to act on
-        self.get_logger().info(                     # print a tidy status line for sanity
-            f"{verdict}: width={width:.3f} m effort={effort:.2f}")  # show the numbers behind the call
-
-    def classify(self, width, effort):              # the two-witness band: held vs empty from #4 alone
-        if width <= CLOSED_WIDTH:                  # did the jaws shut all the way to nearly touching?
-            return "empty"                          # yes -> nothing was between them: the pinch missed
-        gripping = VIAL_WIDTH_LO <= width <= VIAL_WIDTH_HI  # did the jaws stop in the vial-width band?
-        if gripping and effort >= HOLD_EFFORT:     # AND is the motor straining against the glass?
-            return "held"                           # yes to both -> a vial is genuinely in the jaws
-        return "empty"                              # otherwise: too wide, or no resistance -> don't trust it
-
-
-def main():                                        # the standard ROS 2 program entry point
-    rclpy.init()                                    # start up the ROS 2 client library (must come first)
-    node = GraspWitness()                           # build our node, which runs its __init__ set-up
-    rclpy.spin(node)                                # keep handling gripper feedback until you press Ctrl-C
-    node.destroy_node()                             # remove the node from the graph on shutdown
-    rclpy.shutdown()                                # close the ROS 2 client library cleanly
-
-
-if __name__ == "__main__":                          # only run if this file is launched directly
-    main()                                          # ...then start everything above
-```
-
-This node is only the *first* of the two witnesses. The MTC "close
-gripper" stage waits for a `held` here **and** a wrist-camera glance
-(#3) before firing the lift; either one dissenting branches to a retry.
-See [`../sensor-suite.md`](../sensor-suite.md) for the full two-witness
-habit.
 
 ## See also
 
