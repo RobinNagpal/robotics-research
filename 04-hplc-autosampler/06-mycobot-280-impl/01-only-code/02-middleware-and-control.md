@@ -323,6 +323,11 @@ middleware & control.
 - **Edge case it survives:** behaviour that passed in sim but hits real
   timing/latency — the boundary is identical, so only the *plugin* is
   re-validated, isolating the hardware risk to one component.
+- **Walkthrough:** (1) write the controllers and YAML against the
+  `gz_ros2_control` hardware_interface; (2) prove the trajectory loop in
+  Gazebo; (3) on hardware day swap that plugin for the myCobot driver;
+  (4) re-run the same controllers unchanged and re-validate only the
+  plugin.
 - **Value:** the only-code investment becomes the production control layer,
   not a throwaway prototype.
 
@@ -338,6 +343,10 @@ middleware & control.
 - **Edge case it survives:** a station that answers *slowly* rather than
   not at all — the deadline still fires, and the gate logic treats a late
   reply as a miss instead of trusting stale data.
+- **Walkthrough:** (1) orchestration calls `weigh` with a timeout; (2) the
+  dispenser node goes silent; (3) the call returns a timeout error rather
+  than blocking; (4) the gate logic retries, pauses, or alarms on that
+  failed call.
 - **Value:** one flaky device degrades to a handled exception, never a
   deadlocked cell.
 
@@ -353,6 +362,10 @@ middleware & control.
 - **Edge case it survives:** the node returning *mid-cycle* — because the
   topic/service contracts are unchanged, orchestration resumes from its own
   state rather than re-initialising the whole graph.
+- **Walkthrough:** (1) a station node crashes mid-cycle; (2) the
+  `controller_manager` holds/deactivates its controller; (3) the node
+  relaunches and DDS auto-discovery re-attaches it; (4) orchestration
+  resumes from its own persisted state, no full restart.
 - **Value:** a single dead process is survivable and self-healing, not a
   night's run lost.
 

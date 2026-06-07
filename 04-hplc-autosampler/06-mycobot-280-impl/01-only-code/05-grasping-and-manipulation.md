@@ -296,6 +296,10 @@ The five above all matter; these three carry the most weight for grasping
 - **Edge case it survives:** a vial slightly larger or smaller than nominal
   — the force target, not a fixed jaw width, governs the close, so a vial
   at the edge of tolerance is still held safely.
+- **Walkthrough:** (1) read the vial's diameter and grip height from the
+  worklist; (2) align the jaws to the cylinder axis; (3) close to the
+  force target validated in MuJoCo; (4) confirm jaw width matches the vial
+  before lifting.
 - **Value:** the most failure-prone touch in the loop is made repeatable,
   removing the drop-or-crack risk a human babysits.
 
@@ -309,6 +313,9 @@ The five above all matter; these three carry the most weight for grasping
 - **Edge case it survives:** a *partial* grasp that holds at first then
   slips in transit — the wrist-camera witness is re-checked before the
   place, catching a vial lost en route.
+- **Walkthrough:** (1) close and read jaw width; (2) cross-check with the
+  wrist camera; (3) on disagreement re-enter the MTC pick stage; (4)
+  re-verify before transit, and flag the vial after *N* failed tries.
 - **Value:** a failed pick becomes a retry, not a dropped sample and a
   halted run.
 
@@ -322,6 +329,9 @@ The five above all matter; these three carry the most weight for grasping
 - **Edge case it survives:** a stuck cap whose torque spikes past normal —
   the force-torque reading trips a limit, so the cell stops and flags
   rather than wrenching the vial out of the nest.
+- **Walkthrough:** (1) engage the high-force hold grasp; (2) the decapper
+  applies twist; (3) the cap-joint force-torque is watched throughout; (4)
+  stop and flag on an over-torque, otherwise release after the cap is off.
 - **Value:** decapping becomes a controlled, monitored action instead of a
   blind twist that risks shattering glass.
 

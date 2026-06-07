@@ -307,6 +307,9 @@ fusion & gating — the cell's conscience, vial by vial.
 - **Edge case it survives:** a sensor that lies confidently — neither
   witness can pass the gate alone, so a single failed sensor can't wave an
   empty gripper through.
+- **Walkthrough:** (1) sync the wrist camera and gripper `JointState`; (2)
+  test both are in band; (3) test that they agree; (4) return `Success`
+  only if both pass, otherwise block the place.
 - **Value:** "never carry nothing, never drop in transit" becomes a
   mechanical guarantee, not an assumption.
 
@@ -321,6 +324,9 @@ fusion & gating — the cell's conscience, vial by vial.
 - **Edge case it survives:** a dead safety sensor (no messages at all) —
   silence reads as unsafe, the fail-safe default, rather than as implicit
   permission.
+- **Walkthrough:** (1) subscribe to the curtain and door with a deadline;
+  (2) check both read clear; (3) check the readings are fresh; (4) block
+  unless current and clear, otherwise hold.
 - **Value:** the gate fails closed, so a sensor dropout halts the arm
   instead of letting it move near a hand.
 
@@ -334,6 +340,9 @@ fusion & gating — the cell's conscience, vial by vial.
 - **Edge case it survives:** a momentarily lagging camera — the gate waits
   for a matching pair instead of trusting an old frame, so a transient delay
   causes a brief hold, not a wrong action.
+- **Walkthrough:** (1) tag each witness with its stamp; (2) the
+  synchronizer seeks a pair within slop; (3) no in-window pair means no
+  decision; (4) the gate holds until a fresh matching pair arrives.
 - **Value:** closes the exact gap the cheap latest-value cache leaves open,
   making fused decisions trustworthy in time as well as value.
 

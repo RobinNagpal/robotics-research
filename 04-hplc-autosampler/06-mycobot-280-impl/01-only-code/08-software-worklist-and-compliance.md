@@ -325,6 +325,9 @@ software, worklist & compliance layer — what makes the cell *trustable*.
 - **Edge case it survives:** an attempt to quietly "fix" vial 53's record —
   the recomputed chain hash no longer matches, exposing the change rather
   than hiding it.
+- **Walkthrough:** (1) on each action build a record; (2) hash it together
+  with the previous entry's hash; (3) append it to the JSONL log; (4)
+  re-verify the chain on read to detect any tampering.
 - **Value:** the cell's actions become a defensible, *Original and Accurate*
   record — the precondition for a regulated lab using it at all.
 
@@ -338,6 +341,9 @@ software, worklist & compliance layer — what makes the cell *trustable*.
 - **Edge case it survives:** a reviewer who is not the operator (segregation
   of duties) — distinct identities are recorded for prepare vs approve, so
   the trail shows who did what.
+- **Walkthrough:** (1) present results for review; (2) capture the
+  reviewer's identity, timestamp, and the meaning of the signature; (3)
+  bind that signature to the record; (4) lock it against any silent edit.
 - **Value:** accountability is built into the data, not bolted on in a
   spreadsheet afterwards.
 
@@ -351,6 +357,10 @@ software, worklist & compliance layer — what makes the cell *trustable*.
 - **Edge case it survives:** an instrument that rejects or re-orders a row —
   the SiLA reply is checked, so a refused load surfaces as an error the
   cell handles instead of a silent mismatch between tray and sequence.
+- **Walkthrough:** (1) assemble the verified load order; (2) send it over
+  the SiLA 2 interface (a mock now); (3) check the instrument's reply; (4)
+  on a rejection surface an error instead of a silent tray/sequence
+  mismatch.
 - **Value:** the integration that usually blocks deployment is designed and
   proven before the instrument is even connected.
 

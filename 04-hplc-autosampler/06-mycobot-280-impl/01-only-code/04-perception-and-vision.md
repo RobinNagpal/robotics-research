@@ -274,6 +274,9 @@ perception & vision.
 - **Edge case it survives:** a partially occluded tag — the detector
   rejects a low-confidence read and waits for a clean frame rather than
   publishing a wrong pose the arm would act on.
+- **Walkthrough:** (1) detect the tray AprilTag in the overhead frame; (2)
+  solve its 6-DoF pose via PnP; (3) add the fixed per-nest offsets; (4)
+  publish a `PoseStamped` per nest for Layer 03 to reach.
 - **Value:** the cell tolerates a hand-placed rack instead of demanding
   micron-perfect fixturing.
 
@@ -287,6 +290,9 @@ perception & vision.
 - **Edge case it survives:** a clear-liquid meniscus that's hard to see —
   the depth/geometry fit doesn't depend on liquid colour, so water-clear
   diluent is measured as reliably as a tinted sample.
+- **Walkthrough:** (1) take the depth cloud over the rack; (2) fit a
+  cylinder at each nest; (3) classify present vs empty and measure meniscus
+  height; (4) emit per-nest presence and fill to the Layer 10 gate.
 - **Value:** the cell never picks an empty nest or loads an under-filled
   vial, catching prep errors a human would miss at 2 a.m.
 
@@ -302,6 +308,10 @@ perception & vision.
 - **Edge case it survives:** calibration drift over time — the periodic
   re-check against the depth witness catches a slowly creeping offset
   before it causes a missed grasp.
+- **Walkthrough:** (1) drive the arm to several known tag poses; (2)
+  collect tag-in-camera and arm-in-base pairs; (3) solve `calibrateHandEye`
+  for the camera↔arm transform; (4) cross-check against depth and flag any
+  offset over tolerance.
 - **Value:** the calibration *procedure* is proven in sim and transfers to
   hardware, where it's the difference between reaching the vial and
   reaching past it.

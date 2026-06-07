@@ -246,6 +246,9 @@ identification — the cell's chain-of-custody check.
 - **Edge case it survives:** a code that spans the curve so no single frame
   sees it whole — multi-frame reads from different rotations are combined
   until the full code is recovered.
+- **Walkthrough:** (1) image the label head-on; (2) try an OpenCV decode on
+  the flat strip; (3) if it fails, rotate the vial one step in the gripper;
+  (4) re-image and combine reads until the full code resolves.
 - **Value:** curvature, the most common lab-label problem, is handled by
   motion the cell already has, not a special scanner.
 
@@ -259,6 +262,9 @@ identification — the cell's chain-of-custody check.
 - **Edge case it survives:** a genuinely unreadable label — after the
   attempt budget the vial is parked for human review, so a bad label stops
   *that* vial without stalling the tray.
+- **Walkthrough:** (1) decode with OpenCV; (2) fall back to ZBar; (3)
+  re-present the vial at the scan pose up to *N* times; (4) flag it for
+  human review if it is still unread.
 - **Value:** transient read failures self-heal; only the truly unreadable
   reach a human, keeping throughput up.
 
@@ -272,6 +278,9 @@ identification — the cell's chain-of-custody check.
 - **Edge case it survives:** two vials accidentally swapped between nests —
   each fails its own slot check, so *both* are caught rather than silently
   injected in the wrong order.
+- **Walkthrough:** (1) decode the vial's ID; (2) look up the expected ID
+  for that slot in the worklist; (3) compare the two; (4) on a mismatch,
+  halt the vial and raise an audit event before any place action.
 - **Value:** the highest-cost lab error — wrong sample, wrong result — is
   caught mechanically, the core reason a regulated lab would trust the cell.
 

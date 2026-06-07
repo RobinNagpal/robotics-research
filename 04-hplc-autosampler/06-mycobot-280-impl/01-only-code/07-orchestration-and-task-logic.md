@@ -283,6 +283,9 @@ orchestration — the cell's conscience for the overnight run.
 - **Edge case it survives:** several failures in one tray — each is
   quarantined independently, so a bad batch yields a list of flagged vials
   and a still-valid run for the good ones.
+- **Walkthrough:** (1) run the verify condition node; (2) on failure branch
+  to quarantine-and-log; (3) skip the place for that vial; (4) tick on to
+  the next worklist row.
 - **Value:** one bad vial costs one slot, not the night.
 
 #### Safe-stop and resume
@@ -295,6 +298,9 @@ orchestration — the cell's conscience for the overnight run.
 - **Edge case it survives:** an e-stop *mid-grasp* — because steps are
   designed idempotent, the resume re-checks whether the vial is held and
   either completes or re-picks, never dropping or double-placing.
+- **Walkthrough:** (1) the reactive guard sees `/estop`; (2) it preempts
+  the running subtree; (3) the arm holds safely; (4) on clear, the tree
+  re-checks state and resumes from where it paused.
 - **Value:** a safety event is a pause, not a ruined tray and a manual
   reset.
 
@@ -308,6 +314,9 @@ orchestration — the cell's conscience for the overnight run.
 - **Edge case it survives:** a crash *during* a place — reconciliation sees
   the vial already in the slot and advances, avoiding a double-place into
   an occupied nest.
+- **Walkthrough:** (1) on boot read the persisted worklist progress; (2)
+  perceive the actual tray and gripper; (3) reconcile intent against
+  reality; (4) resume at the correct next vial without double-placing.
 - **Value:** an unattended run survives an infrastructure hiccup instead of
   silently corrupting the tray.
 

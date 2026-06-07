@@ -304,6 +304,10 @@ motion planning.
 - **Edge case it survives:** an obstacle that *appears* mid-run — the scene
   is updated from perception, so the next plan accounts for the bin even
   though it wasn't in the CAD.
+- **Walkthrough:** (1) perception adds the waste bin to the planning
+  scene; (2) request a plan from A7 to slot 12; (3) the planner returns a
+  collision-free path or none; (4) execute it, or hand a no-plan back to
+  orchestration to retry or flag.
 - **Value:** the arm adapts to a bench that changed since yesterday instead
   of demanding a frozen world.
 
@@ -317,6 +321,9 @@ motion planning.
 - **Edge case it survives:** a Cartesian path that can't reach full depth
   (singularity/limit) returns a fraction-completed flag, so the cell aborts
   the entry cleanly rather than forcing a skewed insert.
+- **Walkthrough:** (1) plan a free-space transit to just above the nest;
+  (2) compute a pure-Z Cartesian approach down; (3) grasp the vial; (4)
+  compute a pure-Z retreat back up before the next transit move.
 - **Value:** tight nests are entered and exited without disturbing 95 other
   vials.
 
@@ -330,6 +337,10 @@ motion planning.
 - **Edge case it survives:** corrections arriving faster than plans
   complete — preemption means the newest goal always wins, so the arm
   tracks the latest estimate instead of chasing a stale one.
+- **Walkthrough:** (1) perception publishes a corrected pose 8 mm over;
+  (2) orchestration issues it as a new goal; (3) MoveIt plans from the live
+  joint state; (4) the new trajectory preempts the old one through the
+  Layer 02 action interface.
 - **Value:** small real-world misalignments are absorbed live, not turned
   into missed grasps.
 

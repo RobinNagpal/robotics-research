@@ -310,6 +310,9 @@ The five above all matter; these three carry the most weight for sensing
 - **Edge case it survives:** a *slow drift* rather than a sharp fault — the
   mock can ramp the level reading down over many vials, exercising the
   trend logic a single bad reading wouldn't trigger.
+- **Walkthrough:** (1) script a value timeline in the mock publisher; (2)
+  publish it on the sensor's topic; (3) let the Layer 10 gate consume it;
+  (4) assert the gate trips or holds exactly as intended.
 - **Value:** every gate is proven against the exact signal that should trip
   it, before any sensor is bought.
 
@@ -323,6 +326,9 @@ The five above all matter; these three carry the most weight for sensing
 - **Edge case it survives:** sensors publishing at different rates (camera
   10 Hz, torque fast) — time-stamping, not arrival order, governs pairing,
   so the slow camera frame is matched to the right torque sample.
+- **Walkthrough:** (1) stamp every message with the sim `/clock`; (2) feed
+  two streams into `message_filters`; (3) pair readings within the slop
+  window; (4) hand the matched pair to the gate.
 - **Value:** fused decisions rest on a coherent snapshot of the cell, not a
   smear across time.
 
@@ -336,6 +342,9 @@ The five above all matter; these three carry the most weight for sensing
 - **Edge case it survives:** a real sensor with extra fields or different
   units — pinning to the standard message type forces the conversion into
   the driver, keeping perception and gating untouched.
+- **Walkthrough:** (1) define the topic to the `sensor_msgs` / micro-ROS
+  shape; (2) back it with a mock now; (3) on hardware swap in the real
+  driver; (4) consumers above see no change at all.
 - **Value:** sensor bring-up swaps a publisher; it doesn't ripple a rewrite
   through the stack.
 

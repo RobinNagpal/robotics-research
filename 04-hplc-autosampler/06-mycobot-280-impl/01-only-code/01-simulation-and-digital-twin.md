@@ -259,6 +259,11 @@ digital twin, so each is worth unpacking.
 - **Edge case it survives:** a nest reachable empty-handed but *not* with
   a capped vial in the gripper — the test grasps a vial model first, so
   reach is checked with the payload that actually flies.
+- **Walkthrough:** (1) load the world and URDF and grasp a capped-vial
+  model so the payload is included; (2) for each of the 96 nest poses solve
+  IK plus a short approach; (3) step physics and read the collision engine
+  against the instrument and rack meshes; (4) write each nest's pass/fail
+  and coordinates to a reachability map.
 - **Value:** a bad geometry costs a relaunch, not a bent arm and a
   re-ordered fixture.
 
@@ -275,6 +280,11 @@ digital twin, so each is worth unpacking.
 - **Edge case it survives:** meniscus glare that fools a detector —
   randomizing light angle *generates* the glare cases, training against
   the failure that would otherwise appear only on the bench.
+- **Walkthrough:** (1) randomize lighting, textures, and which nests are
+  filled; (2) render an RGB and depth frame from the overhead camera
+  plugin; (3) read every object's ground-truth pose straight from the
+  simulator; (4) save the frame with its auto-generated label and repeat
+  thousands of times.
 - **Value:** a dataset worth weeks of staged photography and hand-labelling
   appears overnight, covering corners real data rarely catches.
 
@@ -290,6 +300,10 @@ digital twin, so each is worth unpacking.
 - **Edge case it survives:** the *combination* (an e-stop in the same
   200 ms a vial is released) is reproducible on demand, so Layer 07's
   recovery is proven against the rare nasty interleavings.
+- **Walkthrough:** (1) start the loop on a worklist; (2) at a chosen tick
+  fire the fault — delete a vial, detach one mid-lift, emit a torque spike,
+  or flip `/estop`; (3) record how orchestration reacts; (4) assert the
+  expected recovery and keep it as a regression test.
 - **Value:** every recovery path is regression-locked before hardware, so
   the first real fault is one the cell has handled a hundred times.
 
