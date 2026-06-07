@@ -266,6 +266,25 @@ perception & vision.
 
 ## Known-pose localization of tray and vials
 
+A lab assistant always knows where things are — they glance at a rack and
+instantly register which nest holds which vial, and their hand goes to the
+right spot even if the rack was set down a little crooked. This use case
+gives the cell that spatial sense: from a single fiducial marker on the
+tray, it works out the precise 3-D position of every nest, so the arm
+reaches each one on centre even after a human nudged the rack.
+
+The bigger experiment is the HPLC batch, where each vial must end up in
+the exact tray slot its worklist row names. Everything downstream —
+reaching, gripping, placing — depends on knowing where each nest actually
+is, not where the CAD said it should be. This localization is the first
+step of every per-vial cycle, so an error here cascades into a missed pick
+later.
+
+The assistant's "where is it?" judgment happens on every reach — hundreds
+of times a day — and re-anchors instantly whenever a rack is moved. The
+cell recomputes nest positions from the marker on every frame the camera
+sees, so the grid follows the rack continuously through the run.
+
 - **The moment:** an operator nudged the rack 5 mm and rotated it 2°; the
   arm must still reach each nest centre exactly.
 - **How, in depth:** an **AprilTag** on the tray gives a full 6-DoF pose
@@ -293,7 +312,30 @@ perception & vision.
 
 ### Meta code
 
-The shape of the tray→nests localizer, before any library detail:
+This meta turns "where is everything?" into a single, well-conditioned
+measurement: find one printed fiducial marker — an AprilTag — on the tray,
+and derive everything else from it. The pipeline subscribes to the
+overhead camera image and the camera's intrinsic parameters (its focal
+lengths and image centre), which together are what let a flat picture be
+turned into 3-D geometry.
+
+On each frame it detects any AprilTags and, for the specific tag known to
+be stuck on the tray, solves the tag's full six-degree-of-freedom pose
+relative to the camera using the geometry of its four corners. That
+camera-relative pose is then transformed into the arm's base frame using
+the known, fixed mounting of the camera — giving the tray's position and
+orientation in the coordinates the arm actually plans in.
+
+Because every nest sits at a fixed, known offset from the tray tag, the
+pipeline can now place all 96 nests by simply applying each offset to the
+tag pose. The whole grid therefore moves and rotates rigidly with the tag,
+so a rack nudged 5 mm and rotated 2° is absorbed automatically — no
+position has to be re-taught.
+
+A guard runs throughout: if the tag is missing, partly occluded, or
+detected with low confidence, the frame is skipped rather than publishing
+a pose the arm would act on. Only a clean, confident detection produces
+nest poses for Layer 03. The localizer in pseudocode:
 
 ```text
 # subscribe to the overhead RGB image + the camera intrinsics
@@ -365,6 +407,25 @@ if __name__ == "__main__":                              # run directly
 
 ## Presence/absence and fill verification
 
+Before loading a tray, a careful lab assistant scans it: is every position
+that should hold a vial actually filled, and does each vial have enough
+liquid in it? An empty nest or a half-filled vial is a problem caught best
+*before* the instrument runs, not after a blank result comes back. This
+use case is the cell making that same check — measuring, nest by nest,
+whether a vial is present and whether its liquid level is high enough.
+
+The bigger experiment is the HPLC batch, whose results are only
+trustworthy if every vial actually contains what the worklist says it
+does. A worklist describes the intended tray, but real trays are prepared
+by people and are sometimes wrong — a skipped fill, a missed position.
+Verifying presence and fill before the arm acts is what stops the cell
+wasting a cycle on, or worse injecting, a bad vial.
+
+The assistant makes this presence-and-fill check on essentially every vial
+of every tray — dozens to a few hundred times a day — and it's exactly the
+kind of tedious visual vigilance that slips at 2 a.m. The cell runs the
+check on every nest, every run, without fatigue.
+
 - **The moment:** two nests are empty and one vial is under-filled; the arm
   must skip the empties and flag the low one *before* wasting a move.
 - **How, in depth:** **Open3D** fits vial cylinders and meniscus height in
@@ -393,7 +454,27 @@ if __name__ == "__main__":                              # run directly
 
 ### Meta code
 
-The shape of the presence/fill check, before any library detail:
+This meta works entirely in 3-D geometry, not appearance, which is what
+makes it robust to colourless liquids and lighting changes. It takes the
+depth camera's point cloud over the rack — a dense set of 3-D points — and
+reasons about it nest by nest, using the known positions of the nests in
+the tray frame.
+
+For each nest it crops the cloud to a narrow vertical column centred on
+that nest. The first verdict is simple presence: a column with almost no
+points means no vial is there, so the nest is marked empty immediately and
+the cell knows to skip it.
+
+For a column that does contain a vial, the pipeline measures the height of
+the highest points — the liquid surface, or meniscus — relative to the
+known nest floor. That height is the fill level; comparing it to a minimum
+threshold separates a properly-filled vial from an under-filled one,
+regardless of whether the liquid is tinted or water-clear, because the
+measurement is geometric.
+
+The output is a per-nest verdict — empty, under-filled, or OK, plus the
+measured fill — that feeds the Layer 10 fill gate, which decides whether
+the arm should even attempt that nest. The check in pseudocode:
 
 ```text
 # subscribe to the depth point cloud over the rack
@@ -446,6 +527,28 @@ if __name__ == "__main__":                              # run directly on a save
 
 ## Hand-eye calibration and its verification
 
+A lab assistant's hand-eye coordination is so practised they never think
+about it — they see a vial and their hand goes exactly there, the brain
+having long since learned the offset between eye and hand. A robot has to
+*measure* that offset explicitly: the transform between what the camera
+sees and where the arm actually is. This use case establishes and,
+crucially, *checks* that camera-to-arm calibration, because a few
+millimetres of error turns every reach into a near-miss.
+
+The bigger experiment is the HPLC batch, every vial of which is reached
+for using poses the camera reports. If the calibration is wrong, that
+error is baked silently into all 60–100 reaches — the arm consistently
+grips a few millimetres off, dropping or crushing vials. Calibration is
+the foundation the whole perception-to-motion chain stands on, which is
+why this use case also verifies it rather than trusting it.
+
+A human's hand-eye coordination is continuous and self-correcting; the
+robot's calibration is a periodic procedure — run at bring-up and
+re-checked routinely (say, daily or after any bump to the camera) because
+it can drift. The verification step runs more often than the full
+recalibration, quietly confirming on a regular cadence that the cell is
+still reaching true.
+
 - **The moment:** if the camera-to-arm transform is off by 3 mm, every
   reach inherits the error; the cell must establish *and check* the
   calibration.
@@ -479,7 +582,28 @@ if __name__ == "__main__":                              # run directly on a save
 
 ### Meta code
 
-The shape of the hand-eye calibration + check, before any library detail:
+This meta is the classic eye-in-hand calibration: recover the unknown
+rigid transform between the camera and the gripper by moving the arm to
+several known poses and watching how a fixed marker appears to move in the
+camera. Each sample pairs two measurements taken at the same instant —
+where the gripper is relative to the arm base (from forward kinematics),
+and where the marker is relative to the camera (from the tag's pose).
+
+With a handful of such pairs spanning different orientations, a standard
+solver (OpenCV's `calibrateHandEye`) computes the camera-to-gripper
+transform that is consistent with all of them. That single transform is
+what lets any future tag detection be expressed correctly in the arm's
+frame.
+
+The pipeline does not stop at solving — it verifies. Holding out a sample
+the solve didn't use, it predicts where the marker should appear given the
+computed transform and compares that to where the marker was actually
+measured. A residual error above a small tolerance means the calibration
+is wrong or has drifted, and the result is rejected rather than trusted.
+
+In only-code the true transform is known, so a deliberate few-millimetre
+error is injected to prove the verification step actually catches it — the
+safeguard is tested, not assumed. The calibration in pseudocode:
 
 ```text
 # collect N samples: drive the arm to a known pose, detect the tray tag, record:
