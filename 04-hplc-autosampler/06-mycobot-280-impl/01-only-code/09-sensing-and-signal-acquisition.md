@@ -301,6 +301,28 @@ The five above all matter; these three carry the most weight for sensing
 
 ## Scriptable fault rehearsal
 
+An experienced lab assistant catches the subtle warning signs before they
+become failures — a dispenser that's running low and slowly under-filling,
+a cap that's fighting back harder than usual, a balance reading that's
+drifting. The cell needs the same alarms (its Layer 10 gates), and this
+use case is how those alarms are tested: by playing scripted "lies" onto
+the sensor topics — a fill level sagging vial by vial, a torque spike at a
+chosen moment — to confirm the gates react.
+
+The bigger experiment is the unattended overnight HPLC batch, where no
+human is present to notice the subtle signs. Every safety and quality gate
+the cell relies on has to have been proven to trip on the exact signal
+it's meant to catch — otherwise an under-fill or a stuck cap would sail
+through unnoticed. Rehearsing those signals in software is the only way to
+prove the gates before the sensors that would produce them even exist.
+
+The lab assistant encounters these subtle warning signs occasionally but
+routinely — a drifting balance or a low dispenser perhaps a few times a
+week. The fault rehearsal itself is an engineering activity, run on demand
+during development and on every code change, precisely so that when the
+real signs appear during a run, the cell's gates respond exactly as
+designed.
+
 - **The moment:** the gates in Layer 10 must be tested against a gradual
   under-fill, a torque spike, a curtain blip, and creeping gripper effort —
   none of which a clean sim produces on its own.
@@ -329,7 +351,27 @@ The five above all matter; these three carry the most weight for sensing
 
 ### Meta code
 
-The shape of the fault player, before any library detail:
+This meta is a small timeline player whose only job is to put precise,
+repeatable signals onto the real sensor topics. A fault is described
+declaratively as a set of segments, each saying: over this time window,
+drive this topic from this value to that value. A flat segment holds a
+value; a sloped one ramps it.
+
+That ramp-versus-step distinction is what lets the same simple mechanism
+reproduce very different faults. A long, gentle ramp on the level topic
+reproduces a gradual under-fill that only a trend-watching gate would
+catch; a sharp two-sample step on the curtain topic reproduces a 200 ms
+blip; a spike on the torque topic reproduces a stuck cap.
+
+A fixed-rate timer advances a playback clock and, on each tick, finds the
+segments active at the current time, interpolates each one's value, and
+publishes it on its topic. Because the player drives the *same* topics a
+real sensor would, the gates downstream can't tell the signal is staged.
+
+The result is that any fault — including ones no real sensor can produce
+on demand — can be played out exactly and identically as often as needed,
+which is what makes the Layer 10 gates testable before hardware. The
+player in pseudocode:
 
 ```text
 # define a fault timeline: segments (t_start, t_end, topic, type, v_start, v_end)
@@ -393,6 +435,28 @@ if __name__ == "__main__":                              # run directly
 
 ## Cross-sensor time synchronization
 
+When a lab assistant judges something tricky — is this vial really seated,
+did the cap actually come free — they fuse several cues at the same
+instant: what they see, what they feel through their fingers, the sound of
+the cap. Combining cues that happened *together* is what makes the
+judgment reliable. This use case gives the cell that ability to line up
+two sensor streams in time, so a torque reading and a gripper-effort
+reading from the same moment are compared together, not smeared across
+time.
+
+The bigger experiment is the HPLC batch, where the cell's most important
+decisions — is a vial held, is it safe to move — depend on combining two
+independent sensors. Two readings only mean "the same event" if they
+describe the same instant; pairing them by timestamp, rather than by
+whatever happened to arrive most recently, is what keeps a fused decision
+honest.
+
+A lab assistant fuses simultaneous cues continuously — it underlies
+essentially every careful judgment they make. The cell's time alignment
+runs just as continuously: it feeds every two-witness gate in the loop, so
+the grasp, fill, and safety checks at each vial all rest on it, all run
+long.
+
 - **The moment:** Layer 10 must line up the decapper torque spike with the
   gripper-effort creep at the *same instant* to decide they're one event.
 - **How, in depth:** every message carries a stamp from the shared ROS clock
@@ -420,7 +484,27 @@ if __name__ == "__main__":                              # run directly
 
 ### Meta code
 
-The shape of the time-aligner, before any library detail:
+This meta solves a deceptively simple-sounding problem: given two sensor
+streams that arrive at different rates and slightly different times,
+deliver pairs of readings that genuinely describe the same instant. It
+relies on every message carrying a timestamp from a shared clock, so "the
+same instant" is well-defined across sensors.
+
+The pipeline subscribes to the two stamped streams and feeds them into an
+approximate time synchronizer configured with a slop window — a small
+tolerance, say 20 milliseconds. The synchronizer buffers incoming messages
+and only delivers a pair when it finds one message from each stream whose
+timestamps fall within that window.
+
+This is what makes the result robust to mismatched rates: a fast torque
+stream and a slower camera stream are matched by *time*, not by arrival
+order, so each slow camera frame is paired with the torque sample that
+actually coincided with it. Samples that can't be matched in the window
+are simply not delivered.
+
+The callback therefore always receives a coherent, same-instant pair,
+which it can hand to a Layer 10 gate as a single fused observation. The
+aligner in pseudocode:
 
 ```text
 # subscribe to two stamped streams, e.g. /decapper/wrench + /joint_states (gripper effort)
@@ -471,6 +555,27 @@ if __name__ == "__main__":                              # run directly
 
 ## Hardware-faithful contracts
 
+A lab assistant trained on standard instruments can walk into any lab that
+uses the same equipment and get to work — the dials and outputs are the
+same, so the skill transfers. This use case builds the same
+interchangeability into the cell's sensors: every simulated sensor
+publishes in exactly the format and on exactly the channel a real device
+would, so a mock and a real sensor are interchangeable from the cell's
+point of view.
+
+The bigger experiment, ultimately, is moving the whole cell from
+simulation to a real bench so it can prepare real HPLC batches. That
+transfer only stays cheap if the day the real sensors arrive, nothing
+above them has to change. Pinning every sensor topic to the standard
+message a real device will publish is what keeps bring-up to a driver swap
+instead of a stack-wide rewrite.
+
+For the assistant, this portability matters at a career level — every time
+they change benches or labs. For the cell, the sensor swap happens once,
+at hardware bring-up; but because the contract underpins every single
+sensor reading the cell makes during every run, getting it right up front
+is what makes that one-time swap silent rather than disruptive.
+
 - **The moment:** the day real sensors arrive, nothing above this layer
   should change.
 - **How, in depth:** every topic is designed now to the **micro-ROS /
@@ -498,7 +603,26 @@ if __name__ == "__main__":                              # run directly
 
 ### Meta code
 
-The shape of the sensor contract, before any library detail:
+This meta makes "a mock now, a real device later" safe by pinning down a
+contract that both must satisfy. It chooses the standard message type the
+real device will publish — a ROS sensor message of a fixed shape — and
+uses exactly that type, on exactly the topic name and at the rate the
+consumers above expect.
+
+The contract is more than the message type; it includes the fields that
+must be correctly populated, such as a meaningful `frame_id` and a real
+(non-zero) timestamp, and the publish rate. These are the things a
+downstream gate quietly assumes, so they are made explicit and checkable.
+
+The mock publisher fills exactly those fields and, before publishing,
+asserts that its own message conforms to the contract — so if the mock
+ever drifts from the agreed shape, it fails loudly during development
+rather than silently misleading the consumers.
+
+On hardware, a real driver publishes the same type on the same topic; any
+difference in the device's native units or fields is converted *inside*
+the driver, so perception and gating subscribers are byte-for-byte
+unchanged. The contract in pseudocode:
 
 ```text
 # pick the STANDARD message type the real device will publish (sensor_msgs / micro-ROS shape)
