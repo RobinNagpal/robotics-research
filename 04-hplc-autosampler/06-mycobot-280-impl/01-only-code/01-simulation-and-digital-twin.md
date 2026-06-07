@@ -270,6 +270,11 @@ digital twin, so each is worth unpacking.
   money, nothing real is at stake — it is pure geometry being
   interrogated, slot by slot, until the whole 96-nest grid is either green
   or flagged.
+- **Why it's done this way:** the 280 has a small (~280 mm) reach
+  envelope and the cell is dense, so whether every nest is even reachable
+  is the make-or-break feasibility question — and it is far cheaper to
+  settle in geometry than to discover a dead corner after the bench is
+  built.
 - **Value:** a bad geometry costs a relaunch, not a bent arm and a
   re-ordered fixture.
 
@@ -297,6 +302,11 @@ digital twin, so each is worth unpacking.
   of perfectly labelled images piles up beside it. The "lab" here is a
   rendering loop, manufacturing experience the real camera has not yet
   lived.
+- **Why it's done this way:** perception needs labelled examples of the
+  exact lighting and clutter it will face; collecting and hand-labelling
+  those on a real bench is slow and never covers the rare cases, whereas
+  the twin knows ground truth for free and can over-represent the hard
+  ones.
 - **Value:** a dataset worth weeks of staged photography and hand-labelling
   appears overnight, covering corners real data rarely catches.
 
@@ -321,6 +331,11 @@ digital twin, so each is worth unpacking.
   same run restarts and an `/estop` snaps the arm to a halt at exactly the
   wrong moment. Disasters a real lab dreads are staged on purpose, over and
   over, just to watch how the cell flinches.
+- **Why it's done this way:** the cell's value is unattended overnight
+  running, which only holds if it survives the faults that *will* happen;
+  you cannot safely or repeatably trigger a dropped vial or a mid-motion
+  e-stop on real glass, so sim is the only place to prove the recovery
+  first.
 - **Value:** every recovery path is regression-locked before hardware, so
   the first real fault is one the cell has handled a hundred times.
 

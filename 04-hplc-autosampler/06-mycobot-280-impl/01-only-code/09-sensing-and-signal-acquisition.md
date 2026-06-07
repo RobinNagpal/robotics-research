@@ -317,6 +317,10 @@ The five above all matter; these three carry the most weight for sensing
   fill level sagging vial by vial, a torque spike at a chosen instant — so
   the gates downstream can be caught reacting, or failing to, long before a
   real sensor exists.
+- **Why it's done this way:** the gates are only trustworthy once they've
+  been seen to trip on the real failure signatures, and several of those
+  sensors have no natural simulator; scripting their signals is the only
+  way to exercise the gate logic before the hardware exists.
 - **Value:** every gate is proven against the exact signal that should trip
   it, before any sensor is bought.
 
@@ -337,6 +341,10 @@ The five above all matter; these three carry the most weight for sensing
   are stamped against one shared clock and lined up instant-for-instant, so
   the torque spike and the gripper strain that happened together are seen
   together, not smeared apart.
+- **Why it's done this way:** two readings only mean "the same event" if
+  they describe the same instant, and sensors publish at different rates;
+  stamping and aligning them is what prevents the cell from fusing a fresh
+  reading with a stale one and deciding wrongly.
 - **Value:** fused decisions rest on a coherent snapshot of the cell, not a
   smear across time.
 
@@ -357,6 +365,10 @@ The five above all matter; these three carry the most weight for sensing
   speak in exactly the same words on exactly the same channel, so that on
   the day the hardware arrives the swap is silent and nothing upstream even
   notices.
+- **Why it's done this way:** the only-code work is wasted if real sensors
+  force changes up the stack; pinning every topic to the shape the real
+  device will publish is what keeps bring-up to a driver swap instead of a
+  rewrite.
 - **Value:** sensor bring-up swaps a publisher; it doesn't ripple a rewrite
   through the stack.
 

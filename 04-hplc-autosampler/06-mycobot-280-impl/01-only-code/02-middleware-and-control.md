@@ -333,6 +333,10 @@ middleware & control.
   The same trajectory commands that drove a Gazebo arm a minute ago now
   flow, unchanged, toward a real motor driver, the seam invisible to every
   node above it.
+- **Why it's done this way:** the whole only-code strategy only pays off
+  if the code carries to hardware; without the hardware_interface seam you
+  would rebuild the control layer for the real arm and the months of sim
+  work would be throwaway.
 - **Value:** the only-code investment becomes the production control layer,
   not a throwaway prototype.
 
@@ -356,6 +360,10 @@ middleware & control.
   weigh?" and waits; the dispenser, meanwhile, has gone dark. A countdown
   ticks, expires, and the request comes back marked "failed" rather than
   hanging the whole cell on a station that simply stopped answering.
+- **Why it's done this way:** real lab devices stall, reboot, and drop
+  messages; a cell that hangs on the first silent station cannot run
+  unattended, so every cross-device call must have a bounded failure
+  rather than an open-ended wait.
 - **Value:** one flaky device degrades to a handled exception, never a
   deadlocked cell.
 
@@ -379,6 +387,10 @@ middleware & control.
   quiet; the arm freezes its controller rather than lurching. Seconds later
   the process is back, the network quietly re-introduces it, and the loop
   picks up its thread as if nothing happened.
+- **Why it's done this way:** over a multi-hour run some process will
+  crash; if a single dead node forced a full restart the cell would lose
+  the night's work, so the architecture treats node loss as a recoverable
+  event, not a fatal one.
 - **Value:** a single dead process is survivable and self-healing, not a
   night's run lost.
 

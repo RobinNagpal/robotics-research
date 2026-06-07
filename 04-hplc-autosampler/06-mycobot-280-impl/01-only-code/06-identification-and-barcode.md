@@ -253,6 +253,10 @@ identification — the cell's chain-of-custody check.
   scan camera, its barcode curling away around the glass; the software
   reads what it can of the flat middle, then nudges the vial round a few
   degrees and reads again until the whole code is pieced together.
+- **Why it's done this way:** lab labels are wrapped around small
+  cylinders, so a single head-on shot rarely sees the whole code; using
+  the arm's own rotation to present more of the label makes reading a
+  curved vial reliable without buying a wrap-around scanner.
 - **Value:** curvature, the most common lab-label problem, is handled by
   motion the cell already has, not a special scanner.
 
@@ -273,6 +277,10 @@ identification — the cell's chain-of-custody check.
   the cell does not shrug and move on — it tries a second decoder,
   re-presents the vial at the scan pose, and only after several honest
   attempts sets the stubborn vial aside for a human.
+- **Why it's done this way:** a smudge, glare, or bad angle will fail
+  occasionally, and treating every miss as a hard stop would halt the tray
+  constantly; a tiered retry lets common transient failures resolve
+  themselves and reserves human attention for the genuinely unreadable.
 - **Value:** transient read failures self-heal; only the truly unreadable
   reach a human, keeping throughput up.
 
@@ -293,6 +301,11 @@ identification — the cell's chain-of-custody check.
   in the slot it is about to fill; the arm stops dead, the vial is set
   aside, and a flag goes up — a wrong sample caught in the act, before it
   could ever become a wrong result.
+- **Why it's done this way:** a sample injected in the wrong slot produces
+  a confident but wrong result — the error regulated labs fear most and
+  spend the most investigating; verifying identity against the worklist
+  before placing is the guard that makes that error impossible to commit
+  silently.
 - **Value:** the highest-cost lab error — wrong sample, wrong result — is
   caught mechanically, the core reason a regulated lab would trust the cell.
 

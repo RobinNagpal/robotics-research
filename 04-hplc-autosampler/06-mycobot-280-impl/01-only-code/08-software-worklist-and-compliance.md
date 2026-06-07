@@ -332,6 +332,10 @@ software, worklist & compliance layer — what makes the cell *trustable*.
   ledger, each one cryptographically knotted to the one before it. An
   auditor months later can tug on the chain and instantly see whether a
   single link was ever altered.
+- **Why it's done this way:** in a regulated lab a result is only usable
+  if its history is provably unaltered; a plain log can be quietly edited,
+  so chaining each entry to the last is what turns the cell's record into
+  evidence rather than mere notes.
 - **Value:** the cell's actions become a defensible, *Original and Accurate*
   record — the precondition for a regulated lab using it at all.
 
@@ -352,6 +356,10 @@ software, worklist & compliance layer — what makes the cell *trustable*.
   good ones and dispositions the two flagged vials, and their name, the
   time, and the meaning of that approval are locked onto the record —
   accountability fused to the data itself.
+- **Why it's done this way:** regulators require a named person to take
+  responsibility for releasing results; capturing identity, time, and
+  intent on the record — rather than in a side spreadsheet — is what makes
+  that accountability auditable and tamper-resistant.
 - **Value:** accountability is built into the data, not bolted on in a
   spreadsheet afterwards.
 
@@ -373,6 +381,11 @@ software, worklist & compliance layer — what makes the cell *trustable*.
   the HPLC over a standard interface; the instrument acknowledges, and the
   cell checks that acknowledgement rather than blindly assuming the tray
   and the sequence agree.
+- **Why it's done this way:** the cell's output only matters if the
+  instrument actually runs the right sequence, and integration is where
+  deployments usually stall; building against the real SiLA 2 interface
+  from day one, and checking the instrument's reply, is what de-risks that
+  last mile.
 - **Value:** the integration that usually blocks deployment is designed and
   proven before the instrument is even connected.
 

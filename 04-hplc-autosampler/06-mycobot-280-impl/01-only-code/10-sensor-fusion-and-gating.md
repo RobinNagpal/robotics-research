@@ -314,6 +314,10 @@ fusion & gating — the cell's conscience, vial by vial.
   observers — the gripper's own feel and the wrist camera's eye — must nod
   in agreement that a vial is truly held; if one says "present" and the
   other says "empty", the gate slams shut.
+- **Why it's done this way:** any single sensor can be fooled — a camera
+  by a reflection, the gripper by a jammed jaw — and acting on one witness
+  risks carrying nothing or dropping a vial; requiring two independent
+  agreements is what makes "is it held?" trustworthy.
 - **Value:** "never carry nothing, never drop in transit" becomes a
   mechanical guarantee, not an assumption.
 
@@ -334,6 +338,10 @@ fusion & gating — the cell's conscience, vial by vial.
 - **In the scene:** the arm asks permission to move and is refused — not
   because danger was seen, but because the safety sensor has gone quiet, and
   silence is treated as "unsafe". The gate would rather wait than guess.
+- **Why it's done this way:** near a human the dangerous default is to
+  move on stale or missing safety data; designing the gate so that the
+  absence of a fresh "clear" means "stop" is what guarantees a sensor
+  dropout can never be read as permission.
 - **Value:** the gate fails closed, so a sensor dropout halts the arm
   instead of letting it move near a hand.
 
@@ -354,6 +362,10 @@ fusion & gating — the cell's conscience, vial by vial.
   camera frame that is a beat too old; the synchronizer notices the
   timestamps don't line up, declines to decide, and waits a moment for a
   properly matched pair.
+- **Why it's done this way:** comparing readings without checking their
+  timestamps can pass a decision built on out-of-date data; refusing to
+  decide until a properly time-matched pair exists is what makes the fused
+  gate trustworthy in time, not just in value.
 - **Value:** closes the exact gap the cheap latest-value cache leaves open,
   making fused decisions trustworthy in time as well as value.
 

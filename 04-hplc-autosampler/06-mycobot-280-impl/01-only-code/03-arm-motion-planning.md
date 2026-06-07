@@ -312,6 +312,10 @@ motion planning.
   around the freshly-added waste bin before a single joint moves,
   discarding any that clip an obstacle; only a clean route from nest A7 to
   slot 12 is handed to the arm to actually fly.
+- **Why it's done this way:** a bench is a shared human space that gets
+  rearranged; hard-coding "safe" paths would make the cell brittle to any
+  change and risk an expensive crash, so the planner reasons about the
+  live obstacle set on every move.
 - **Value:** the arm adapts to a bench that changed since yesterday instead
   of demanding a frozen world.
 
@@ -332,6 +336,10 @@ motion planning.
   wedged among its neighbours, then descends dead straight down into the
   nest, fingers closing, and rises dead straight back out — no sideways
   drift that would clink the bottles packed beside it.
+- **Why it's done this way:** vials sit millimetres apart and a free-space
+  planner is free to swing the gripper sideways on the way in;
+  constraining the final approach to a straight line is what keeps the arm
+  from knocking neighbours during the most delicate part of the move.
 - **Value:** tight nests are entered and exited without disturbing 95 other
   vials.
 
@@ -353,6 +361,10 @@ motion planning.
   the side; the arm does not stop and restart — its path smoothly bends to
   the new goal mid-flight, chasing the latest truth the cameras just
   reported.
+- **Why it's done this way:** perception keeps refining where things
+  actually are, and a plan made a second ago can already be stale;
+  replanning to the newest pose is how the arm stays accurate instead of
+  committing to an out-of-date target and missing the grasp.
 - **Value:** small real-world misalignments are absorbed live, not turned
   into missed grasps.
 

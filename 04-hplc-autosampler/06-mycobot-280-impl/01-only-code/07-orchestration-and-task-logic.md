@@ -290,6 +290,10 @@ orchestration — the cell's conscience for the overnight run.
   grinding to a halt, the behaviour tree quietly routes it to a "set aside
   and log" branch and moves straight on to vial 54 — the night's work flows
   around the one bad apple.
+- **Why it's done this way:** in a 96-vial run one bad vial is normal; if
+  a single failure aborted the whole tray the cell would rarely finish a
+  run, so isolating the bad vial and continuing is what makes overnight
+  throughput real.
 - **Value:** one bad vial costs one slot, not the night.
 
 ### Safe-stop and resume
@@ -309,6 +313,10 @@ orchestration — the cell's conscience for the overnight run.
   branch high in the tree instantly overrides everything below and the arm
   holds. When the curtain clears, the tree re-checks where it was and
   resumes the very vial it paused on.
+- **Why it's done this way:** people will reach into a shared cell and
+  safety must always win instantly; but if every safety trip meant
+  scrapping the tray the cell would be unusable, so a clean
+  pause-and-resume keeps it both safe and practical.
 - **Value:** a safety event is a pause, not a ruined tray and a manual
   reset.
 
@@ -329,6 +337,10 @@ orchestration — the cell's conscience for the overnight run.
   a power blip — yet the tray is correct. On restart it read its own saved
   place, looked at the real tray to confirm, and carried on from vial 85
   rather than starting the night over.
+- **Why it's done this way:** unattended means no one is there to restart
+  it after a power blip; without durable state and reconciliation a hiccup
+  would silently corrupt the tray, so resuming from verified reality is
+  what lets the lab trust an unwatched run.
 - **Value:** an unattended run survives an infrastructure hiccup instead of
   silently corrupting the tray.
 

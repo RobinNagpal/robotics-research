@@ -281,6 +281,10 @@ perception & vision.
   overhead camera catches the AprilTag on the tray, and in software the
   entire 96-nest grid quietly rotates and shifts to follow it, so every
   reach target lands back on centre.
+- **Why it's done this way:** demanding micron-perfect fixturing would
+  make the cell impractical for a real lab where humans place racks by
+  hand; anchoring everything to a fiducial lets the cell absorb that human
+  imprecision instead of failing on it.
 - **Value:** the cell tolerates a hand-placed rack instead of demanding
   micron-perfect fixturing.
 
@@ -301,6 +305,10 @@ perception & vision.
   the software draws a cylinder where each vial should be and reads the
   liquid line inside it — spotting the two empty nests and the one
   suspiciously low meniscus before the arm wastes a single motion.
+- **Why it's done this way:** a worklist says what *should* be in each
+  nest, but trays are prepared by people and are sometimes wrong; checking
+  presence and fill before acting is what stops the cell injecting an
+  empty or under-filled vial and silently corrupting a result.
 - **Value:** the cell never picks an empty nest or loads an under-filled
   vial, catching prep errors a human would miss at 2 a.m.
 
@@ -324,6 +332,11 @@ perception & vision.
   several known marker poses while the camera watches, and from that dance
   the exact camera-to-arm offset is solved — then a deliberately planted
   3 mm error is caught by the depth check, proving the safeguard bites.
+- **Why it's done this way:** every reach is only as accurate as the
+  camera-to-arm transform, and a few millimetres of calibration error
+  turns each grasp into a near-miss; building and *verifying* the
+  calibration is the foundation the whole perception-to-motion chain
+  stands on.
 - **Value:** the calibration *procedure* is proven in sim and transfers to
   hardware, where it's the difference between reaching the vial and
   reaching past it.

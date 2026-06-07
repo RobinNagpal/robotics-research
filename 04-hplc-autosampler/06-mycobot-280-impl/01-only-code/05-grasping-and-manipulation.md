@@ -305,6 +305,10 @@ The five above all matter; these three carry the most weight for grasping
   light enough that the thin wall won't craze. The number behind that
   squeeze was settled earlier in a contact simulator, not guessed at the
   bench.
+- **Why it's done this way:** glass vials are at once fragile and
+  slippery, so the safe grip is a narrow band between drop and crack;
+  controlling to a validated force rather than a fixed jaw position is
+  what keeps the cell inside that band across normal vial tolerance.
 - **Value:** the most failure-prone touch in the loop is made repeatable,
   removing the drop-or-crack risk a human babysits.
 
@@ -325,6 +329,10 @@ The five above all matter; these three carry the most weight for grasping
   should give — the jaws have shut on air, or the vial twisted away. The
   wrist camera confirms the miss, and the arm calmly backs off and tries
   the pick again instead of carrying nothing onward.
+- **Why it's done this way:** even a good grasp occasionally misses, and a
+  cell that didn't notice would carry on placing nothing — corrupting the
+  tray order; detecting the miss and retrying is what makes the pick
+  reliable enough to leave unattended.
 - **Value:** a failed pick becomes a retry, not a dropped sample and a
   halted run.
 
@@ -345,6 +353,10 @@ The five above all matter; these three carry the most weight for grasping
   decapper grips the cap and twists; a torque gauge on the cap joint
   watches the strain, and if a stuck cap fights back too hard the whole
   move freezes rather than wrenching the vial out of its nest.
+- **Why it's done this way:** removing a cap means fighting friction, and
+  if the vial spins or the cap is stuck a blind twist can shatter glass or
+  strip the cap; holding firmly and watching torque turns an open-loop
+  wrench into a monitored, abortable step.
 - **Value:** decapping becomes a controlled, monitored action instead of a
   blind twist that risks shattering glass.
 
