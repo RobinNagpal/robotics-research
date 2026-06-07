@@ -220,6 +220,66 @@ The v1 recommendation is the cheapest grasp *source* (analytical)
 driven by the best-practical *sequencer* (MTC); Contact-GraspNet is the
 deliberate later upgrade, not the starting point.
 
+## Realistic scenario & use cases
+
+> **Why this matters for automation.** Grasping is the one layer where
+> the cell physically *touches* the sample, so its automation value is
+> trust: pick a smooth glass vial **firmly enough never to drop it but
+> gently enough never to crack it**, every time, across vial variants —
+> the single most failure-prone motion in the loop, and the one a human
+> currently babysits.
+
+**The scenario.** The gripper must lift a 2 mL glass vial from a **tight
+rack nest** whose neighbours sit only ~16 mm away, carry it to the
+decapper and **hold it against the twisting torque** while the cap comes
+off, then place it precisely in **tray slot A3** with a straight retreat.
+Along the way it meets an **under-filled vial** (off-centre mass that
+wants to tip), a **crimp-cap vial seated slightly proud**, and one pick
+where the vial **slips** on first contact and must be re-grasped. The grip
+has to handle all of it without a crush or a drop.
+
+The layer must therefore serve several **distinct use cases**:
+
+1. **Secure pinch of a smooth glass vial — no crush, no slip.** Close on
+   the vial with a force inside the narrow safe window for thin glass.
+   - *How the solution handles it:* an **analytical antipodal pinch** on
+     the vial's cylinder axis with a **force-limited** close; the safe
+     force window is validated in **MuJoCo** (Layer 01's best-contacts
+     pick) before it ever runs on hardware.
+
+2. **Tight-nest pick and place with collision-aware stages.** Enter a
+   16 mm-clearance nest, lift straight, transit, and seat in slot A3.
+   - *How:* **MoveIt Task Constructor** sequences reusable
+     `approach → grasp → lift → place → retreat` stages with the
+     neighbouring vials as collision objects, reusing Layer 03's Cartesian
+     approach for the straight entry/exit.
+
+3. **Slip detection and re-grasp.** Catch the failed/slipped pick and
+   retry instead of carrying nothing.
+   - *How:* the gripper `JointState` (jaws closing past the expected vial
+     width ⇒ empty/slip) is **two-witnessed** with the wrist camera
+     (Layer 04); on disagreement MTC re-enters the pick stage.
+
+4. **Anti-rotation hold for decap / recap.** Grip firmly enough that the
+   vial doesn't spin while the decapper applies torque.
+   - *How:* a higher-force "hold" grasp mode, gated by the **force-torque**
+     witness on the cap joint (sensor #5), with orchestration sequencing
+     hold → twist → release.
+
+5. **Adapt to vial variants.** Handle the under-filled off-balance vial,
+   the proud crimp-cap, and screw-cap differences.
+   - *How:* the analytical grasp is **parameterized by vial type** read
+     from the worklist (diameter, grip height, force); the off-balance
+     case is exactly what MuJoCo validates, and genuinely novel labware is
+     the trigger to escalate.
+
+**Where the pick flexes.** MTC wrapping the analytical pinch
+(best-practical) covers all five for the known v1 vial set. The moment
+vials, caps, or labware become **varied or unlabelled** — an extreme of
+use case 5 — is when **Contact-GraspNet** (best-in-class) or a **VLA
+policy** earns its GPU and demonstrations, which is the upgrade path the
+next section lays out.
+
 ## The learned upgrade path — VLA / generalist policies
 
 The five above are the **v1 toolbox**. Beyond them sits the frontier:
