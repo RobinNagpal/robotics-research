@@ -176,6 +176,61 @@ lands as an Alternative.
   misses, and you cover synthetic vials reliably without paying for
   Dynamsoft.
 
+## Realistic scenario & use cases
+
+> **Why this matters for automation.** Identification is the cell's
+> chain-of-custody check: it proves the vial in the gripper is the one the
+> worklist *thinks* it is, before it is placed and injected. Its
+> automation value is catching a **mix-up** — the wrong vial in the wrong
+> slot — that would otherwise silently corrupt a result, the exact failure
+> a regulated lab spends the most money investigating after the fact.
+
+**The scenario.** After grasping each vial, the cell reads its label at a
+scan pose to confirm identity against the worklist. Across one 96-vial
+tray it meets a barcode **curved around the cylindrical vial**, a tiny
+**2D Data Matrix** code on a 2 mL vial next to a **1D Code 128** on
+another, a **smudged, low-contrast** label, a code **partly occluded by
+the gripper jaw**, and — critically — one vial whose **scanned ID does not
+match** the worklist row it was about to fill. The cell must read each
+robustly, recover from the no-reads, and **halt on the mismatch**.
+
+The layer must therefore serve several **distinct use cases**:
+
+1. **Decode a label on a curved vial.** Read a barcode wrapped around a
+   2 mL cylinder despite the perspective distortion.
+   - *How the solution handles it:* the OpenCV barcode/QR module decodes
+     the head-on portion; if it fails, the arm **rotates the vial** in the
+     gripper to present a flatter view and re-reads over several frames.
+
+2. **Decode mixed symbologies.** Handle 1D (Code 128) and 2D (Data
+   Matrix / QR) codes that coexist across a tray.
+   - *How:* OpenCV leads and **ZBar** backs it up; between them they cover
+     the common 1D and 2D lab symbologies without extra licences.
+
+3. **No-read recovery.** Retry sensibly on occlusion, smudge, or glare
+   rather than failing the vial outright.
+   - *How:* lead OpenCV → fall back to ZBar → re-present at the dedicated
+     scan pose for up to *N* attempts, then flag the vial for human review
+     instead of guessing.
+
+4. **Identity verification against the worklist — mismatch halt.** Confirm
+   the decoded ID equals the expected worklist row; stop on disagreement.
+   - *How:* orchestration (Layer 07) compares the decoded string to the
+     worklist; a mismatch **halts the affected vial and raises an audit
+     event** (Layer 08) — the single highest-value check in this layer.
+
+5. **Link every read to the audit trail.** Record the decoded ID,
+   timestamp, the frame used, and pass/fail per vial.
+   - *How:* the decoded result plus its evidence frame is published to the
+     LIMS/audit sink (Layer 08), satisfying ALCOA+ traceability.
+
+**Where the pick flexes.** OpenCV + ZBar fallback (best-practical) reads
+the clean, known codes an only-code twin renders and covers use cases 1–5
+for free. Only if identification becomes the bottleneck at real-world
+print quality and throughput — heavily degraded or warped labels at speed,
+an extreme of use case 3 — does the paid **Dynamsoft** reader become worth
+its licence.
+
 ## Meta code
 
 The shape of the best-practical decoder (OpenCV's built-in QR/barcode
