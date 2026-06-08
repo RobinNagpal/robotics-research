@@ -23,44 +23,42 @@ README.md                  Strategic overview: the 9 robotics subfields, top-3 p
                            Each holds the same numbered files: 00-basics, 01-examples, 02-learn,
                            03-start, 04-market, 05-projects, 06-courses, README.
 02-sim-vs-perception/      A focused decision note comparing two of the top picks.
-03-place-items-on-shelf/   *** THE MAIN WORKING PROJECT (see below) ***
+03-hplc-autosampler/       *** THE MAIN WORKING PROJECT (see below) ***
+04-models/                 Per-type deep dives on the AI/robotics model families (VLAs, perception,
+                           grasp-generation, robotics foundation models, …) the project can draw on.
 ```
 
-## The main project: 03-place-items-on-shelf
+## The main project: 03-hplc-autosampler
 
 **This is the active working area now.** Everything new happens here
 unless told otherwise. It is a concrete, buildable robotics project — a
-**mobile manipulator that stocks a grocery shelf** — worked out from
-requirements down to a per-layer technology stack. It is
-**simulation-first**: prove the whole pick-drive-place loop in a
-simulator, then transfer to hardware.
+**fixed robot arm that prepares and loads sample vials for an HPLC
+autosampler**, automating the slow, manual vial-prep in front of the
+instrument. It is **simulation-first**: prove the whole
+pick-decap-dispense-cap-label-load loop in a simulator, then transfer to
+hardware.
 
 Structure (the numeric prefix is the intended reading order):
 
 ```
-01-requirements.md     The "simplest viable version" — scope constraints, the robot, the
-                       9-step functional loop, non-goals, definition of done.
-02-glossary.md         Plain-language definitions (1-2 sentences each) of every technical term
-                       used in the tech docs. READ THIS FIRST when a term is unfamiliar.
-03-high-level-tech.md  The "Stack at a glance" table + narrative: the 7 layers and the
-                       recommended framework for each.
-03-stack/              One deep-dive file per stack layer:
-                         01-simulator, 02-middleware, 03-mobile-base-navigation,
-                         04-arm-motion-planning, 05-perception, 06-grasping, 07-orchestration.
-                       Each file follows the same shape:
-                         - intro blockquote ("Job:" — what the layer does)
-                         - "How this layer fits into the architecture" (plain-language, cross-linked)
-                         - a comparison table of candidate frameworks on 5-7 parameters + a
-                           "Bottom line" column
-                         - "Top choice" (technical pick)
-                         - "Cost, hardware & where it runs" (best-in-class / cheapest /
-                           best cost-for-performance tiers, with machine requirements and cost)
+01-hplc-intro.md          Plain-language intro to HPLC and what an autosampler does — start here.
+02-lab-bench-new.md       Sample-prep primer: how prep works in a real lab, broken into the discrete
+                          tasks a robotic arm could automate (two worked examples).
+03-hplc-workflow/         One deep, beginner file per sample-prep step (weigh, dissolve, dilute, filter,
+                          transfer, cap, label, place), each walked through the same two examples.
+04-hello-worlds/          Small, runnable simulation milestones that build the cell one capability at a time.
+05-mycobot-280-impl/      The per-concern implementation worked out on the low-cost myCobot 280 — fully
+                          open-source, simulation-first. Holds 01-only-code/ (the layer-by-layer stack),
+                          sensor-suite.md, and foundation-models.md.
+06-arms-comparison.md     Which candidate arm to simulate first, scored on 30 parameters.
+07-learning-checklist.md  A checkbox plan to learn just enough robotics to build and pitch this.
 ```
 
-The recommended stack at a glance: **Isaac Sim** (sim, with Gazebo
-first), **ROS 2** (middleware), **Nav2** (navigation), **MoveIt 2** (arm
-motion), **RGB-D + FoundationPose / geometric** (perception), **analytical
-→ AnyGrasp** (grasping), **Behavior Trees** (orchestration). Keep
+The recommended open-source stack at a glance: **Gazebo Harmonic** (sim),
+**ROS 2** (middleware), **MoveIt 2** (arm motion), **RGB-D + AprilTag /
+geometric** (perception), **analytical grasping** (with VLAs as a
+deferred upgrade), **Behavior Trees** (orchestration) — on the **myCobot
+280** for a cheap, simulation-first proof of concept. Keep
 recommendations consistent across files — if a pick changes in one
 place, reconcile every file that references it.
 
@@ -71,14 +69,15 @@ place, reconcile every file that references it.
   is preserved; then fix every reference to the renamed/renumbered file
   (grep for the old name to confirm none are left).
 - **Plain language first.** This material is read by non-experts. Define
-  jargon on first use or point to `02-glossary.md`. Short sentences.
+  jargon on first use (the sample-prep primer `02-lab-bench-new.md` and
+  the `03-hplc-workflow/` files do this). Short sentences.
 - **Tables for comparisons**, prose for the "why." Every comparison table
   ends with a "Bottom line"/verdict column and is followed by a clear top
   pick.
 - **Markdown style** already in use: wrap prose at ~72 columns, use
   `**bold**` for the key term in a bullet, fenced code blocks for trees
-  and diagrams, relative links between files (e.g. `02-middleware.md`,
-  `../01-requirements.md`).
+  and diagrams, relative links between files (e.g. `02-lab-bench-new.md`,
+  `../01-hplc-intro.md`).
 - **Keep the v1 "keep it simple" framing**: geometric/known-pose methods
   first, learned methods deferred to later milestones. Don't add scope.
 - **Cost/spec figures are approximate and drift** — hedge them (`~`) and

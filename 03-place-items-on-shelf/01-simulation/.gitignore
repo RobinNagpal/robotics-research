@@ -1,9 +1,0 @@
-# Run outputs and build artifacts
-logs/*.csv
-logs/*.json
-logs/*.log
-shelf_ws/build/
-shelf_ws/install/
-shelf_ws/log/
-__pycache__/
-*.pyc

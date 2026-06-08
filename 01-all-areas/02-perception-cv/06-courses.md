@@ -8,23 +8,6 @@ A note on auditing vs. building: treat every course as a scaffold. If you don't 
 
 ---
 
-## Fast track for the shelf-stocking project
-
-Building `../../03-place-items-on-shelf` (a mobile base + arm that stocks a grocery shelf)? These are the courses from the full list below that map most directly to that project's **perception** half. Take them in this order, then return for the rest.
-
-1. **ROS2 in 5 Days - The Construct** (Stack 3, #9b). The middleware everything else plugs into; the perception sub-track (camera drivers, point-cloud nodes, tf2) is exactly the glue between your CV model and the robot.
-2. **Robotics: Perception - UPenn** (Stack 1, #3). Camera model, calibration, and PnP/pose estimation in robotics framing (body/world frames) — the foundation for localizing the product and the shelf slot.
-3. **CS231A - Stanford** (Stack 1, #2). The geometry under 6-DoF pose: pinhole model, triangulation, PnP. This is what makes FoundationPose-style product-pose estimation intelligible rather than magic.
-4. **Visual SLAM for Robotics - Stachniss** (Stack 3, #8). Mapping and localization for the mobile-base half (what Nav2 does under the hood) — how the robot knows where it is relative to the shelf.
-5. **CS231n + Roboflow Notebooks** (Stack 2, #4 and Stack 4, #13). Detection/segmentation and hands-on fine-tuning for shelf-slot and product detection (SAM 2, YOLO-World, Grounding DINO) once you relax the "known tray layout" assumption.
-6. **NVIDIA DLI CV learning paths** (Stack 3, #9). RGB-D pipelines and ONNX/TensorRT deployment for running perception on the robot's onboard compute at frame rate.
-
-Book to keep on the desk: **Peter Corke, *Robotics, Vision and Control*** (Stack 5) — the one reference that covers manipulator kinematics *and* vision together, which is precisely the arm-plus-camera combination this project needs.
-
-**What this perception list deliberately does not cover.** The shelf robot also needs **arm motion planning (MoveIt 2)**, **grasp synthesis (AnyGrasp / Contact-GraspNet, Dex-Net)**, and the **simulators (Isaac Sim / Isaac Lab, Gazebo, MuJoCo)** described in `../../03-place-items-on-shelf/03-high-level-tech.md`. Those are manipulation and simulation skills, not perception — find their learning resources in the manipulation area (`../05-manipulation/02-learn.md`) rather than duplicated here.
-
----
-
 ## Stack 0 - Foundational basics
 
 Prereqs every later course assumes. If you're a working web dev, you already have the Python side; you may still want the math refreshers.
