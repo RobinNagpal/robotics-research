@@ -22,13 +22,12 @@ README.md                  Strategic overview: the 9 robotics subfields, top-3 p
                            manipulation, motion-planning, hri-language, multi-robot, infra-middleware).
                            Each holds the same numbered files: 00-basics, 01-examples, 02-learn,
                            03-start, 04-market, 05-projects, 06-courses, README.
-02-sim-vs-perception/      A focused decision note comparing two of the top picks.
-03-hplc-autosampler/       *** THE MAIN WORKING PROJECT (see below) ***
-04-models/                 Per-type deep dives on the AI/robotics model families (VLAs, perception,
+02-hplc-autosampler/       *** THE MAIN WORKING PROJECT (see below) ***
+03-models/                 Per-type deep dives on the AI/robotics model families (VLAs, perception,
                            grasp-generation, robotics foundation models, …) the project can draw on.
 ```
 
-## The main project: 03-hplc-autosampler
+## The main project: 02-hplc-autosampler
 
 **This is the active working area now.** Everything new happens here
 unless told otherwise. It is a concrete, buildable robotics project — a
@@ -46,12 +45,12 @@ Structure (the numeric prefix is the intended reading order):
                           tasks a robotic arm could automate (two worked examples).
 03-hplc-workflow/         One deep, beginner file per sample-prep step (weigh, dissolve, dilute, filter,
                           transfer, cap, label, place), each walked through the same two examples.
-04-hello-worlds/          Small, runnable simulation milestones that build the cell one capability at a time.
-05-mycobot-280-impl/      The per-concern implementation worked out on the low-cost myCobot 280 — fully
-                          open-source, simulation-first. Holds 01-only-code/ (the layer-by-layer stack),
-                          sensor-suite.md, and foundation-models.md.
-06-arms-comparison.md     Which candidate arm to simulate first, scored on 30 parameters.
-07-learning-checklist.md  A checkbox plan to learn just enough robotics to build and pitch this.
+04-mycobot-280-impl/      The per-concern implementation worked out on the low-cost myCobot 280 — fully
+                          open-source, simulation-first. Holds the 10 development-layer files (simulator,
+                          middleware, motion, perception, grasping, …) plus sensor-suite.md and
+                          foundation-models.md.
+05-arms-comparison.md     Which candidate arm to simulate first, scored on 30 parameters.
+06-learning-checklist.md  A checkbox plan to learn just enough robotics to build and pitch this.
 ```
 
 The recommended open-source stack at a glance: **Gazebo Harmonic** (sim),

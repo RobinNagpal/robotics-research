@@ -17,7 +17,7 @@
 
 We will do both, starting with the **ketchup** example and then maybe
 the **paracetamol** example, both explained in
-[`03-hplc-autosampler/02-lab-bench-new.md`](03-hplc-autosampler/02-lab-bench-new.md).
+[`02-hplc-autosampler/02-lab-bench-new.md`](02-hplc-autosampler/02-lab-bench-new.md).
 
 ---
 
@@ -25,7 +25,7 @@ the **paracetamol** example, both explained in
 
 ### Task A — Simulation scenes
 
-- [ ] Build the **ketchup** scene (objects + workcell layout) — [object list](03-hplc-autosampler/05-mycobot-280-impl/01-only-code/01-simulation/01-ketchup-experiment-objects.md)
+- [ ] Build the **ketchup** scene (objects + workcell layout) — [object list](02-hplc-autosampler/04-mycobot-280-impl/01-simulation/01-ketchup-experiment-objects.md)
 - [ ] Add different scenarios / variations to the ketchup scene
 - [ ] Build the **paracetamol** scene
 - [ ] Add different scenarios / variations to the paracetamol scene
