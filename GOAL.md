@@ -1,0 +1,40 @@
+# GOAL
+
+## Strategy: services first, products later
+
+1. **Before we build anything of our own, we should first do services
+   for robotics companies.** Services teach us the domain, pay the
+   bills, and de-risk what we eventually build ourselves.
+
+2. **To offer services, we pick 2–3 isolated layers** — pieces of the
+   robotics stack that can be worked on independently and whose work can
+   be **outsourced** (handed to us as a self-contained job).
+
+3. **The two layers on our list:**
+   - **a) Simulation scenes** — building simulation scenes with
+     different scenarios.
+   - **b) Synthetic data** — creating synthetic data for testing.
+
+We will do both, starting with the **ketchup** example and then maybe
+the **paracetamol** example, both explained in
+[`03-hplc-autosampler/02-lab-bench-new.md`](03-hplc-autosampler/02-lab-bench-new.md).
+
+---
+
+## Checklist
+
+### Task A — Simulation scenes
+
+- [ ] Build the **ketchup** scene (objects + workcell layout)
+- [ ] Add different scenarios / variations to the ketchup scene
+- [ ] Build the **paracetamol** scene
+- [ ] Add different scenarios / variations to the paracetamol scene
+- [ ] Package the scenes so they can be handed off / reused
+
+### Task B — Synthetic data for testing
+
+- [ ] Generate synthetic data from the **ketchup** scene
+- [ ] Label / format the data for testing
+- [ ] Generate synthetic data from the **paracetamol** scene
+- [ ] Verify the data is usable for testing
+- [ ] Package the dataset so it can be handed off / reused
