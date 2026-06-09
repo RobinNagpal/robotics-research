@@ -205,7 +205,7 @@ tool for the wrong problem here. Alternative.
 
 - **Best-in-class:** **Contact-GraspNet** — strongest open,
   learned 6-DoF grasping, the right ceiling if vials/objects become
-  varied and known-pose tricks stop working (with **AnyGrasp** as the
+  varied and fixed-geometry analytical tricks stop working (with **AnyGrasp** as the
   commercial step beyond). For v1's single known vial it is genuine
   overkill.
 - **Cheapest:** **Analytical / antipodal pinch (custom + Open3D)** —

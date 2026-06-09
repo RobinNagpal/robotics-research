@@ -7,7 +7,7 @@
 ## What this program proves
 
 Every earlier file in this folder taught **one** skill in isolation: make
-a world, offer a service, plan a reach, see a marker, close a grip, read
+a world, offer a service, plan a reach, see the tray, close a grip, read
 a barcode, keep an audit trail. This last file does the thing the whole
 project exists to demonstrate: it **chains those skills into one
 unbroken run** that handles a single vial from start to finish, and
@@ -226,7 +226,7 @@ below leaves exactly one such unchangeable footprint.
 **`def locate_vial(slot):  # file 04 — see the tray`**
 A **stub** — a placeholder standing in for a real subsystem. In the
 finished system this is where the perception code from **file 04 (see the
-tray)** would find the printed marker and measure where the vial is. The
+tray)** would detect the vial with YOLO and measure where it is. The
 comment names the file it represents.
 
 **`print(f"  Located the vial near slot {slot}.")`**

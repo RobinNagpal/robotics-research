@@ -101,9 +101,10 @@ step).**
 - Model the **teach step in sim**: rather than hard-coding the
   origin, run a tiny "teach" routine that records the `tray_origin`
   pose (in sim, read it straight from the model; on hardware this is
-  where jogging the arm to a corner slot, or an AprilTag, comes in).
-  Keeping the step in the workflow means the hardware version drops
-  in later with no code change.
+  where the **YOLO detector** locating the tray in the overhead camera,
+  or jogging the arm to a corner slot, comes in). Keeping the step in
+  the workflow means the hardware version drops in later with no code
+  change.
 - **Generate the reachability map first.** Before placing anything,
   loop over every slot frame and ask MoveIt 2 for an IK + plan to a
   pre-place pose above it. Colour each slot reachable / unreachable
@@ -183,7 +184,7 @@ proud still fails the gate and goes to Part 08.
 |---------------|-----|-------------------|
 | **HPLC autosampler + its trays/racks** | The actual device that holds vials and injects from them | A **static tray model** with one **tf frame per slot** at a fixed bench pose |
 | **Tray fixture / jig** | Holds the tray repeatably at a known location so the slot map (and reach map) stays valid | Baked into the model pose; the in-sim teach step records the origin |
-| *(later)* AprilTag / teach pendant | Real-world calibration of the tray origin | In sim, read the model pose directly; `apriltag_ros` path is ready for hardware |
+| *(later)* Overhead camera + YOLO / teach pendant | Real-world calibration of the tray origin | In sim, read the model pose directly; the YOLO-detect-the-tray path is ready for hardware |
 
 None of this blocks building the digital twin now — the tray is just
 a model plus a set of frames. **Real seating force, slot tolerances,

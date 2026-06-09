@@ -58,15 +58,15 @@ racks that every stage below poses its objects against.
 | 3 | **Workbench tabletop** | The fixed work surface (a static collision plane) | Defines the world frame everything else is posed against |
 | 4 | **Overhead RGB-D camera** | A depth camera looking down on the cell | Locates beakers, racks, and vials for the perception layer |
 | 5 | **Wrist-mounted camera** | A close-range camera on the gripper | Fine alignment over the narrow vial mouth and barcode reads |
-| 6 | **AprilTag fiducial markers** | Printed-tag bodies on bench, racks, and stations | Known, calibratable poses — the cheap "known-pose" anchor v1 relies on |
-| 7 | **Prep-vessel rack** | A rack holding beakers / tubes / flasks | Keeps prep glassware at repeatable poses so known-pose grasps work |
+| 6 | **Scene lighting + matte backdrop** | An LED panel and plain backdrop, varied run-to-run (domain randomization) | Gives the cameras clean, varied frames so the **YOLO** detector trains on synthetic data and runs reliably |
+| 7 | **Prep-vessel rack** | A rack holding beakers / tubes / flasks | Keeps prep glassware at repeatable poses so YOLO-located grasps are reliable |
 | 8 | **Vial rack / nest** | A staging block of 2 mL vial slots | Holds empty and filled vials at known poses between stages |
 | 9 | **Autosampler tray / carousel** | The final destination, known slots (~96–120) | Where a finished vial is placed — the loop's exit |
 | 10 | **Waste container** | A bin for spent tips, clogged filters, decant liquid | Receives the consumables the messy ketchup run burns through |
 
 **Bottom line:** items 1–2 are the robot; 3–10 are the fixed reference
-frame, eyes, and staging that let known-pose manipulation work without
-learned vision.
+frame, eyes, staging, and lighting that let the **YOLO** detector and
+fixed rack/tray geometry place every object reliably.
 
 ---
 
@@ -224,7 +224,7 @@ see [`01-weighing.md`](../../../03-hplc-workflow/01-weighing.md) and
 
 ## Notes on building these in Gazebo
 
-- **Start with the shared workcell.** The arm, table, cameras, AprilTags,
+- **Start with the shared workcell.** The arm, table, cameras, lighting,
   and racks define the world frame; build them and one of each vessel
   before multiplying counts.
 - **Then build stage by stage, in order.** Each stage section above maps
@@ -240,8 +240,11 @@ see [`01-weighing.md`](../../../03-hplc-workflow/01-weighing.md) and
 - **Viscosity is faked.** Gazebo will not model true ketchup rheology;
   represent the sample as a simple body (or a fill level on `/vial/...`)
   and let the *manipulation* be the thing under test.
-- **Keep v1 known-pose.** Rely on AprilTags and fixed rack slots first;
-  defer learned 6-DoF pose estimation to a later milestone.
+- **Detect with YOLO.** The cell locates vials, racks, beakers, and the
+  tray with a **YOLO** detector trained on synthetic data rendered from
+  this scene, then lifts each detection to 3-D using the RGB-D depth;
+  fixed rack/tray geometry indexes the individual slots. Defer heavier
+  learned 6-DoF pose models to a later milestone.
 
 ## See also
 

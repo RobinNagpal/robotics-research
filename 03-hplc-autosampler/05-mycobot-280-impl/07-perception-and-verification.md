@@ -3,10 +3,10 @@
 > **Sim goal:** Give the simulated cell *eyes* — drop simulated
 > cameras into the Gazebo Harmonic world, publish the same ROS 2
 > image, depth, and point-cloud topics a real camera would, and run
-> the *exact* perception pipeline (AprilTags, OpenCV, Open3D/PCL) that
-> would run on hardware. Then wire that pipeline into **verification
-> gates** the Behavior Tree must pass before each step, and validate
-> every detection against Gazebo's known ground truth.
+> the *exact* perception pipeline (YOLO object detection, OpenCV,
+> Open3D/PCL) that would run on hardware. Then wire that pipeline into
+> **verification gates** the Behavior Tree must pass before each step,
+> and validate every detection against Gazebo's known ground truth.
 
 Parts 02–05 each move something; this part proves we can *see whether
 the move worked* before the workflow is allowed to continue. The whole
@@ -17,19 +17,25 @@ code against that truth — something we can never do on a real bench.
 Two camera types are referenced throughout, defined once here:
 
 - **RGB camera** — an ordinary colour camera. Flat picture of
-  red/green/blue pixels. Good for barcodes, reading a printed fiducial,
-  spotting a colour change (foam, a spill), and 2-D position. It does
-  **not** directly know distance.
+  red/green/blue pixels. Good for barcodes, recognising objects by
+  their appearance, spotting a colour change (foam, a spill), and 2-D
+  position. It does **not** directly know distance.
 - **RGB-D camera** ("D" for depth) — colour plus a depth sensor, so
   every pixel also carries a distance. Gives 3-D shape: liquid-column
   height, whether a tray slot is empty, how far a vial rim is. This is
   the workhorse when "is it there, and how full / how seated" matters.
 
-An **AprilTag** is a small high-contrast black-and-white square sticker
-(a *fiducial* — a printed pattern made to be found and measured by a
-camera). Each tag has a unique ID and, once detected, yields an exact
-position and orientation (a **pose**). Tags on the rack, tray, and
-stations give the arm a precise, self-checking reference frame.
+**YOLO** ("You Only Look Once") is an **object detector** — a neural
+network that looks at one camera image and, in a single pass, returns a
+**bounding box** (a rectangle around each object it finds) plus a
+**class** (what the object is: vial, cap, beaker, tray, rack) and a
+confidence score. Nothing is stuck on the objects; YOLO recognises them
+directly from how they look. We use the Ultralytics YOLO family
+(e.g. YOLOv8 / YOLO11, Python package `ultralytics`). Because YOLO is a
+*learned* detector, it needs training images — which we generate as
+**synthetic data** from the Gazebo twin (see step 3). A 2-D box has no
+distance on its own; we lift each detection to a 3-D **pose** (position
+and orientation) by reading the depth image at the box (next section).
 
 > **The cameras are three of twelve sensors.** This part covers the
 > three cameras in detail — wrist RGB (#3), tray top-down RGB-D (#1),
@@ -52,16 +58,17 @@ stations give the arm a precise, self-checking reference frame.
 Entirely before buying a single camera, the sim lets us prove:
 
 - **The perception *pipeline* runs end to end.** Camera sensor →
-  ROS 2 topic → apriltag_ros / OpenCV / Open3D node → PASS/FAIL gate
-  result. Every link in that chain is real ROS 2 code; only the photons
-  are synthetic.
+  ROS 2 topic → YOLO detection (`ultralytics`) + RGB-D depth lift /
+  OpenCV / Open3D node → PASS/FAIL gate result. Every link in that
+  chain is real ROS 2 code; only the photons are synthetic.
 - **Verification gates gate the workflow.** A gate that returns FAIL
   actually stops the per-vial loop in Part 08, rather than the loop
   charging ahead. This is the discipline we most need to rehearse.
 - **Detection is correct, graded against truth.** Gazebo publishes the
-  *true* pose of every model. We compare our AprilTag/OpenCV pose
-  estimate to that ground truth and measure the error — a free, exact
-  accuracy check no real lab gets.
+  *true* pose of every model. We compare our YOLO + depth pose estimate
+  to that ground truth and measure the error — a free, exact accuracy
+  check no real lab gets. The same ground truth doubles as **labels**
+  for the synthetic training set.
 - **Camera placement trade-offs.** The 280 is a *small* arm (~280 mm
   reach, `~` verify); a heavy wrist camera eats payload and can foul on
   its own short links. Sim lets us test how much work a fixed
@@ -94,11 +101,11 @@ hardware-acceptance items (see
 |------|------|-------------|
 | Gazebo Harmonic camera/depth sensor plugins | Render synthetic RGB, depth, and point-cloud streams | Built-in `camera` / `depth_camera` sensors; no extra cost. |
 | `ros_gz_bridge` / `ros_gz_image` | Bridge Gazebo sensor data onto ROS 2 image/depth/points topics | Makes sim cameras look exactly like real ROS 2 cameras. |
-| apriltag_ros | Detect AprilTag fiducials → pose + ID | Mature, fast; the backbone of known-pose alignment. |
-| OpenCV | 2-D vision: rim/circle find, edges, colour anomaly | Same library used on hardware; runs unchanged on sim images. |
+| `ultralytics` (YOLO) | Detect objects → boxes + classes, lifted to a pose via RGB-D depth | Learned detector; the backbone of object localisation. Trained on synthetic data from the twin. |
+| OpenCV | 2-D vision: rim/circle find, edges, colour anomaly, depth deprojection | Same library used on hardware; runs unchanged on sim images. |
 | Open3D / PCL | Point-cloud work: seating, level, slot occupancy | Depth-based geometric checks (level/seated) from RGB-D. |
 | ZBar / pyzbar | Decode barcodes/QR off RGB frames | Hands off to identification (Part 06). |
-| RViz2 / Foxglove | Visualise images, depth, clouds, tf frames | Eyeball the pipeline; confirm a tag's pose lands on the model. |
+| RViz2 / Foxglove | Visualise images, depth, clouds, tf frames | Eyeball the pipeline; confirm a detection's pose lands on the model. |
 | Gazebo ground-truth pose topic | True model poses for grading detections | The sim-only "answer key" we validate detections against. |
 
 ## How to simulate it now
@@ -139,15 +146,48 @@ Each camera has its own **tf frame** (a named coordinate frame ROS 2
 tracks) so detections can be transformed into the bench/base frame
 shared by every node.
 
-**3. Run apriltag_ros.** Feed it `/wrist_cam/image_raw` (and the
-fixed-camera streams) plus the camera info. Place AprilTag models on the
-`vial_supply` rack, the `autosampler_tray`, and each station model in
-the SDF. apriltag_ros publishes each tag's pose; a small node transforms
-those into the base frame and offers them as the **known-pose
-alignment** other parts consume.
+**3. Train and run the YOLO detector.** First *generate the training
+data*: have Gazebo render the `vial_supply` rack, the
+`autosampler_tray`, the stations, vials, caps, and beakers under
+**domain randomization** — vary lighting, colours, textures, camera
+angle, and clutter so the detector learns the objects, not one fixed
+scene. Gazebo's true model poses give the box labels for free, so the
+dataset is self-labelling. Train an `ultralytics` YOLO model on that
+synthetic set, then run it as a ROS 2 node:
 
-**4. Run a detection / level node.** One ROS 2 node subscribes to the
-relevant streams and exposes the geometric checks:
+```python
+# yolo_detect_node — subscribes to a camera stream, runs YOLO,
+# lifts each 2-D box to a 3-D pose using the aligned depth image.
+from ultralytics import YOLO        # the learned object detector
+
+model = YOLO("vials_yolo11.pt")     # weights trained on synthetic data
+
+def on_frame(rgb, depth, cam_info):
+    # 1) detect: one forward pass -> boxes + class ids + scores
+    results = model(rgb)[0]
+    for box, cls, conf in zip(results.boxes.xyxy,
+                              results.boxes.cls,
+                              results.boxes.conf):
+        u, v = box_center(box)               # pixel at the box centre
+        z = depth[int(v), int(u)]            # distance from RGB-D depth
+        # 2) deproject the pixel + depth into a 3-D point (camera frame)
+        x, y, z = deproject(u, v, z, cam_info)
+        # 3) publish pose in the base frame for other nodes to consume
+        publish_pose(class_name(cls), (x, y, z), conf)
+```
+
+Feed it `/wrist_cam/image_raw` + `/wrist_cam/depth/image` (and the
+fixed-camera streams) plus the camera info. The node detects each
+object, lifts its box centre to a 3-D point through the depth image,
+transforms that into the base frame, and offers it as the **object
+localisation** other parts consume. For the **tray slots**, detect the
+tray (and any vials in it) with YOLO, then index each slot from the
+known tray geometry relative to the detected tray pose — no per-slot
+marker needed.
+
+**4. Run a geometric / level node.** Alongside YOLO, one ROS 2 node
+subscribes to the relevant streams and exposes the depth-based
+geometric checks:
 
 - **rim / presence** (OpenCV circle/edge on the wrist RGB-D) — is a vial
   in the cell, is it in the gripper;

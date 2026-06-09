@@ -55,8 +55,8 @@ Structure (the numeric prefix is the intended reading order):
 ```
 
 The recommended open-source stack at a glance: **Gazebo Harmonic** (sim),
-**ROS 2** (middleware), **MoveIt 2** (arm motion), **RGB-D + AprilTag /
-geometric** (perception), **analytical grasping** (with VLAs as a
+**ROS 2** (middleware), **MoveIt 2** (arm motion), **RGB-D + YOLO
+object detection** (perception), **analytical grasping** (with VLAs as a
 deferred upgrade), **Behavior Trees** (orchestration) — on the **myCobot
 280** for a cheap, simulation-first proof of concept. Keep
 recommendations consistent across files — if a pick changes in one
@@ -78,8 +78,11 @@ place, reconcile every file that references it.
   `**bold**` for the key term in a bullet, fenced code blocks for trees
   and diagrams, relative links between files (e.g. `02-lab-bench-new.md`,
   `../01-hplc-intro.md`).
-- **Keep the v1 "keep it simple" framing**: geometric/known-pose methods
-  first, learned methods deferred to later milestones. Don't add scope.
+- **Keep the v1 "keep it simple" framing**: analytical/geometric methods
+  first for motion and grasping, with **YOLO object detection** (trained
+  on synthetic data from the twin) as the real perception workflow;
+  heavier learned methods (e.g. VLAs) stay deferred to later milestones.
+  Don't add scope.
 - **Cost/spec figures are approximate and drift** — hedge them (`~`) and
   flag that they should be re-checked before being quoted.
 

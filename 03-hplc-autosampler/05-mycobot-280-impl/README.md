@@ -56,7 +56,7 @@ Identical to the reBot path, so the two arms are directly comparable:
 | **`ros2_control` + `gz_ros2_control`** | Joint controllers in sim | Apache-2.0 |
 | **MoveIt 2** (+ `mycobot_ros` config) | Collision-free arm motion planning | BSD |
 | **`mycobot_ros`** | Ready-made myCobot URDF, Gazebo + MoveIt assets | BSD |
-| **OpenCV**, **apriltag_ros**, **Open3D/PCL** | Perception: detection, fiducials, level checks | BSD/Apache |
+| **Ultralytics YOLO**, **OpenCV**, **Open3D/PCL** | Perception: object detection (vials/rack/tray) + RGB-D depth lift, level checks | AGPL/BSD/Apache |
 | **ZBar / pyzbar** | Barcode/QR decoding from simulated camera images | LGPL |
 | **BehaviorTree.CPP** (+ **Groot2** free) / **py_trees** | Orchestration + failure handling | MIT |
 | **SQLite**, **FastAPI** | Audit-trail store + mock LIMS/CDS service | Public-domain/MIT |

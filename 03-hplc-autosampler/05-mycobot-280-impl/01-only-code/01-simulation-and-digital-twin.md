@@ -54,8 +54,9 @@ Harmonic** runs happily on a CPU. Its licence and Omniverse dependency
 make it the least portable choice, and its learning curve dwarfs
 **Webots'**. For an only-code project whose goal is to *cheaply*
 de-risk the loop, that weight is hard to justify unless photoreal
-vision is the bottleneck — which, for a known-pose vial task, it
-usually is not.
+vision is the bottleneck — and Gazebo's rendering is enough to generate
+the synthetic data our YOLO vial detector trains on, so for this
+fixed-layout cell it usually is not.
 
 ## PyBullet
 
@@ -99,7 +100,7 @@ natively with ROS 2 through `ros_gz`, which means the same Nav2/MoveIt
 2-style middleware the upper layers use can drive the simulated arm
 unchanged. Because real hardware is also typically driven through ROS 2,
 a Gazebo-based twin is the smallest possible jump to the sibling
-hardware mode. For a small team building a known-pose HPLC cell, it hits
+hardware mode. For a small team building a fixed-layout HPLC cell, it hits
 the sweet spot of fidelity, cost, and ecosystem fit.
 
 Where it is bad versus the others: its rendering is far from

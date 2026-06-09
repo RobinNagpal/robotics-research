@@ -77,9 +77,10 @@ Gazebo. Place them in a **nested supply rack** model at the
 `vial_supply` tf frame from Part 01, choosing a location that sat
 comfortably inside the 280's reach bubble during the Part 01
 reachability check — so each nest (e.g. `vial_supply/slot_03`) has a
-known pose with a healthy IK margin. Known poses let us skip vision
-for now — perception-driven grasping is layered in by Part 07; here
-the slot geometry is given.
+known pose with a healthy IK margin. For this first geometry pass the
+slot pose is given by the rack model; the **YOLO detector** that locates
+the real vials and rack from the camera (and lifts each to 3-D via the
+RGB-D depth) is layered in by Part 07.
 
 **2. Define the grasp pose.** Relative to a vial frame, fix a
 **pre-grasp** pose (a few cm above, fingers open) and a **grasp** pose
