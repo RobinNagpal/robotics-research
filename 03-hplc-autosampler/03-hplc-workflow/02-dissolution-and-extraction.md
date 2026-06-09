@@ -126,6 +126,22 @@ hard parts are **judgement** ("is it fully dissolved yet?") and the
 proof-of-concept, the clean paracetamol case is far more arm-friendly
 than ketchup.
 
+## Objects needed in the simulation scene
+
+Beyond the **shared workcell** (arm, gripper, table, overhead + wrist
+cameras, AprilTag markers, racks), this step adds:
+
+| Object | What it is | Mock node / topic |
+|---|---|---|
+| **Extraction beaker / flask** | The roomy prep vessel the work happens in | — |
+| **Solvent reservoir** | Methanol (paracetamol) or water / dilute acid (ketchup) | — |
+| **Stir bar / stir rod** | The stirring element that helps mixing | — |
+| **Dispenser station** | A mock that "pours" a measured solvent volume | `mock_dispenser` → `/mock_dispenser/volume_ml` |
+| **Heated mixer / sonicator** | A mock stir-and-heat station that raises a "done" flag (ketchup uses heat + a long dwell) | `mock_mixer` → `/mock_mixer/run`, `/mock_mixer/heat`, `/prep/dissolved` |
+
+These are **Stage 1** of the ketchup scene's
+[object list](../05-mycobot-280-impl/01-only-code/01-simulation/01-ketchup-experiment-objects.md).
+
 ---
 
 **Next step:** our liquid is usually far too strong for the machine to

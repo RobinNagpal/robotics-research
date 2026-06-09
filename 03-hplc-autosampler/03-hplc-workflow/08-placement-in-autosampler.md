@@ -116,6 +116,23 @@ positioning, which is exactly what robot arms are best at. A machine also
 might, so automating this step can make the run *more* reliable, not just
 faster.
 
+## Objects needed in the simulation scene
+
+Beyond the **shared workcell** (arm, gripper, table, overhead + wrist
+cameras, AprilTag markers, racks), this step adds:
+
+| Object | What it is | Mock node / topic |
+|---|---|---|
+| **Autosampler tray / carousel** | The destination grid of numbered slots (~96–120) | — |
+| **Slot AprilTags / fiducials** | Markers giving each slot a known pose for precise pick-and-place | — |
+| **Labelled vial** | The finished vial from Step 7 being placed | shared with Stage 4 |
+| **Vial rack (source)** | Holds the finished vials before they go to the tray | shared workcell |
+
+The autosampler tray is part of the **shared workcell** in the ketchup
+scene's
+[object list](../05-mycobot-280-impl/01-only-code/01-simulation/01-ketchup-experiment-objects.md)
+(placement happens just after Stage 6).
+
 ---
 
 **That is the full workflow.** From a weighed speck of powder or a spoon

@@ -84,6 +84,21 @@ good news for automation is that, once tuned, this is the *same precise
 motion every time* — exactly the kind of repetitive, well-defined task an
 arm is well suited to. There is no judgement involved, just consistency.
 
+## Objects needed in the simulation scene
+
+Beyond the **shared workcell** (arm, gripper, table, overhead + wrist
+cameras, AprilTag markers, racks), this step adds:
+
+| Object | What it is | Mock node / topic |
+|---|---|---|
+| **Vial cap + septum** | The screw cap (with a pierceable septum) the capper seats | — |
+| **Cap tray / dispenser** | Holds the caps at known poses for pickup | — |
+| **Capper station** | A mock that ramps and reports applied torque, so the twin stops inside the seal-don't-crack band | `mock_capper` → `/mock_capper/screw`, `/capper/torque` |
+| **Filled vial** | The vial from Step 5 being sealed | shared with Stage 4 |
+
+These are **Stage 5** of the ketchup scene's
+[object list](../05-mycobot-280-impl/01-only-code/01-simulation/01-ketchup-experiment-objects.md).
+
 ---
 
 **Next step:** mark each vial so we always know what is inside it →

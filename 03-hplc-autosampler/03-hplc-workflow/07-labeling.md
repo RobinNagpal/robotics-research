@@ -100,6 +100,20 @@ way a tired human at the bench can. In fact, a robot naturally keeps a
 perfect record of every vial it handles — turning this step into a
 reliability *gain*, not just a task it copies.
 
+## Objects needed in the simulation scene
+
+Beyond the **shared workcell** (arm, gripper, table, overhead + wrist
+cameras, AprilTag markers, racks), this step adds:
+
+| Object | What it is | Mock node / topic |
+|---|---|---|
+| **Barcode label stock** | The sticky barcode labels applied to each vial | — |
+| **Label printer** | A mock that prints + applies a label and logs each ID, asserting uniqueness | `mock_printer` → `/mock_printer/apply`, `/traceability/log` |
+| **Capped vial** | The vial from Step 6 being labelled | shared with Stage 4 |
+
+These are **Stage 6** of the ketchup scene's
+[object list](../05-mycobot-280-impl/01-only-code/01-simulation/01-ketchup-experiment-objects.md).
+
 ---
 
 **Next step:** put each finished, labelled vial into its exact slot in

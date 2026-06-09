@@ -108,6 +108,23 @@ arm simply **feeds and unloads** — the arm carries containers to and
 from it, rather than doing the fine powder work itself. Sticky samples
 like ketchup are harder still.
 
+## Objects needed in the simulation scene
+
+Beyond the **shared workcell** (arm, gripper, table, overhead + wrist
+cameras, AprilTag markers, racks), this step adds:
+
+| Object | What it is | Mock node / topic |
+|---|---|---|
+| **Sample source** | The tablet jar (paracetamol) or ketchup container the sample is drawn from | — |
+| **Weighing boat / dish** | A small disposable dish for powder (paracetamol) | — |
+| **Beaker** | Weighed *into* directly for sticky ketchup | — |
+| **Scoop / spatula** | The tool the arm uses to add sample | — |
+| **Analytical balance** | A mock that publishes a settled mass and a "weighed" flag | `mock_balance` → `/mock_balance/mass_g`, `/prep/weighed` |
+
+These feed the ketchup scene's
+[object list](../05-mycobot-280-impl/01-only-code/01-simulation/01-ketchup-experiment-objects.md)
+(weighing happens just before Stage 1).
+
 ---
 
 **Next step:** once we have our exact weighed amount, we need to get it

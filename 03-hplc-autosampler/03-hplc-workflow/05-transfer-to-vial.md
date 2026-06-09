@@ -93,6 +93,21 @@ sub-millimetre precision; it needs to hit a small, fixed opening
 paracetamol sample and one simple question — *can the arm hit the vial
 opening repeatably?* Get that right and much of the rest follows.
 
+## Objects needed in the simulation scene
+
+Beyond the **shared workcell** (arm, gripper, table, overhead + wrist
+cameras, AprilTag markers, racks), this step adds:
+
+| Object | What it is | Mock node / topic |
+|---|---|---|
+| **2 mL HPLC vial** | The narrow-mouth final container — the millimetre-scale pour target | `mock_vial` → `/vial/fill_ml`, `/vial/spill` |
+| **Vial rack / nest** | Holds the empty vial upright at a known pose | shared workcell |
+| **Clean-liquid source** | The syringe/pipette carrying the filtered liquid (from Step 4) | — |
+
+This is **Stage 4** of the ketchup scene's
+[object list](../05-mycobot-280-impl/01-only-code/01-simulation/01-ketchup-experiment-objects.md)
+— the clearest single test of the arm's positioning accuracy.
+
 ---
 
 **Next step:** seal the vial so nothing spills or evaporates →
