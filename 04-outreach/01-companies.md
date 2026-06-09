@@ -21,7 +21,7 @@ three):
 (`~`), drawn from press coverage and LinkedIn at research time
 (June 2026), and **drift quickly — re-verify before quoting in an
 outreach email**. Where a valuation was never disclosed, total funding
-raised is given instead. Companies are grouped by sector; the
+raised is given instead. **103 companies** are grouped by sector; the
 numbering runs continuously across sections.
 
 ---
@@ -1496,4 +1496,223 @@ kitchens, stores, and waste streams.
       debris datasets are far more practical than physically testing
       in thousands of pools.
 
-<!-- SECTIONS-CONTINUE -->
+---
+
+## 7. More verified prospects (mixed sectors)
+
+A final sweep across sectors to round out the list.
+
+91. **Monarch Tractor** — Livermore, USA
+    - **What they do:** Builds the MK-V, a fully electric,
+      driver-optional autonomous tractor for vineyards, orchards, and
+      dairies, plus the WingspanAI farm management platform.
+    - **Website:** https://www.monarchtractor.com
+    - **Valuation:** ~$500M+ (as of July 2024 Series C; the company
+      hit financial turbulence and layoffs in 2025 — re-check)
+    - **Last raise:** ~$133M Series C (July 2024) —
+      [Monarch Tractor CEO says $133M raise will help it escape 'quite a challenging time'](https://techcrunch.com/2024/07/22/monarch-tractor-ceo-says-133m-raise-will-help-it-escape-quite-a-challenging-time/)
+    - **Employees:** ~200–300 (reduced after 2025 layoffs)
+    - **Why sim / synthetic data:** Driver-optional tractors must
+      validate vision-based autonomy across endless crop-row,
+      lighting, dust, and weather edge cases that are slow and costly
+      to capture on real farms; simulated vineyards and synthetic
+      agricultural imagery directly feed their perception stack.
+
+92. **Burro (Augean Robotics)** — Philadelphia, USA
+    - **What they do:** Makes autonomous "people-scale to pallet-scale"
+      outdoor mobile robots that tow, haul, mow, and patrol in
+      nurseries, vineyards, and orchards.
+    - **Website:** https://burro.ai
+    - **Valuation:** undisclosed; raised ~$54M total
+    - **Last raise:** ~$24M Series B (January 2025) —
+      [With a fresh $24m, Burro grows from 'people to pallet scale'](https://agfundernews.com/with-a-fresh-24m-burro-grows-from-people-to-pallet-scale-with-autonomous-harvest-assist-robots)
+    - **Employees:** ~50
+    - **Why sim / synthetic data:** Their robots navigate unstructured
+      outdoor rows using vision; synthetic crop-row, foliage, and
+      terrain data plus simulated farms would let them regression-test
+      navigation across crops and seasons without burning fleet time
+      in the field.
+
+93. **Cartken** — Oakland, USA
+    - **What they do:** Builds camera-based autonomous delivery robots,
+      now pivoting from sidewalk food delivery to indoor/outdoor
+      industrial material transport in factories and labs.
+    - **Website:** https://www.cartken.com
+    - **Valuation:** undisclosed; raised ~$22.5M total
+    - **Last raise:** ~$10M round, bringing aggregate to ~$22.5M
+      (July 2024) —
+      [From burritos to biotech: How robotics startup Cartken found its AV niche](https://techcrunch.com/2024/07/03/from-burritos-to-biotech-how-robotics-startup-cartken-found-its-av-niche/)
+    - **Employees:** ~50
+    - **Why sim / synthetic data:** A camera-only (no lidar) autonomy
+      stack moving between sidewalks, campuses, and factory floors
+      needs huge labeled visual variety; simulated facilities and
+      synthetic pedestrian/forklift interaction scenarios are a
+      natural fit for safe policy testing.
+
+94. **Ati Motors** — Bengaluru, India
+    - **What they do:** Manufactures Sherpa autonomous mobile robots
+      (tugs, pallet and bin movers) for factories, using a
+      self-driving-car-style autonomy stack; deployed at 40+
+      manufacturers including Hyundai and Forvia.
+    - **Website:** https://www.atimotors.com
+    - **Valuation:** undisclosed; raised ~$37M total
+    - **Last raise:** ~$20M Series B (January 2025) —
+      [Ati Motors Raises $20M Series B for Global Expansion](https://www.prnewswire.com/news-releases/ati-motors-raises-20m-series-b-for-global-expansion-of-its-ai-powered-robotics-workforce-302357446.html)
+    - **Employees:** ~150
+    - **Why sim / synthetic data:** Every new factory deployment means
+      a new floor layout, traffic pattern, and sensor environment;
+      digital twins of customer plants and synthetic lidar/camera data
+      would shorten site commissioning and de-risk global expansion.
+
+95. **Matic** — Mountain View, USA
+    - **What they do:** Consumer home robot that vacuums and mops fully
+      autonomously using five-plus RGB/IR cameras and on-device neural
+      networks instead of lidar.
+    - **Website:** https://maticrobots.com
+    - **Valuation:** ~$650M (as of July 2025)
+    - **Last raise:** ~$77.3M "Series A Prime" (July 2025) —
+      [Matic funding, news & analysis](https://sacra.com/c/matic/)
+    - **Employees:** ~50
+    - **Why sim / synthetic data:** Camera-only indoor SLAM and
+      dirt/object recognition must generalize across millions of
+      unique homes; synthetic home interiors with varied flooring,
+      lighting, clutter, and pets are the cheapest way to expand
+      training coverage.
+
+96. **Outrider** — Golden, USA
+    - **What they do:** Automates distribution-yard operations with
+      autonomous electric yard trucks that hitch trailers, move them
+      between docks, and connect trailer brake lines — sold as a
+      service to Fortune 500 logistics operators.
+    - **Website:** https://www.outrider.ai
+    - **Valuation:** undisclosed; raised ~$250M+ total
+    - **Last raise:** ~$62M Series D (October/November 2024) —
+      [Outrider Raises $62M to Expand Autonomous Yard Truck Services](https://www.supplychain247.com/article/outrider-raises-62-million-autonomous-yard-truck-services)
+    - **Employees:** ~200
+    - **Why sim / synthetic data:** Yard autonomy needs validated
+      behavior around trailers, jockeying trucks, and human workers;
+      digital-twin yards and synthetic trailer/coupler perception data
+      let them prove safety cases and test rare events.
+
+97. **Corvus Robotics** — Boston, USA
+    - **What they do:** Fully autonomous, infrastructure-free indoor
+      drones (Corvus One) that fly warehouse aisles scanning barcodes
+      for inventory counts, including in lights-out facilities.
+    - **Website:** https://www.corvus-robotics.com
+    - **Valuation:** undisclosed; raised ~$23M total
+    - **Last raise:** ~$18M Series A (October 2024) —
+      [Corvus Robotics soars to new heights with Series A round for drone inventory](https://www.therobotreport.com/corvus-robotics-series-a-round-drone-inventory/)
+    - **Employees:** ~30
+    - **Why sim / synthetic data:** GPS-denied flight via an "AI world
+      model" must handle every rack type, label, and lighting
+      condition; simulated warehouses and synthetic barcode/rack
+      imagery (including low-light) would scale their perception
+      training far faster than customer site visits.
+
+98. **Four Growers** — Pittsburgh, USA
+    - **What they do:** Builds the GR-100, an AI-powered greenhouse
+      robot that detects ripeness and harvests tomatoes (and now
+      cucumbers) with ~98% pick accuracy.
+    - **Website:** https://fourgrowers.com
+    - **Valuation:** undisclosed; raised ~$15M+ total
+    - **Last raise:** ~$9M Series A (November 2024) —
+      [YC-backed Four Growers builds robots to help solve greenhouse labor shortages](https://techcrunch.com/2024/11/20/yc-backed-four-growers-builds-robots-to-help-solve-greenhouse-labor-shortages/)
+    - **Employees:** ~25
+    - **Why sim / synthetic data:** Harvesting under heavy occlusion
+      demands training data spanning fruit ripeness, leaf cover, and
+      trellis variation per crop; procedurally generated synthetic
+      plants are the standard way to expand to new crops without
+      months of greenhouse data collection.
+
+99. **Neros** — El Segundo, USA
+    - **What they do:** US manufacturer of low-cost FPV reconnaissance
+      and strike drones (Archer line) and ground control systems for
+      defense customers, with a China-free supply chain.
+    - **Website:** https://neros.tech
+    - **Valuation:** undisclosed; raised ~$120M+ total
+    - **Last raise:** ~$75M Series B (November 2025) —
+      [Drone maker Neros closes Series B round to expand industrial capacity](https://www.therobotreport.com/drone-maker-neros-raises-75m-expand-industrial-capacity/)
+    - **Employees:** ~150
+    - **Why sim / synthetic data:** FPV drones operating under
+      electronic warfare and GPS denial need simulated flight
+      environments for autonomy testing, synthetic target imagery for
+      visual guidance, and sim-based operator training at scale.
+
+100. **Deep Robotics** — Hangzhou, China
+     - **What they do:** Maker of industrial quadruped robots (X- and
+       Lynx-series "robot dogs") for power-station inspection,
+       tunnels, and emergency response, now expanding into the DR02
+       all-weather humanoid.
+     - **Website:** https://www.deeprobotics.cn/en
+     - **Valuation:** undisclosed; reportedly well under $5B
+       (preparing a STAR Market IPO)
+     - **Last raise:** ~$68–70M Series C (December 2025) —
+       [Deep Robotics Secures $68M in Series C to Fuel Humanoid and 'Embodied AI' Push](https://www.humanoidsdaily.com/news/deep-robotics-secures-68m-in-series-c-to-fuel-humanoid-and-embodied-ai-push)
+     - **Employees:** ~400
+     - **Why sim / synthetic data:** Legged locomotion over stairs,
+       rubble, and substation terrain is trained almost entirely via
+       reinforcement learning in simulation; custom terrain
+       environments and domain-randomized synthetic data are core
+       inputs to their embodied-AI roadmap.
+
+101. **LimX Dynamics** — Shenzhen, China
+     - **What they do:** Develops modular and general-purpose humanoid
+       robots and bipedal platforms (Oli, TRON series) aimed at
+       logistics and industrial tasks, backed by JD.com.
+     - **Website:** https://www.limxdynamics.com
+     - **Valuation:** undisclosed; raised ~$296M total
+     - **Last raise:** ~$200M Series B (February 2026) —
+       [Chinese embodied AI startup LimX Dynamics raises $200m in Series B round](https://www.dealstreetasia.com/stories/limx-dynamics-series-b-round-471255)
+     - **Employees:** ~300
+     - **Why sim / synthetic data:** Humanoid whole-body control and
+       manipulation skills are trained sim-first (RL plus sim-to-real
+       transfer); purpose-built simulation environments and synthetic
+       manipulation datasets are exactly the scaling bottleneck a
+       $200M deployment push creates.
+
+102. **Booster Robotics** — Beijing, China
+     - **What they do:** Builds low-cost, durable humanoid robots (T1,
+       K1) sold as development platforms for researchers and
+       developers; its robots powered the 2025 RoboCup AdultSize
+       champion team.
+     - **Website:** https://www.booster.tech
+     - **Valuation:** undisclosed; ~$14M Series A+ (RMB ~100M) plus
+       earlier rounds
+     - **Last raise:** ~$14M Series A+ (July 2025), following a
+       Series A in June 2025 —
+       [China's Booster Robotics Lands New Funding as it Hits a Winning Streak](https://www.caixinglobal.com/2025-07-25/chinas-booster-robotics-lands-new-funding-as-it-hits-a-winning-streak-102344904.html)
+     - **Employees:** ~150
+     - **Why sim / synthetic data:** As a developer-platform humanoid
+       company, both Booster and its customer base need ready-made
+       simulation environments, accurate robot models, and synthetic
+       training data — a consultant can plug into their SDK/ecosystem
+       play directly.
+
+103. **EngineAI** — Shenzhen, China
+     - **What they do:** Develops agile, low-cost humanoid and bipedal
+       robots (PM01, T800) known for highly dynamic RL-trained gaits,
+       with a new factory targeting one humanoid every 15 minutes.
+     - **Website:** https://www.engineai.com.cn
+     - **Valuation:** ~$1.4B (over RMB 10B, as of late 2025)
+     - **Last raise:** ~$139M across Pre-A++ and Series A1 rounds
+       (July 2025; further A1+/A2 rounds closed December 2025) —
+       [EngineAI raises nearly $140M to develop legged, humanoid robots](https://www.therobotreport.com/engineai-raises-nearly-140m-developing-legged-humanoid-robots/)
+     - **Employees:** ~200
+     - **Why sim / synthetic data:** Their signature dynamic locomotion
+       is produced by large-scale reinforcement learning in
+       simulation; scaling from gait demos to useful manipulation
+       requires exactly the custom sim environments and synthetic
+       skill data a consultant would provide.
+
+---
+
+## Companies checked and excluded
+
+For transparency on the screen: **Figure AI, Skild AI, Anduril,
+Shield AI, Apptronik, 1X Technologies, Unitree** were excluded on
+valuation (at/above ~$5B or unverifiable below it); **RIVR/Swiss-Mile**
+(Amazon), **Fernride** (Quantum Systems), **Mentee Robotics**
+(Mobileye), and **Fox Robotics** (Symbotic) were excluded as acquired;
+**Collaborative Robotics** (April 2024) and **Hai Robotics** (2021)
+last raised outside the two-year window; **Waymo and robotaxi firms**
+were excluded as not pure-play robotics in the sense used here.
