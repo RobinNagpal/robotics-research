@@ -30,7 +30,7 @@
   demo to each other on day 4. One shared simulator world (Layer 1) is
   the only hard dependency.
 - **Goal of the whole thing:** by the end you can stand up the digital
-  twin, move the arm, see a fiducial, grasp a vial, read a barcode, run
+  twin, move the arm, detect a vial with YOLO, grasp a vial, read a barcode, run
   a behavior tree, and serve + log a worklist — *and* explain each piece
   to a non-robotics buyer in terms of **their** problem.
 - New term? The [sample-prep primer](02-lab-bench-new.md) and the
@@ -72,8 +72,8 @@ prospect even about a problem we haven't built yet.
 - [ ] **Internalize the cross-cutting concepts** (one sentence each):
   **ROS 2**, **node / topic / service / action**,
   **URDF**, **tf frame**, **digital twin**, **motion planning**,
-  **inverse kinematics**, **RGB-D**, **point cloud**, **fiducial /
-  AprilTag**, **grasp pose**, **behavior tree**, **sim-to-real**.
+  **inverse kinematics**, **RGB-D**, **point cloud**, **object
+  detection / YOLO**, **grasp pose**, **behavior tree**, **sim-to-real**.
 - [ ] **Lab-automation vocabulary** (so you don't sound naïve to an
   instrument company): **LIMS**, **CDS** (Empower / Chromeleon),
   **SiLA 2**, **OPC UA**, **21 CFR Part 11**, **ALCOA+**, **audit
@@ -172,17 +172,17 @@ Every hello world uses the **HPLC vial / tray** as its subject.
 
 ### Layer 4 — Perception & 3D vision
 
-- [ ] **Understand:** RGB vs RGB-D, point clouds, fiducials, camera
-  intrinsics, hand-eye calibration (concept only). Read
+- [ ] **Understand:** RGB vs RGB-D, point clouds, object detection
+  (YOLO), camera intrinsics, hand-eye calibration (concept only). Read
   [`01-only-code/04-perception-and-vision.md`](05-mycobot-280-impl/01-only-code/04-perception-and-vision.md).
-- [ ] **Know the comparison:** OpenCV vs Open3D vs PCL; apriltag_ros;
-  camera SDKs (RealSense / OAK / Orbbec) for later hardware.
+- [ ] **Know the comparison:** Ultralytics YOLO for detection; OpenCV vs
+  Open3D vs PCL; camera SDKs (RealSense / OAK / Orbbec) for later hardware.
 - [ ] **Hello world — "see the tray":** add a **simulated camera** to the
-  Gazebo world, put an **AprilTag** on the tray, run **apriltag_ros**
-  (or the `apriltag` lib on a saved frame) and **print the tag's pose**;
-  as a bonus, use **OpenCV** to find the vial **rim** (a circle) in the
-  same image. *Done when:* a script prints the tray tag's 6-number pose
-  and draws the detected vial rim.
+  Gazebo world, run a **YOLO** detector (`ultralytics`) on the frame to
+  **detect the tray and vials**, and **print each detection's box +
+  class**; as a bonus, lift a box-centre to a 3-D point using the
+  **RGB-D depth**. *Done when:* a script prints the detected objects and
+  one lifted 3-D position.
   **Code:** [`04-hello-worlds/04-see-the-tray.md`](04-hello-worlds/04-see-the-tray.md).
 
 ### Layer 5 — Grasping & manipulation
@@ -297,7 +297,7 @@ Chain the hello worlds into the **smallest end-to-end loop**, because
 *this* is what you screen-record for the pitch:
 
 - [ ] **One vial, start to finish, in sim:** `read worklist (L8)` →
-  `locate vial via tag (L4)` → `pick + verify hold (L5+S)` →
+  `locate vial via YOLO (L4)` → `pick + verify hold (L5+S)` →
   `call mock /decap (L2)` → `place in tray slot + verify seated (L3+L4)`
   → `log every step + its gating sensor to the audit trail (L8)`,
   all sequenced by the **behavior tree (L7)**.
@@ -380,7 +380,7 @@ can:
 
 - [ ] Stand up the **digital twin** (arm + vial + tray in Gazebo/RViz).
 - [ ] **Plan and execute** a collision-free arm motion in sim.
-- [ ] **Detect** a fiducial and print its pose; find the vial.
+- [ ] **Detect** the tray and vials with YOLO and print their poses.
 - [ ] **Grasp** the vial and **verify the hold** from sensor feedback.
 - [ ] **Decode** a vial barcode and map it to a worklist.
 - [ ] Run a **behavior tree** that retries/quarantines on a failed gate.

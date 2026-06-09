@@ -1,8 +1,10 @@
 # Foundation models — VLAs & generalist robot policies (the learned upgrade path)
 
-> **Why this doc exists.** The per-layer guides recommend a
-> **geometric, known-pose, analytical-first** stack for v1 — the right
-> call for *one known vial in a known tray*. But the fast-moving frontier
+> **Why this doc exists.** The per-layer guides recommend an
+> **analytical-first** stack for v1 — analytical motion and grasping,
+> with **YOLO object detection** (trained on synthetic data from the
+> twin) for perception — the right call for *one known vial in a known
+> tray*. But the fast-moving frontier
 > of robotics is **learned generalist policies**: Vision-Language-Action
 > (**VLA**) models that take camera frames + a text instruction and emit
 > robot actions end-to-end. This doc is the **canonical comparison** of

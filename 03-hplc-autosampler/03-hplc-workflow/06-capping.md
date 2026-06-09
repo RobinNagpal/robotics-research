@@ -87,7 +87,7 @@ arm is well suited to. There is no judgement involved, just consistency.
 ## Objects needed in the simulation scene
 
 Beyond the **shared workcell** (arm, gripper, table, overhead + wrist
-cameras, AprilTag markers, racks), this step adds:
+cameras, a YOLO object detector, racks), this step adds:
 
 | Object | What it is | Mock node / topic |
 |---|---|---|

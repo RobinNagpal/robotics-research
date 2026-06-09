@@ -96,7 +96,7 @@ opening repeatably?* Get that right and much of the rest follows.
 ## Objects needed in the simulation scene
 
 Beyond the **shared workcell** (arm, gripper, table, overhead + wrist
-cameras, AprilTag markers, racks), this step adds:
+cameras, a YOLO object detector, racks), this step adds:
 
 | Object | What it is | Mock node / topic |
 |---|---|---|

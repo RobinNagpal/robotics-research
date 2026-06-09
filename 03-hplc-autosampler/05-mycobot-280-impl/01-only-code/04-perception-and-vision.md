@@ -33,17 +33,23 @@ here is to deliver one of the two witnesses, not the whole verdict.
 
 | Framework | Role | Tier | One-liner |
 |---|---|---|---|
-| Ultralytics YOLO (PyTorch) | Learned object detection / segmentation | Best-in-class | Trained neural net finds and outlines vials in RGB; strongest, but needs data + GPU. |
-| OpenCV | Classic 2-D image processing | Cheapest | Free, CPU-only, everywhere — the workhorse for edges, blobs, colour, contours. |
-| OpenCV + Open3D + AprilTag | Geometry + fiducials for known objects | Best-practical | Combine 2-D vision, 3-D point clouds, and printed markers for reliable known-pose pickup. |
+| Ultralytics YOLO + OpenCV + RGB-D depth | Learned detection lifted to 3-D | Best-practical | YOLO finds vials/tray in RGB, depth lifts each detection to a 3-D pose — the real workflow. |
+| Ultralytics YOLO (PyTorch) | Learned object detection / segmentation | Best-in-class | Trained neural net finds and outlines vials in RGB; the detector at the heart of the cell. |
+| OpenCV | Classic 2-D image processing | Cheapest | Free, CPU-only, everywhere — the workhorse for image handling, edges, blobs, colour. |
 | Open3D | 3-D point-cloud processing | Alternative | Modern, friendly library for filtering, fitting, and registering point clouds. |
 | PCL (Point Cloud Library) | Heavy-duty 3-D point-cloud processing | Alternative | Exhaustive, battle-tested C++ point-cloud toolkit — powerful but heavy and dated. |
 
-A **fiducial** is a printed pattern designed to be easy for a camera to
-find and measure; an **AprilTag** is a specific, widely-used fiducial —
-a small black-and-white square (like a chunky QR code) whose four
-corners let software recover the tag's full 6-number pose from a single
-image. Stick one on a tray, and "where is the tray?" becomes trivial.
+**Bottom line:** YOLO detection lifted to 3-D through the depth image is
+the practical backbone here; OpenCV and Open3D are supporting tools for
+image handling and point-cloud geometry.
+
+A **detector** is software that finds and labels objects in an image —
+it draws a box around each vial, the tray, a cap, a beaker, and tells you
+what each box is. **YOLO** ("You Only Look Once") is a fast, widely-used
+detector. It gives you a 2-D box in the picture; pairing that box with
+the **depth** image (how far each pixel is) lets you recover the object's
+3-D position. No printed markers are stuck on anything — the cell reads
+the objects themselves.
 
 ## Ultralytics YOLO (PyTorch)
 
@@ -51,28 +57,32 @@ Ultralytics YOLO ("You Only Look Once") is a family of neural networks
 for **object detection** (draw a box around each vial and label it) and
 **instance segmentation** (outline its exact silhouette). It is built on
 **PyTorch**, the dominant deep-learning framework, and ships as a Python
-package with pre-trained models you fine-tune on your own images. In
-only-code mode you train it on synthetic frames rendered by the
-simulator, which can churn out thousands of perfectly-labelled images for
-free.
+package (`ultralytics`) with pre-trained models you fine-tune on your own
+images. In only-code mode you train it on **synthetic frames** rendered
+by the simulator, which can churn out thousands of perfectly-labelled
+images for free — see the synthetic-data note below.
 
 Its strength is robustness to *variety*. A learned detector copes with
 clutter, partial occlusion, odd lighting, and vials it has only loosely
 seen before — situations where hand-tuned rules fall apart. It is the
 only one of the five that genuinely *recognises* objects rather than
-matching geometry or markers, so it scales to "find any vial in a messy
-rack" far better than the others. For a v2 that must handle unlabelled or
-varied consumables, this is the ceiling.
+matching geometry, so it scales from "find this tray" to "find any vial
+in a messy rack" far better than the others. That is why it sits at the
+heart of the cell's perception rather than off to the side.
 
-Its weakness, versus the other four, is cost and discipline. It needs a
-**GPU** to train and to run fast (OpenCV, Open3D, PCL, and AprilTag all
-run happily on a plain CPU), and it needs a *dataset* — even synthetic
-data must be generated and curated, whereas AprilTag needs only a printed
-marker and OpenCV needs only a few lines of code. It also returns 2-D
-boxes or masks, not a 6-number pose; you still bolt on Open3D or PCL to
-lift its output into 3-D. For a v1 whose vials and trays are **known and
-fixed**, that is more machinery than the job requires — which is exactly
-why it is best-in-class but not best-practical here.
+Its cost, versus the other four, is discipline. It runs fastest on a
+**GPU** (OpenCV, Open3D, and PCL all run happily on a plain CPU, and a
+small YOLO model can run on CPU too, just slower), and it needs a
+*dataset* — synthetic frames must still be generated and curated. It also
+returns 2-D boxes or masks, not a 6-number pose, so you pair it with the
+**depth** image (or Open3D/PCL) to lift each detection into 3-D. Those
+are real obligations, but they are obligations the project already plans
+for: the simulator generates the training data, and the depth camera
+supplies the lift. That is what makes the **YOLO + depth** pipeline the
+practical backbone, not just the best-in-class detector.
+
+**Bottom line:** the learned detector that does the real recognising —
+paired with depth for 3-D, it is the cell's perception backbone.
 
 ## OpenCV
 
@@ -89,8 +99,9 @@ licensed, CPU-only, and so ubiquitous that almost any vision question has
 a worked answer online. For a tidy synthetic scene, simple OpenCV tricks
 go a long way — a vial's circular rim is a near-perfect target for
 Hough-circle detection, and a tray's grid can be located by colour and
-contour. It is also the glue everyone reaches for: the AprilTag and YOLO
-pipelines both lean on OpenCV for image handling and calibration.
+contour. It is also the glue everyone reaches for: the **YOLO pipeline**
+leans on OpenCV for image handling, cropping, and calibration, and on its
+camera intrinsics to deproject a detection into 3-D.
 
 Its weakness, against the other four, is that on its own it is **2-D and
 hand-tuned**. It has no native point-cloud or 3-D-registration tools the
@@ -101,34 +112,47 @@ varied or cluttered. It is indispensable plumbing, but rarely the whole
 answer; that is why the practical pick *includes* OpenCV rather than
 relying on it alone.
 
-## OpenCV + Open3D + AprilTag
+**Bottom line:** the indispensable image-handling and calibration glue
+the YOLO pipeline runs on — never the whole answer by itself.
 
-This is not one tool but the **recommended combination** for v1, and it
-earns its own section because the whole is the point. **AprilTag**
-markers, stuck on the tray (and optionally on a vial caddy), give an
-instant, rock-solid 6-number pose for those known fixtures from a single
-RGB frame. **OpenCV** handles the 2-D work around them — reading frames,
-camera calibration, finding vial rims by shape and colour. **Open3D**
-takes the simulator's depth/point-cloud data and fits clean geometry
-(planes for the tray surface, cylinders for vials) to confirm heights and
-catch a missing or tipped vial.
+## Ultralytics YOLO + OpenCV + RGB-D depth
 
-It is the **best-practical** pick because it matches the v1 philosophy:
-the vials and trays are *known* objects at *known-ish* poses, so you
-solve the problem with **geometry and fiducials** instead of training a
-network. Every piece is free, open-source, and CPU-friendly, so it runs
-on the same modest machine as the simulator with no GPU. It is also far
-more *debuggable* than a neural net: when a pose is wrong you can see
-which marker or which fitted cylinder went astray, rather than squinting
-at a black box.
+This is not one tool but the **recommended combination** for the real
+cell, and it earns its own section because the whole is the point.
+**YOLO** runs on each RGB frame and finds the objects directly — the
+tray, the vials, the caps, a beaker — returning a labelled box (and, with
+a segmentation model, an outline) for each, with **no printed markers on
+anything**. **OpenCV** handles the 2-D plumbing: receiving frames,
+cropping to a detection, and holding the camera intrinsics. The **RGB-D
+depth** image supplies the missing third dimension: take a detection's
+box-centre pixel, read its depth, and **deproject** it through the
+intrinsics to a 3-D point — turning a flat box into a real position in
+space. For the tray, YOLO finds the tray, depth lifts it to a 3-D pose,
+and the individual nests are indexed from the **known tray geometry**
+relative to that pose.
 
-Its limit, versus YOLO, is that it leans on *structure you control* —
-markers you placed, shapes you expect. It will not recognise an
-unexpected object or a vial type it was never told about, and it asks you
-to physically tag fixtures, which YOLO does not. Against bare OpenCV it is
-more moving parts; against PCL it deliberately swaps raw power for
-Open3D's simplicity. For the constrained HPLC cell those trade-offs are
-all in its favour, but they are real trade-offs.
+It is the **best-practical** pick because it is the *real* workflow: a
+working lab cell must read varied, unlabelled consumables that no fiducial
+will ever be stuck to, and a learned detector is what actually does that.
+The detector is trained and validated on **synthetic data** generated
+from the Gazebo twin with **domain randomization** (varying lighting,
+textures, and object poses), so the data cost is paid by the simulator,
+not by a human labelling photographs — which is exactly the project's
+synthetic-data services direction. Depth lifting keeps the 3-D side
+simple: no point-cloud model-fitting is required just to get a pose, only
+one depth read per detection.
+
+Its obligations, versus a pure-geometry approach, are a **dataset** and a
+detector to train, and a GPU to train comfortably (a small model infers
+on CPU, just slower). When a pose looks wrong you debug two clear stages —
+the detection (is the box on the right object?) and the lift (is the depth
+read clean?) — rather than one black box. Open3D or PCL can still be added
+where a fuller 3-D fit helps (confirming a tray plane, a tipped vial), but
+they are supporting tools, not the backbone.
+
+**Bottom line:** YOLO detection lifted to 3-D through depth is the cell's
+practical perception backbone — the real workflow, backed by synthetic
+training data from the twin.
 
 ## Open3D
 
@@ -142,20 +166,23 @@ API is clean and its built-in 3-D viewer makes debugging genuinely
 pleasant.
 
 Its appeal over the others is the sweet spot it hits: it does real 3-D
-geometry that OpenCV and AprilTag cannot, while being dramatically
-**lighter and friendlier than PCL**. A point-cloud filtering-and-fitting
-task that is a paragraph of Python in Open3D is a much larger C++ build in
-PCL. For the modest 3-D needs of this cell — confirm the tray plane,
-verify vial presence and height — it is right-sized.
+geometry that OpenCV cannot, while being dramatically **lighter and
+friendlier than PCL**. A point-cloud filtering-and-fitting task that is a
+paragraph of Python in Open3D is a much larger C++ build in PCL. For the
+modest 3-D needs of this cell — confirm the tray plane, verify vial
+presence and height — it is right-sized.
 
 Its weakness is breadth and ecosystem depth. **PCL** still carries more
 exotic algorithms and a longer track record in heavy industrial 3-D work;
-**OpenCV** owns 2-D far more completely; **YOLO** owns recognition; and
-**AprilTag** beats Open3D outright for the specific job of pose-from-a-
-marker (faster, simpler, more reliable than fitting a cloud). On its own
-Open3D answers "what is the geometry here?" but not "which object is
-this?" — so it is a strong *component*, which is why it rides inside the
-practical combo rather than standing alone.
+**OpenCV** owns 2-D far more completely; and **YOLO** owns recognition —
+which object is this? On its own Open3D answers "what is the geometry
+here?" but not "which object is this?" — so it is a strong *component*
+that supports the YOLO backbone (a depth read or a confirming plane fit),
+rather than standing alone.
+
+**Bottom line:** the right-sized 3-D helper — supports the YOLO + depth
+backbone with plane and cylinder fits, but does not recognise objects
+itself.
 
 ## PCL (Point Cloud Library)
 
@@ -177,23 +204,28 @@ It is C++-first with comparatively awkward Python bindings, slow and
 fiddly to build and link, and its documentation has aged poorly compared
 to Open3D's clean modern API. For this cell's simple 3-D needs it is
 overkill: Open3D does the same fitting with far less friction, OpenCV
-handles the 2-D, AprilTag handles the known-pose problem outright, and
+handles the 2-D, depth lifting turns a YOLO box into a pose outright, and
 YOLO handles recognition. So PCL stays an **Alternative** — reach for it
 only if a specific 3-D algorithm you need lives only there.
+
+**Bottom line:** the heavyweight 3-D toolkit held in reserve — reach for
+it only when a niche point-cloud algorithm lives nowhere else.
 
 ## Verdict
 
 - **Best-in-class:** **Ultralytics YOLO (PyTorch)** — learned detection
   and segmentation is the most powerful and general perception on offer,
-  the right tool once vials and racks become varied or unlabelled. It
-  pays for that power with a GPU and a dataset.
-- **Cheapest:** **OpenCV** — free, CPU-only, ubiquitous, and good enough
-  on its own for the clean, simple synthetic scenes you start with.
-- **Best-practical:** **OpenCV + Open3D + AprilTag** — geometry plus
-  fiducials for the *known* vials and trays. It matches the v1
-  "known-pose first" rule, needs no GPU and no training data, runs beside
-  the simulator, and stays easy to debug. Defer YOLO to a later milestone
-  when variety demands it.
+  the detector that actually recognises varied, unlabelled vials and
+  racks. It pays for that power with a dataset (synthetic, from the twin)
+  and a GPU to train comfortably.
+- **Cheapest:** **OpenCV** — free, CPU-only, ubiquitous; the image-
+  handling and intrinsics glue the YOLO pipeline runs on.
+- **Best-practical:** **Ultralytics YOLO + OpenCV + RGB-D depth** — the
+  real workflow. YOLO finds the tray, vials, and caps directly in RGB
+  with no printed markers; depth lifts each detection to a 3-D pose; tray
+  nests are indexed from known geometry. It is trained and validated on
+  synthetic data the Gazebo twin generates with domain randomization,
+  tying perception straight to the project's synthetic-data services.
 
 ## Realistic scenario & use cases
 
@@ -216,12 +248,14 @@ silently bias every reach. Perception has to hold all of that together.
 
 The layer must therefore serve several **distinct use cases**:
 
-1. **Known-pose localization of tray and vials.** Give Layer 03 the
-   6-DoF pose of the tray and each nest, even after the rack shifts and
-   rotates.
-   - *How the solution handles it:* an **AprilTag** fiducial on the tray
-     yields a full 6-DoF pose via PnP, and the nests are fixed offsets
-     from it — so a 5 mm/2° move is absorbed automatically, no re-teaching.
+1. **YOLO detection + depth localization of tray and vials.** Give Layer
+   03 the 6-DoF pose of the tray and each nest, even after the rack shifts
+   and rotates.
+   - *How the solution handles it:* **YOLO** detects the tray and vials in
+     the RGB frame, the **depth** image lifts each detection to a 3-D
+     point, and the nests are indexed as fixed offsets from the detected
+     tray pose — so a 5 mm/2° move is absorbed automatically, no
+     re-teaching and no printed marker.
 
 2. **Presence / absence and fill verification.** Spot the two empty nests
    and the under-filled vial *before* the arm moves.
@@ -231,7 +265,7 @@ The layer must therefore serve several **distinct use cases**:
 
 3. **Grasp confirmation from the wrist camera.** Confirm a vial is truly
    in the jaws before retreat and transit.
-   - *How:* the wrist camera checks for the vial's edge/tag at the gripper
+   - *How:* the wrist camera checks for the vial's edge at the gripper
      line; this is the visual half of a two-witness check with the gripper
      `JointState` from Layer 05.
 
@@ -239,39 +273,43 @@ The layer must therefore serve several **distinct use cases**:
    *check* the camera↔arm↔bench transforms so a detected pose is correct
    in the arm's frame.
    - *How:* in only-code the transforms are known, but the **calibration
-     procedure** (drive the arm to several known tag poses, solve
-     `calibrateHandEye`) is rehearsed here so it transfers to hardware; a
-     deliberate 3 mm offset is injected to prove the depth cross-check
-     flags the disagreement rather than reaching blindly.
+     procedure** (drive the arm to several known calibration-target poses,
+     solve `calibrateHandEye`) is rehearsed here so it transfers to
+     hardware; a deliberate 3 mm offset is injected to prove the depth
+     cross-check flags the disagreement rather than reaching blindly.
 
 5. **Lighting and reflection robustness.** Keep detection stable when the
    light changes and glass glares.
-   - *How:* AprilTag is high-contrast and robust; the **two-witness**
-     depth cross-check rejects a spurious RGB hit; and when variety grows,
-     Layer 01's domain-randomized (Isaac Sim) frames harden the learned
-     **YOLO** path.
+   - *How:* the **YOLO** detector is trained on **domain-randomized**
+     synthetic frames (varied lighting, textures, and glare) so it stays
+     stable as the light changes; the **two-witness** depth cross-check
+     then rejects a spurious RGB hit before the arm acts on it.
 
-**Where the pick flexes.** OpenCV + Open3D + AprilTag (best-practical)
-covers use cases 1–4 and the geometry side of 5 with no GPU and no
-training data — the v1 "known-pose first" rule. Only when vials, labels,
-or racks become genuinely varied or unlabelled (an extreme of use cases 2
-and 5) does the learned **Ultralytics YOLO** path earn its GPU and
-dataset, trained on the synthetic frames the digital twin already
-generates.
+**Where the pick flexes.** Ultralytics YOLO + OpenCV + RGB-D depth
+(best-practical) covers all five use cases: YOLO recognises the tray,
+vials, and caps directly in RGB, depth lifts each detection to a 3-D
+pose, and Open3D adds a confirming geometric fit where presence and fill
+(use case 2) need one. The detector is trained on the synthetic frames
+the digital twin generates with **domain randomization**, so the same
+pipeline that handles a tidy scene also copes when vials, labels, or
+racks become genuinely varied or unlabelled (an extreme of use cases 2
+and 5) — no printed marker anywhere in the loop.
 
 ## Deep dive: the three highest-value use cases
 
 The five above all matter; these three carry the most weight for
 perception & vision.
 
-## Known-pose localization of tray and vials
+## YOLO detection + depth localization of tray and vials
 
 A lab assistant always knows where things are — they glance at a rack and
 instantly register which nest holds which vial, and their hand goes to the
 right spot even if the rack was set down a little crooked. This use case
-gives the cell that spatial sense: from a single fiducial marker on the
-tray, it works out the precise 3-D position of every nest, so the arm
-reaches each one on centre even after a human nudged the rack.
+gives the cell that spatial sense: it **detects** the tray and the vials
+directly in the camera image with YOLO, **lifts** each detection to a 3-D
+point through the depth image, and works out the precise 3-D position of
+every nest, so the arm reaches each one on centre even after a human
+nudged the rack — with no marker stuck to anything.
 
 The bigger experiment is the HPLC batch, where each vial must end up in
 the exact tray slot its worklist row names. Everything downstream —
@@ -282,28 +320,32 @@ later.
 
 The assistant's "where is it?" judgment happens on every reach — hundreds
 of times a day — and re-anchors instantly whenever a rack is moved. The
-cell recomputes nest positions from the marker on every frame the camera
-sees, so the grid follows the rack continuously through the run.
+cell re-detects the tray and recomputes nest positions on every frame the
+camera sees, so the grid follows the rack continuously through the run.
 
 - **The moment:** an operator nudged the rack 5 mm and rotated it 2°; the
   arm must still reach each nest centre exactly.
-- **How, in depth:** an **AprilTag** on the tray gives a full 6-DoF pose
-  via PnP, and every nest is a fixed offset from it, so the whole grid
-  moves with the tag — a shift/rotation is absorbed with no re-teaching.
-- **Edge case it survives:** a partially occluded tag — the detector
-  rejects a low-confidence read and waits for a clean frame rather than
+- **How, in depth:** **YOLO** detects the tray (and the vials) in the RGB
+  frame, the **depth** image lifts the tray detection to a 3-D pose, and
+  every nest is a fixed offset from that pose, so the whole grid moves
+  with the detected tray — a shift/rotation is absorbed with no
+  re-teaching and no printed marker.
+- **Edge case it survives:** a partially occluded tray — YOLO rejects a
+  low-confidence detection and waits for a clean frame rather than
   publishing a wrong pose the arm would act on.
-- **Walkthrough:** (1) detect the tray AprilTag in the overhead frame; (2)
-  solve its 6-DoF pose via PnP; (3) add the fixed per-nest offsets; (4)
+- **Walkthrough:** (1) run YOLO on the overhead frame to detect the tray;
+  (2) lift its box-centre to a 3-D point through the depth image and
+  intrinsics; (3) add the fixed per-nest offsets in the tray frame; (4)
   publish a `PoseStamped` per nest for Layer 03 to reach.
 - **In the scene:** an operator sets the rack down a touch crooked; the
-  overhead camera catches the AprilTag on the tray, and in software the
-  entire 96-nest grid quietly rotates and shifts to follow it, so every
-  reach target lands back on centre.
+  overhead camera frame runs through YOLO, the tray detection is lifted to
+  3-D, and in software the entire 96-nest grid quietly rotates and shifts
+  to follow it, so every reach target lands back on centre.
 - **Why it's done this way:** demanding micron-perfect fixturing would
   make the cell impractical for a real lab where humans place racks by
-  hand; anchoring everything to a fiducial lets the cell absorb that human
-  imprecision instead of failing on it.
+  hand; a real lab also will not let anyone stick a printed marker on
+  every consumable, so the cell detects the objects themselves and absorbs
+  that human imprecision instead of failing on it.
 - **In the full loop:** this is the first step of every per-vial cycle —
   it tells Layer 03 where to reach and Layer 05 where to grasp, so a wrong
   pose here cascades into a missed pick downstream.
@@ -313,87 +355,119 @@ sees, so the grid follows the rack continuously through the run.
 ### Meta code
 
 This meta turns "where is everything?" into a single, well-conditioned
-measurement: find one printed fiducial marker — an AprilTag — on the tray,
-and derive everything else from it. The pipeline subscribes to the
-overhead camera image and the camera's intrinsic parameters (its focal
-lengths and image centre), which together are what let a flat picture be
-turned into 3-D geometry.
+measurement: **detect** the tray in the image with YOLO, **lift** that
+detection to a 3-D pose through the depth image, and derive everything
+else from it. The pipeline subscribes to the overhead camera's RGB image,
+the matching depth image, and the camera's intrinsic parameters (its
+focal lengths and image centre), which together are what let a flat
+picture be turned into 3-D geometry.
 
-On each frame it detects any AprilTags and, for the specific tag known to
-be stuck on the tray, solves the tag's full six-degree-of-freedom pose
-relative to the camera using the geometry of its four corners. That
-camera-relative pose is then transformed into the arm's base frame using
-the known, fixed mounting of the camera — giving the tray's position and
-orientation in the coordinates the arm actually plans in.
+On each frame it runs YOLO, which returns a labelled box for every object
+it recognises — the tray, the vials, the caps. For the **tray** box it
+takes the box-centre pixel, reads that pixel's depth, and **deprojects**
+it through the intrinsics to a 3-D point in the camera frame. That
+camera-relative point is then transformed into the arm's base frame using
+the known, fixed mounting of the camera — giving the tray's position in
+the coordinates the arm actually plans in. (The tray's in-plane rotation
+comes from the detected box orientation, or from a quick plane fit on the
+tray's depth points.)
 
-Because every nest sits at a fixed, known offset from the tray tag, the
+Because every nest sits at a fixed, known offset from the tray, the
 pipeline can now place all 96 nests by simply applying each offset to the
-tag pose. The whole grid therefore moves and rotates rigidly with the tag,
-so a rack nudged 5 mm and rotated 2° is absorbed automatically — no
-position has to be re-taught.
+tray pose. The whole grid therefore moves and rotates rigidly with the
+detected tray, so a rack nudged 5 mm and rotated 2° is absorbed
+automatically — no position has to be re-taught.
 
-A guard runs throughout: if the tag is missing, partly occluded, or
+The YOLO model doing the detecting is trained and validated entirely on
+**synthetic frames** the Gazebo twin renders with **domain
+randomization** — the tray, vials, and caps are varied in pose, texture,
+and lighting so the detector generalises — which is the project's
+synthetic-data services direction in action.
+
+A guard runs throughout: if the tray is missing, partly occluded, or
 detected with low confidence, the frame is skipped rather than publishing
 a pose the arm would act on. Only a clean, confident detection produces
 nest poses for Layer 03. The localizer in pseudocode:
 
 ```text
-# subscribe to the overhead RGB image + the camera intrinsics
+# subscribe to the overhead RGB image + the matching depth image + the camera intrinsics
+# (the YOLO model was trained on domain-randomized synthetic frames from the Gazebo twin)
 # on each frame:
-#     detect AprilTag markers -> (id, corners)
-#     for the tray's tag id:
-#         solve its 6-DoF pose via PnP (corners + tag size + intrinsics)  (T_cam_tag)
-#         T_base_tag = camera_mount * T_cam_tag                            (into the arm frame)
-#         for each nest: pose = T_base_tag * fixed_offset[nest]            (grid follows the tag)
+#     run YOLO on the RGB frame -> detections (class, box, confidence)
+#     for the tray detection:
+#         low confidence / occluded -> skip the frame                      (never publish a guess)
+#         (u, v) = box centre pixel                                        (where the tray is)
+#         z = depth_image[v, u]                                            (how far the tray is)
+#         P_cam = deproject(u, v, z, intrinsics)                          (lift 2-D box -> 3-D point)
+#         T_base_tray = camera_mount * pose_from(P_cam, tray_rotation)    (into the arm frame)
+#         for each nest: pose = T_base_tray * fixed_offset[nest]          (grid follows the tray)
 #         publish a PoseStamped per nest                                   (-> Layer 03)
-#     low-confidence / occluded tag -> skip the frame                      (never publish a guess)
 ```
 
 ### Real code
 
-An OpenCV + AprilTag node that turns the tray tag into a pose for every
-nest. **Illustrative teaching code** — re-verify before use; every line is
+A YOLO node that detects the tray, lifts its box-centre to a 3-D point
+through the depth image, and publishes a pose for every nest.
+**Illustrative teaching code** — re-verify before use; every line is
 commented.
 
 ```python
 import rclpy                                            # ROS 2 Python client library
 from rclpy.node import Node                             # base class for a ROS 2 program
-from sensor_msgs.msg import Image                       # the overhead camera frame
+from message_filters import Subscriber, ApproximateTimeSynchronizer  # pair RGB + depth by timestamp
+from sensor_msgs.msg import Image                       # the overhead RGB and depth frames
 from geometry_msgs.msg import PoseStamped               # the per-nest pose we publish
 from cv_bridge import CvBridge                          # converts a ROS Image <-> an OpenCV array
 import numpy as np                                      # arrays + the camera matrix / transforms
-from pupil_apriltags import Detector                    # finds the printed AprilTags in the image
+from ultralytics import YOLO                            # the trained YOLO detector (PyTorch)
 
 CAM_MTX = np.array([[600., 0., 320.], [0., 600., 240.], [0., 0., 1.]])  # fx,fy + image centre
-TAG_SIZE = 0.03                                          # the tray tag is 3 cm wide (printed size)
-TRAY_TAG = 0                                             # the tag id stuck on the tray
-NEST_OFFSETS = {"A1": (0.00, 0.00, 0.00),               # each nest's fixed offset from the tag...
+TRAY_CLASS = "tray"                                      # the YOLO class name for the tray
+MIN_CONF = 0.60                                          # ignore detections below this confidence
+NEST_OFFSETS = {"A1": (0.00, 0.00, 0.00),               # each nest's fixed offset from the tray...
                 "A2": (0.02, 0.00, 0.00)}               # ...(only two shown; all 96 in practice)
+# weights trained on domain-randomized SYNTHETIC frames rendered by the Gazebo twin (no real photos)
+MODEL = YOLO("tray_vials_synth.pt")                     # load those synthetic-trained weights
 
 
-class TrayLocalizer(Node):                              # publishes a pose per nest from the tray tag
+class TrayLocalizer(Node):                              # publishes a pose per nest from the detected tray
     def __init__(self):                                 # one-time setup
         super().__init__("tray_localizer")              # register on the ROS 2 graph
         self.bridge = CvBridge()                        # the one image converter we reuse
-        self.det = Detector(families="tag36h11")        # the AprilTag family our tags use
         self.pub = self.create_publisher(PoseStamped, "/nest/pose", 10)  # per-nest poses out
-        self.create_subscription(                       # listen to the overhead camera...
-            Image, "/overhead/image_raw", self.on_frame, 10)
+        rgb = Subscriber(self, Image, "/overhead/image_raw")    # the colour frame...
+        depth = Subscriber(self, Image, "/overhead/depth")      # ...and the matching depth frame
+        self.sync = ApproximateTimeSynchronizer(        # deliver an RGB + depth pair together...
+            [rgb, depth], queue_size=10, slop=0.05)     # ...whose timestamps are within 50 ms
+        self.sync.registerCallback(self.on_frame)       # call on_frame with each matched pair
 
-    def on_frame(self, msg):                            # runs on each overhead frame
-        gray = self.bridge.imgmsg_to_cv2(msg, "mono8")  # ROS Image -> grayscale OpenCV array
-        fx, fy, cx, cy = CAM_MTX[0,0], CAM_MTX[1,1], CAM_MTX[0,2], CAM_MTX[1,2]  # intrinsics
-        tags = self.det.detect(gray, estimate_tag_pose=True,  # detect tags AND solve their pose...
-                               camera_params=(fx, fy, cx, cy), tag_size=TAG_SIZE)
-        for t in tags:                                  # consider every detected tag
-            if t.tag_id != TRAY_TAG or t.decision_margin < 30:  # not the tray tag, or low-confidence?
+    def deproject(self, u, v, z):                       # lift a pixel (u, v) at depth z into 3-D
+        fx, fy = CAM_MTX[0, 0], CAM_MTX[1, 1]           # the camera's focal lengths
+        cx, cy = CAM_MTX[0, 2], CAM_MTX[1, 2]           # the image centre
+        x = (u - cx) * z / fx                           # back out the real X from the pixel column
+        y = (v - cy) * z / fy                           # back out the real Y from the pixel row
+        return np.array([x, y, z])                      # the 3-D point in the camera frame
+
+    def on_frame(self, rgb_msg, depth_msg):             # runs on each matched RGB + depth pair
+        img = self.bridge.imgmsg_to_cv2(rgb_msg, "bgr8")    # ROS Image -> an OpenCV colour array
+        depth = self.bridge.imgmsg_to_cv2(depth_msg, "32FC1")  # depth in metres, one float per pixel
+        results = MODEL(img, verbose=False)[0]          # run YOLO -> boxes + classes + confidences
+        for box in results.boxes:                       # consider every detected object
+            name = results.names[int(box.cls)]          # the class name for this detection
+            if name != TRAY_CLASS or float(box.conf) < MIN_CONF:  # not the tray, or low-confidence?
                 continue                                # skip it -> never publish a guessed pose
-            for nest, off in NEST_OFFSETS.items():      # turn the tag pose into each nest's pose
+            x0, y0, x1, y1 = box.xyxy[0]                 # the tray box corners, in pixels
+            u, v = int((x0 + x1) / 2), int((y0 + y1) / 2)   # the box-centre pixel
+            z = float(depth[v, u])                       # read that pixel's depth (metres)
+            if not z > 0.0:                              # no valid depth there?
+                continue                                # skip -> wait for a clean frame
+            tray = self.deproject(u, v, z)               # lift the tray centre into a 3-D point
+            for nest, off in NEST_OFFSETS.items():      # turn the tray pose into each nest's pose
                 p = PoseStamped()                       # the message for this nest
                 p.header.frame_id = "base_link"         # poses are expressed in the arm frame
-                p.pose.position.x = float(t.pose_t[0] + off[0])  # tag X + the nest's fixed X offset
-                p.pose.position.y = float(t.pose_t[1] + off[1])  # tag Y + the nest's fixed Y offset
-                p.pose.position.z = float(t.pose_t[2] + off[2])  # tag Z + the nest's fixed Z offset
+                p.pose.position.x = float(tray[0] + off[0])  # tray X + the nest's fixed X offset
+                p.pose.position.y = float(tray[1] + off[1])  # tray Y + the nest's fixed Y offset
+                p.pose.position.z = float(tray[2] + off[2])  # tray Z + the nest's fixed Z offset
                 self.pub.publish(p)                     # hand this nest's pose to Layer 03
 
 
@@ -549,8 +623,8 @@ highest-frequency perception checks in the loop.
   lifts and carries the vial, the wrist camera must confirm a vial is
   actually in the jaws.
 - **How, in depth:** the wrist camera looks at the gripper line for the
-  vial's edge (or a tag), returning a "vial present" boolean that the
-  Layer 10 grasp gate ANDs with the gripper's own width reading.
+  vial's edge, returning a "vial present" boolean that the Layer 10 grasp
+  gate ANDs with the gripper's own width reading.
 - **Edge case it survives:** a vial gripped but not properly seated — the
   camera sees no vial at the expected gripper line and reports absent, so
   the cell re-grasps rather than carrying a bad hold.
@@ -581,9 +655,8 @@ frame, which makes the check simple and reliable.
 
 Right after a pick, the pipeline grabs a wrist-camera frame and looks for
 the vial's signature at the gripper line — the bright vertical edges of
-the glass, or a fiducial if the vials carry one. It is not trying to
-identify the vial (that's the scan step later), only to answer
-present-or-absent.
+the glass. It is not trying to identify the vial (that's the scan step
+later), only to answer present-or-absent.
 
 The result is published as a single boolean on a "vial present" topic.
 Deliberately, this is only one witness: the pipeline doesn't act on it
@@ -599,7 +672,7 @@ in pseudocode:
 # the wrist camera is rigidly mounted, so a held vial appears at a fixed region of the frame
 # right after a pick:
 #     grab a wrist-camera frame
-#     look at the gripper line for the vial's edges (or its tag)
+#     look at the gripper line for the vial's edges
 #     vial seen there -> publish /wrist/vial_present = True
 #     nothing there   -> publish /wrist/vial_present = False
 # Layer 10 ANDs this with the gripper width -> the two-witness grasp gate

@@ -106,7 +106,8 @@ class LiveWorld(Node):
 
     def latest_tray_position(self):
         # Stand-in for perception (file 04): pretend the tray slides
-        # slowly side to side. A real version reads the marker's pose.
+        # slowly side to side. A real version reads the tray's pose from
+        # the YOLO detector + RGB-D depth.
         t = self.get_clock().now().nanoseconds * 1e-9
         y = 0.12 + 0.03 * math.sin(t)     # drifts ~3 cm to and fro
         return [0.15, y, 0.50]

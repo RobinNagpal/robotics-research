@@ -73,7 +73,7 @@ but here is the short version so the table below makes sense:
 | 1 — Simulator & digital twin | Spawn the cell (arm + table + vial in the simulator) | [`01-spawn-the-cell.md`](01-spawn-the-cell.md) |
 | 2 — Middleware & control | The mock decapper (a request/reply service + a reading stream) | [`02-mock-decapper.md`](02-mock-decapper.md) |
 | 3 — Arm motion planning | Reach the vial (plan a collision-free arm motion) | [`03-reach-the-vial.md`](03-reach-the-vial.md) |
-| 4 — Perception & vision | See the tray (find a printed marker, measure where it is) | [`04-see-the-tray.md`](04-see-the-tray.md) |
+| 4 — Perception & vision | See the tray (detect objects with YOLO, find where they are) | [`04-see-the-tray.md`](04-see-the-tray.md) |
 | 5 — Grasping | Grab the vial (work out the grip, close the hand, check it) | [`05-grab-the-vial.md`](05-grab-the-vial.md) |
 | 5 — Learned policy (stretch) | Run a learned policy (SmolVLA) in the simulator | [`06-run-smolvla-in-sim.md`](06-run-smolvla-in-sim.md) |
 | 5 — Frontier planner (stretch) | Let a large model plan the task (Gemini Robotics-ER) | [`07-gemini-plans-the-task.md`](07-gemini-plans-the-task.md) |

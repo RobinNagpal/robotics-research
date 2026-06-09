@@ -119,12 +119,12 @@ faster.
 ## Objects needed in the simulation scene
 
 Beyond the **shared workcell** (arm, gripper, table, overhead + wrist
-cameras, AprilTag markers, racks), this step adds:
+cameras, a YOLO object detector, racks), this step adds:
 
 | Object | What it is | Mock node / topic |
 |---|---|---|
 | **Autosampler tray / carousel** | The destination grid of numbered slots (~96–120) | — |
-| **Slot AprilTags / fiducials** | Markers giving each slot a known pose for precise pick-and-place | — |
+| **Scene lighting + matte backdrop** | Even, varied lighting so the overhead camera's **YOLO** detector locates the tray; slots are indexed from the tray's known geometry | domain-randomized |
 | **Labelled vial** | The finished vial from Step 7 being placed | shared with Stage 4 |
 | **Vial rack (source)** | Holds the finished vials before they go to the tray | shared workcell |
 
