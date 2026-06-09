@@ -105,6 +105,23 @@ moving to a position. The clean paracetamol case is straightforward; the
 ketchup case, with its extra centrifuge-and-pour-off, is harder and
 messier to chain together.
 
+## Objects needed in the simulation scene
+
+Beyond the **shared workcell** (arm, gripper, table, overhead + wrist
+cameras, AprilTag markers, racks), this step adds:
+
+| Object | What it is | Mock node / topic |
+|---|---|---|
+| **Syringe** | The plunger tube that pushes liquid through the filter | — |
+| **Syringe filter** | A fine membrane disc (~0.45/0.22 µm) | — |
+| **Centrifuge tube** | A capped tube for the ketchup-only clarify step | — |
+| **Centrifuge station** | A mock that "spins down" solids before filtering (ketchup only) | `mock_centrifuge` → `/mock_centrifuge/run` |
+| **Filter station** | A mock that reports rising back-pressure so the twin can handle clogs and filter swaps | `mock_filter` → `/mock_filter/push`, `/mock_filter/pressure` |
+| **Destination 2 mL vial** | Often filtered *straight into* the final vial | shared with Stage 4 |
+
+These are **Stage 3** of the ketchup scene's
+[object list](../05-mycobot-280-impl/01-only-code/01-simulation/01-ketchup-experiment-objects.md).
+
 ---
 
 **Next step:** the liquid is finally clean — now we put it into the tiny

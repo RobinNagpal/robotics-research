@@ -1,38 +1,39 @@
 # Ketchup Experiment — Objects to Add to the Simulation Scene
 
-> **Job:** List the **30 objects** that must exist inside the Gazebo
-> twin so the myCobot 280 can run the **tomato ketchup → 5-HMF** prep
-> loop end to end, in software alone, before a cent is spent on
-> hardware.
+> **Job:** List the objects the Gazebo twin must spawn so the myCobot
+> 280 can run the **tomato ketchup → 5-HMF** prep loop end to end, in
+> software alone — organised by the **six prep-workflow stages** so the
+> scene can be built one stage at a time.
 
 This file is the scene-building checklist for the ketchup use case. It
-turns the prose of the
+takes the prose of the
 [sample-prep primer](../../../02-lab-bench-new.md) (Worked Example B,
 ketchup) and the
-[digital-twin layer](../01-simulation-and-digital-twin.md) (the six prep
-steps and their `mock_*` stations) into a concrete bill of materials for
-the simulated workcell.
+[digital-twin layer](../01-simulation-and-digital-twin.md) and turns it
+into a concrete bill of materials, **grouped by workflow stage**.
+
+Each stage below links to its full plain-language walkthrough in the
+[`03-hplc-workflow/`](../../../03-hplc-workflow/README.md) folder — open
+that file to understand *why* the stage exists and what each object does.
 
 **Why ketchup, not paracetamol.** Ketchup is the *messy* case: a thick,
 pulpy, sugary matrix that must be **extracted, spun clear, and filtered**
-before a drop can enter a vial. That extra clarifying detour is exactly
-why the scene needs a centrifuge tube, a `mock_centrifuge`, and a heated
-mixer that paracetamol could skip. Building the harder case first means
-the cleaner one falls out for free.
+before a drop can enter a vial. Building the harder case first means the
+cleaner paracetamol case mostly falls out for free.
 
 **The prep loop these objects serve** (from the primer, Example B):
 
 ```
-weigh ketchup -> extract (solvent + heat + stir) -> clarify
-(centrifuge + filter) -> dilute (1:10..1:100) -> filter into vial
--> cap -> label -> place in autosampler
+weigh ketchup -> 1) dissolution/extraction -> 2) dilution
+-> 3) filtering -> 4) transfer to vial -> 5) capping -> 6) labeling
+-> place in autosampler
 ```
 
 **Conventions for this list.**
 
 - Every object is something the twin must **spawn, pose, and (often)
   attach a mock-station node to**. The twin models the *manipulation and
-  choreography*, never the chemistry — so "ketchup" is a viscous body to
+  choreography*, never the chemistry — "ketchup" is a viscous body to
   pick, pour, and not spill, not a real 5-HMF reaction.
 - Mock stations reuse the **exact ROS 2 topic names** from the
   [digital-twin layer](../01-simulation-and-digital-twin.md)
@@ -45,153 +46,202 @@ weigh ketchup -> extract (solvent + heat + stir) -> clarify
 
 ---
 
-## A. Robot & workcell fixtures (objects 1–6)
+## Shared workcell — used in every stage (objects 1–10)
 
-The arm and the static furniture everything else is posed against. These
-are loaded once and rarely move.
+Load these once. They are the arm, the fixed furniture, the eyes, and the
+racks that every stage below poses its objects against.
 
-| # | Object | What it models in the twin | Why the ketchup loop needs it |
+| # | Object | What it models in the twin | Why every stage needs it |
 |---|---|---|---|
-| 1 | **myCobot 280 arm** (URDF from `mycobot_ros`) | The 6-DOF arm itself — links, joints, joint limits | The actor; performs every reach, pour, and place in the loop |
-| 2 | **Parallel-jaw gripper / end-effector** | The fingers that grip vessels, the pipette, and vials | Ketchup prep is all grip-and-carry; the smooth 2 mL vial is the delicate grasp |
-| 3 | **Workbench tabletop** | The fixed work surface (a static collision plane) | Defines the world frame every station and rack is posed against |
-| 4 | **Overhead RGB-D camera** | A depth camera looking down on the cell | Locates beakers, racks, and vials for the perception layer above |
+| 1 | **myCobot 280 arm** (URDF from `mycobot_ros`) | The 6-DOF arm — links, joints, joint limits | The actor; performs every reach, pour, and place |
+| 2 | **Parallel-jaw gripper** | The fingers that grip vessels, the pipette, and vials | Every stage is grip-and-carry; the smooth 2 mL vial is the delicate grasp |
+| 3 | **Workbench tabletop** | The fixed work surface (a static collision plane) | Defines the world frame everything else is posed against |
+| 4 | **Overhead RGB-D camera** | A depth camera looking down on the cell | Locates beakers, racks, and vials for the perception layer |
 | 5 | **Wrist-mounted camera** | A close-range camera on the gripper | Fine alignment over the narrow vial mouth and barcode reads |
-| 6 | **AprilTag fiducial markers** | Printed-tag bodies on bench, racks, and stations | Give the twin known, calibratable poses — the cheap "known-pose" anchor v1 relies on |
+| 6 | **AprilTag fiducial markers** | Printed-tag bodies on bench, racks, and stations | Known, calibratable poses — the cheap "known-pose" anchor v1 relies on |
+| 7 | **Prep-vessel rack** | A rack holding beakers / tubes / flasks | Keeps prep glassware at repeatable poses so known-pose grasps work |
+| 8 | **Vial rack / nest** | A staging block of 2 mL vial slots | Holds empty and filled vials at known poses between stages |
+| 9 | **Autosampler tray / carousel** | The final destination, known slots (~96–120) | Where a finished vial is placed — the loop's exit |
+| 10 | **Waste container** | A bin for spent tips, clogged filters, decant liquid | Receives the consumables the messy ketchup run burns through |
 
-**Bottom line:** items 1–2 are the robot; 3–6 are the fixed reference
-frame and eyes that let known-pose manipulation work without learned
-vision.
-
----
-
-## B. Sample source & weighing (objects 7–9)
-
-Where the raw ketchup enters the cell and is measured out — the start of
-the loop.
-
-| # | Object | What it models in the twin | Why the ketchup loop needs it |
-|---|---|---|---|
-| 7 | **Ketchup stock container** (jar/squeeze bottle) | A vessel holding the raw, viscous sample body | The source the arm draws the ~5 g sample from — the thing under test |
-| 8 | **Weigh boat / weighing dish** | A small disposable dish the sample is dosed into | Holds the weighed ketchup before it goes to the extraction beaker |
-| 9 | **`mock_balance` (analytical balance)** | A mock weighing station that publishes a settled mass | Proves the weigh-out choreography (place dish, dose, read flag) without modelling real mg metrology |
-
-**Bottom line:** the twin fakes the milligram physics; what it proves is
-the arm placing, dosing, and reading the balance in the right order.
+**Bottom line:** items 1–2 are the robot; 3–10 are the fixed reference
+frame, eyes, and staging that let known-pose manipulation work without
+learned vision.
 
 ---
 
-## C. Prep glassware & solvents (objects 10–17)
+## Stage 1 — Dissolution / extraction (objects 11–15)
 
-The larger glassware the messy work happens in, plus the solvents and the
-liquid-handling tool. Prep never happens in the HPLC vial — it happens
-here.
+> **In plain words:** get the sample (or just the part we care about)
+> into a liquid.
+> **Full walkthrough:**
+> [`03-hplc-workflow/02-dissolution-and-extraction.md`](../../../03-hplc-workflow/02-dissolution-and-extraction.md)
 
-| # | Object | What it models in the twin | Why the ketchup loop needs it |
+Ketchup will not politely dissolve, so we **extract**: add solvent, stir,
+and warm gently to pull the 5-HMF out of the pulp. The result is a cloudy,
+pulpy liquid (cleared later, in Stage 3).
+
+| # | Object | What it models in the twin | Why this stage needs it |
 |---|---|---|---|
-| 10 | **Extraction beaker** | The prep vessel for solvent + ketchup + heat | Where extraction (step 2) happens; the arm carries it to the mixer |
-| 11 | **Centrifuge tube** | A capped tube that goes into the spinner | Ketchup-only clarify step — holds the pulpy extract for `mock_centrifuge` |
-| 12 | **Volumetric flask** | The graduated vessel for accurate dilution | Where the 1:10–1:100 dilution (step 4) is made up to the mark |
-| 13 | **Solvent reservoir — water / dilute acid (extraction)** | A bottle of the extraction solvent | `mock_dispenser` draws from it to pull 5-HMF out of the matrix |
-| 14 | **Solvent reservoir — diluent** | A bottle of the top-up solvent for dilution | Supplies the "make up to volume" liquid for each dilution stage |
-| 15 | **Manual pipette** (arm-gripped tool) | The liquid-handling tool the gripper picks up and operates | The POC's deliberate "arm drives a manual pipette" choice for aliquots |
-| 16 | **Pipette-tip rack** | A tray of disposable tips | Source of a fresh tip per transfer — avoids cross-contamination between batches |
-| 17 | **Stir rod / stir bar** | The stirring element in the mixer/beaker | Part of the mix-and-extract motion the twin sequences |
+| 11 | **Ketchup stock container** (jar/squeeze bottle) | A vessel holding the raw, viscous sample body | The source the arm draws the ~5 g sample from — the thing under test |
+| 12 | **Extraction beaker** | The roomy prep vessel for solvent + ketchup + heat | Where extraction happens; the arm carries it to the mixer |
+| 13 | **Solvent reservoir — water / dilute acid** | A bottle of the extraction solvent | `mock_dispenser` draws from it to coax 5-HMF out of the matrix |
+| 14 | **Dispenser station** — `mock_dispenser` → `/mock_dispenser/volume_ml` | A mock that "pours" a measured solvent volume | Adds the measured extraction solvent to the beaker |
+| 15 | **Heated mixer / sonicator** — `mock_mixer` → `/mock_mixer/run`, `/mock_mixer/heat`, `/prep/dissolved` | A mock stir-and-heat station that raises a "done" flag | Ketchup needs **heat=on** and a **long dwell** — the warm-extraction branch |
 
-**Bottom line:** this is the "back half" glassware the primer says the
-arm actually handles — transfers, dilutions, and pours, not mg dispensing.
+**Bottom line:** this is where ketchup first looks harder than a tablet —
+heat, a long dwell, and a cloudy result that still needs clearing.
 
 ---
 
-## D. Mock processing stations (objects 18–24)
+## Stage 2 — Dilution (objects 16–20)
 
-Each physical device is stood in for by a **mock station node** that
-publishes the same ROS 2 topics its real counterpart would. These are the
-stations the
-[digital-twin layer](../01-simulation-and-digital-twin.md) names directly.
+> **In plain words:** make that liquid weaker so the machine can read it.
+> **Full walkthrough:**
+> [`03-hplc-workflow/03-dilution.md`](../../../03-hplc-workflow/03-dilution.md)
 
-| # | Object | Mock node / topic it carries | Why the ketchup loop needs it |
+The extract's 5-HMF level is unknown, so it is diluted hard (1:10–1:100),
+often in two gentle stages. The difficulty lives in the **tool** (a
+precise pipette/handler), not the arm's muscles.
+
+| # | Object | What it models in the twin | Why this stage needs it |
 |---|---|---|---|
-| 18 | **Dispenser station** | `mock_dispenser` → `/mock_dispenser/volume_ml` | Pours the measured extraction solvent into the beaker (step 1, dissolution) |
-| 19 | **Heated mixer / sonicator** | `mock_mixer` → `/mock_mixer/run`, `/mock_mixer/heat`, `/prep/dissolved` | Ketchup needs **heat=on** and a **long dwell** — the warm-extraction branch |
-| 20 | **Centrifuge** | `mock_centrifuge` → `/mock_centrifuge/run` | The ketchup-only spin-down that drops the pulp before filtering (step 3) |
-| 21 | **Syringe + syringe filter** | The consumable `mock_filter` acts on | The force-controlled push that strains particles before the vial |
-| 22 | **Filter station** | `mock_filter` → `/mock_filter/push`, `/mock_filter/pressure` | Publishes rising back-pressure so the twin can prove clog-handling and filter swaps |
-| 23 | **Capper station** | `mock_capper` → `/mock_capper/screw`, `/capper/torque` | Screws the cap to a torque inside the seal-don't-crack band (step 5) |
-| 24 | **Label printer** | `mock_printer` → `/mock_printer/apply`, `/traceability/log` | Prints + applies the barcode and logs the unique Sample ID (step 6) |
+| 16 | **Volumetric flask** | The graduated vessel diluted "up to the mark" | Where the 1:10–1:100 dilution is made up to a known volume |
+| 17 | **Solvent reservoir — diluent** | A bottle of the top-up solvent | Supplies the "make up to volume" liquid for each dilution stage |
+| 18 | **Manual pipette** (arm-gripped tool) | The precise liquid-handling tool the gripper operates | The POC's deliberate "arm drives a manual pipette" choice for exact aliquots |
+| 19 | **Pipette-tip rack** | A tray of disposable tips | A fresh tip per transfer — avoids cross-contamination between batches |
+| 20 | **Liquid-handler station** — `mock_handler` → `/mock_handler/transfer`, `/prep/concentration` | A mock that performs aliquot + top-up and reports strength | Runs each ≤10× dilution stage and confirms the target concentration |
 
-**Bottom line:** because each station's topic names match the hardware
-mode, the whole ketchup loop built against these mocks transfers to a
-real bench without a rewrite.
+**Bottom line:** exact volumes are the whole game here; the arm's job is
+precise positioning and choreography around a good pipetting tool.
 
 ---
 
-## E. Vials, caps & racks (objects 25–28)
+## Stage 3 — Filtering (objects 21–25)
 
-The injection-ready containers and the staging furniture that keeps the
-many ketchup vials straight.
+> **In plain words:** strain out tiny solid bits that would block the
+> machine.
+> **Full walkthrough:**
+> [`03-hplc-workflow/04-filtering.md`](../../../03-hplc-workflow/04-filtering.md)
 
-| # | Object | What it models in the twin | Why the ketchup loop needs it |
+This is where ketchup diverges most: pulp would clog a filter instantly,
+so the loop **spins it clear first** (centrifuge → pour off the clear top
+layer) and only then pushes it through the syringe filter.
+
+| # | Object | What it models in the twin | Why this stage needs it |
 |---|---|---|---|
-| 25 | **2 mL HPLC vials** | The narrow-mouth final containers (`mock_vial` → `/vial/fill_ml`, `/vial/spill`) | The millimetre-scale pour target — the single clearest test of arm accuracy |
-| 26 | **Vial caps + septa** | The screw caps the capper seats | The thing capping torques onto; the needle later pierces the septum |
-| 27 | **Vial rack / nest** | A staging block of vial slots | Holds empty and filled vials at known poses between pour, cap, and label |
-| 28 | **Prep-vessel rack** | A rack holding beakers / tubes / flasks | Keeps the prep glassware at repeatable poses so known-pose grasps work |
+| 21 | **Centrifuge tube** | A capped tube that goes into the spinner | Holds the pulpy extract for the ketchup-only clarify step |
+| 22 | **Centrifuge station** — `mock_centrifuge` → `/mock_centrifuge/run` | A mock that "spins down" solids, then decant | Drops the tomato pulp to the bottom before filtering |
+| 23 | **Syringe** | A plunger tube that pushes liquid through the filter | The force-controlled push the arm drives |
+| 24 | **Syringe filter** | A fine membrane disc (~0.45/0.22 µm) on the syringe | Traps the last particles so nothing clogs the HPLC column |
+| 25 | **Filter station** — `mock_filter` → `/mock_filter/push`, `/mock_filter/pressure` | A mock that reports rising back-pressure | Lets the twin prove clog-handling: push, watch pressure, swap on a spike |
 
-**Bottom line:** ketchup's many supplier/batch/replicate vials make the
-racks (and their fixed slot poses) essential bookkeeping, not decoration.
+**Bottom line:** ketchup's **spin → pour off → filter** detour is the
+extra work the food matrix forces; paracetamol needs only the filter.
 
 ---
 
-## F. Output & housekeeping (objects 29–30)
+## Stage 4 — Transfer to vial (objects 26)
 
-Where finished vials go and where waste lands.
+> **In plain words:** move the finished liquid into the little glass
+> bottle.
+> **Full walkthrough:**
+> [`03-hplc-workflow/05-transfer-to-vial.md`](../../../03-hplc-workflow/05-transfer-to-vial.md)
 
-| # | Object | What it models in the twin | Why the ketchup loop needs it |
+The project-defining motion: aim over the **narrow 2 mL vial mouth** and
+pour without spilling. By now the liquid is thin and clear, so the pour
+matches paracetamol — ketchup just has more vials to track.
+
+| # | Object | What it models in the twin | Why this stage needs it |
 |---|---|---|---|
-| 29 | **Autosampler tray / carousel** | The final destination with known slot positions (~96–120 slots) | The "place vial into a known position" end of the loop — well-defined fixed targets |
-| 30 | **Waste container** | A bin for spent tips, clogged filters, decant liquid | Receives the swapped filters and used tips the messy ketchup run generates |
+| 26 | **2 mL HPLC vials** — `mock_vial` → `/vial/fill_ml`, `/vial/spill` | The narrow-mouth final containers, with fill + spill feedback | The millimetre-scale pour target — the clearest single test of arm accuracy |
 
-**Bottom line:** these two close the loop — a vial leaves prep, lands in a
-known tray slot, and the consumables the food matrix burns through have
-somewhere to go.
+**Bottom line:** *can the arm hit the vial mouth reliably, every time?*
+is the one question this stage exists to answer.
+
+---
+
+## Stage 5 — Capping (objects 27–28)
+
+> **In plain words:** close the bottle with a lid (and a pierceable seal).
+> **Full walkthrough:**
+> [`03-hplc-workflow/06-capping.md`](../../../03-hplc-workflow/06-capping.md)
+
+Identical for ketchup and paracetamol: place the cap squarely and screw
+to a torque that is firm enough to seal but gentle enough not to crack the
+glass.
+
+| # | Object | What it models in the twin | Why this stage needs it |
+|---|---|---|---|
+| 27 | **Vial caps + septa** | The screw caps (with pierceable septa) the capper seats | What capping torques onto; the needle later pierces the septum |
+| 28 | **Capper station** — `mock_capper` → `/mock_capper/screw`, `/capper/torque` | A mock that ramps and reports applied torque | Lets the twin stop inside the seal-don't-crack acceptance band |
+
+**Bottom line:** a small, repeatable, judgement-free motion — exactly what
+an arm is best at, the same code for both samples.
+
+---
+
+## Stage 6 — Labeling (objects 29–30)
+
+> **In plain words:** write on the bottle what is inside.
+> **Full walkthrough:**
+> [`03-hplc-workflow/07-labeling.md`](../../../03-hplc-workflow/07-labeling.md)
+
+The motion is forgiving; the real point is **information** — every vial
+gets a *unique*, logged Sample ID so a result can always be traced back.
+Ketchup's many supplier/batch/replicate IDs make uniqueness the thing to
+assert.
+
+| # | Object | What it models in the twin | Why this stage needs it |
+|---|---|---|---|
+| 29 | **Barcode label stock** | The sticky barcode labels applied to each vial | The physical mark that carries the Sample ID |
+| 30 | **Label printer** — `mock_printer` → `/mock_printer/apply`, `/traceability/log` | A mock that prints + applies a label and logs the ID | Guarantees a unique ID per vial and a perfect audit record |
+
+**Bottom line:** automating this turns a forgiving motion into a
+reliability *gain* — a robot never mismatches a label.
 
 ---
 
 ## Object count at a glance
 
-| Group | Objects | Count |
+| Stage | Objects | Count |
 |---|---|---|
-| A. Robot & workcell fixtures | 1–6 | 6 |
-| B. Sample source & weighing | 7–9 | 3 |
-| C. Prep glassware & solvents | 10–17 | 8 |
-| D. Mock processing stations | 18–24 | 7 |
-| E. Vials, caps & racks | 25–28 | 4 |
-| F. Output & housekeeping | 29–30 | 2 |
+| Shared workcell (every stage) | 1–10 | 10 |
+| 1 — Dissolution / extraction | 11–15 | 5 |
+| 2 — Dilution | 16–20 | 5 |
+| 3 — Filtering | 21–25 | 5 |
+| 4 — Transfer to vial | 26 | 1 |
+| 5 — Capping | 27–28 | 2 |
+| 6 — Labeling | 29–30 | 2 |
 | **Total** | | **30** |
+
+*(Weighing the ~5 g of ketchup happens before Stage 1 and placement into
+the autosampler happens after Stage 6; both reuse the shared workcell —
+see [`01-weighing.md`](../../../03-hplc-workflow/01-weighing.md) and
+[`08-placement-in-autosampler.md`](../../../03-hplc-workflow/08-placement-in-autosampler.md).)*
 
 ---
 
 ## Notes on building these in Gazebo
 
-- **Start with the fixtures (A) and one of each vessel.** The arm, table,
-  cameras, and AprilTags define the world frame; everything else is posed
-  against it. Get one beaker, one vial, and one rack placed before
-  multiplying counts.
-- **Multiply only where ketchup demands it.** The realistic ketchup run
-  is ~8–12 vials (several batches × 2–3 replicates + a 5-HMF standard +
-  a blank). Spawn the vials and tip rack as *arrays* parameterised by the
-  worklist, not as 12 hand-placed bodies.
-- **Mock stations are nodes, not just meshes.** Objects 18–24 each need a
-  visual body **and** a small ROS 2 node publishing the topics listed
-  above. A station with no node is just scenery the loop can't gate on.
+- **Start with the shared workcell.** The arm, table, cameras, AprilTags,
+  and racks define the world frame; build them and one of each vessel
+  before multiplying counts.
+- **Then build stage by stage, in order.** Each stage section above maps
+  one-to-one to a `mock_*` station and a workflow file, so the twin can
+  be stood up and tested one capability at a time.
+- **Multiply only where ketchup demands it.** A realistic ketchup run is
+  ~8–12 vials (several batches × 2–3 replicates + a 5-HMF standard + a
+  blank). Spawn vials and tips as *arrays* parameterised by the worklist,
+  not as hand-placed bodies.
+- **Mock stations are nodes, not just meshes.** Each station needs a
+  visual body **and** a small ROS 2 node publishing the topics listed —
+  a station with no node is just scenery the loop can't gate on.
 - **Viscosity is faked.** Gazebo will not model true ketchup rheology;
   represent the sample as a simple body (or a fill level on `/vial/...`)
-  and let the *manipulation* — grip, carry, pour-without-spill — be the
-  thing under test.
-- **Keep v1 known-pose.** Per the project framing, rely on AprilTags and
-  fixed rack slots first; defer learned 6-DoF pose estimation to a later
-  milestone.
+  and let the *manipulation* be the thing under test.
+- **Keep v1 known-pose.** Rely on AprilTags and fixed rack slots first;
+  defer learned 6-DoF pose estimation to a later milestone.
 
 ## See also
 
@@ -200,4 +250,4 @@ somewhere to go.
 - [`../../../02-lab-bench-new.md`](../../../02-lab-bench-new.md) — the
   sample-prep primer; Worked Example B is the ketchup workflow above.
 - [`../../../03-hplc-workflow/README.md`](../../../03-hplc-workflow/README.md)
-  — the eight prep steps in beginner detail.
+  — the eight prep steps in beginner detail (each now lists its own objects).

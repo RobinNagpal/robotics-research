@@ -119,6 +119,22 @@ and the arm's own job is mostly precise *positioning and choreography*.
 This is exactly why the project treats "precise volume" as a tooling
 question rather than an arm-precision question.
 
+## Objects needed in the simulation scene
+
+Beyond the **shared workcell** (arm, gripper, table, overhead + wrist
+cameras, AprilTag markers, racks), this step adds:
+
+| Object | What it is | Mock node / topic |
+|---|---|---|
+| **Volumetric flask** | The graduated vessel diluted "up to the mark" | — |
+| **Diluent reservoir** | A bottle of the top-up solvent | — |
+| **Manual pipette** | The precise liquid-handling tool the arm grips and operates | — |
+| **Pipette-tip rack** | A tray of disposable tips — a fresh one per transfer | — |
+| **Liquid-handler station** | A mock that performs aliquot + top-up and reports the achieved strength | `mock_handler` → `/mock_handler/transfer`, `/prep/concentration` |
+
+These are **Stage 2** of the ketchup scene's
+[object list](../05-mycobot-280-impl/01-only-code/01-simulation/01-ketchup-experiment-objects.md).
+
 ---
 
 **Next step:** before the liquid can enter the machine, we must strain

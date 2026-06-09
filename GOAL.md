@@ -25,7 +25,7 @@ the **paracetamol** example, both explained in
 
 ### Task A — Simulation scenes
 
-- [ ] Build the **ketchup** scene (objects + workcell layout)
+- [ ] Build the **ketchup** scene (objects + workcell layout) — [object list](03-hplc-autosampler/05-mycobot-280-impl/01-only-code/01-simulation/01-ketchup-experiment-objects.md)
 - [ ] Add different scenarios / variations to the ketchup scene
 - [ ] Build the **paracetamol** scene
 - [ ] Add different scenarios / variations to the paracetamol scene
