@@ -139,9 +139,11 @@ suite is:
 > earlier layers *act*; these two make the cell *sense and verify*
 > before it acts.
 
-A first scene to build against the simulator layer is the **ketchup
-experiment** — its object and workcell list is in
-[`01-simulation/01-ketchup-experiment-objects.md`](01-simulation/01-ketchup-experiment-objects.md).
+The **base problem** every layer builds toward is the **tomato-ketchup
+→ 5-HMF** run — the messy food-matrix case the whole cell is designed
+around. Its full object and workcell scene is in
+[`01-simulation/01-ketchup-experiment-objects.md`](01-simulation/01-ketchup-experiment-objects.md),
+and each development layer below proves one piece of it.
 
 ## How each file is structured
 

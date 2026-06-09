@@ -273,6 +273,6 @@ generalization upgrade when your task variety justifies it."*
   [`08-software-worklist-and-compliance.md`](08-software-worklist-and-compliance.md).
 - The safety/sensor gates any deployed policy must respect:
   [`sensor-suite.md`](sensor-suite.md).
-- The learning plan that includes a VLA hello world:
+- The learning plan, with a VLA milestone on the ketchup run:
   [`../06-learning-checklist.md`](../06-learning-checklist.md).
 - Folder index: [`README.md`](README.md).

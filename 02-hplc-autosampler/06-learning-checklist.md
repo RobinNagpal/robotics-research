@@ -2,16 +2,20 @@
 
 > **Job:** Give you and your team a **3–4 day**, checkbox-driven plan to
 > learn *just enough* of the robotics landscape — concepts, the
-> framework/sensor/hardware comparison, and **one "hello world" per
+> framework/sensor/hardware comparison, and **one "ketchup milestone" per
 > layer** — to (a) genuinely understand how companies solve problems
 > like our [HPLC autosampler](02-lab-bench-new.md), and (b) email
 > robotics-adjacent companies saying *"we've worked in robotics and have
 > a team that can help you"* and back it up in the call that follows.
 >
-> Everything here is framed around the stack we already worked out in
-> **[`04-mycobot-280-impl/`](04-mycobot-280-impl/README.md)**
-> — the fully open-source, simulation-first myCobot 280 cell — so the
-> hello worlds build the *same* system, on the *same* problem, that we
+> Everything here is built on **one base problem** — the
+> **tomato-ketchup → 5-HMF** prep run (the messy food-matrix case;
+> object-by-object scene in
+> [`04-mycobot-280-impl/01-simulation/01-ketchup-experiment-objects.md`](04-mycobot-280-impl/01-simulation/01-ketchup-experiment-objects.md))
+> — on the stack we already worked out in
+> **[`04-mycobot-280-impl/`](04-mycobot-280-impl/README.md)**, the fully
+> open-source, simulation-first myCobot 280 cell. Every milestone below
+> builds one more piece of that *same* ketchup run, the *same* system we
 > would pitch.
 
 > **Disclaimer.** This is a learning plan, not a course. Tool versions
@@ -23,7 +27,7 @@
 
 ## How to use this checklist
 
-- Tick `- [ ]` items as you go. Each hello world has a **Done when…**
+- Tick `- [ ]` items as you go. Each ketchup milestone has a **Done when…**
   line — that is the bar; don't gold-plate.
 - **Split the work across the team.** The 8 layers are independent
   enough that 2–3 people can each own a few layers in parallel, then
@@ -67,8 +71,8 @@ prospect even about a problem we haven't built yet.
   framing).
 - [ ] **Read the problem we'll demo** —
   the [sample-prep primer](02-lab-bench-new.md) and the
-  [HPLC workflow](03-hplc-workflow/README.md) (skim), so the hello
-  worlds have meaning.
+  [HPLC workflow](03-hplc-workflow/README.md) (skim), so the ketchup
+  milestones have meaning.
 - [ ] **Internalize the cross-cutting concepts** (one sentence each):
   **ROS 2**, **node / topic / service / action**,
   **URDF**, **tf frame**, **digital twin**, **motion planning**,
@@ -100,17 +104,19 @@ a given client problem would touch it.
 
 ---
 
-## Part B — The 8-layer stack: concept → comparison → hello world
+## Part B — The 8-layer stack: concept → comparison → ketchup milestone
 
 These are the **same 8 layers** as
 [`04-mycobot-280-impl/`](04-mycobot-280-impl/README.md).
 For each: understand the idea, know the framework comparison (we already
-wrote it — just read and confirm), and **build the one hello world**.
-Every hello world uses the **HPLC vial / tray** as its subject.
+wrote it — just read and confirm), and **build the one ketchup
+milestone**. Every milestone advances the **tomato-ketchup → 5-HMF** run
+— the base problem — using its objects from
+[`04-mycobot-280-impl/01-simulation/01-ketchup-experiment-objects.md`](04-mycobot-280-impl/01-simulation/01-ketchup-experiment-objects.md).
 
 > **Setup once (Layer 0):** install **ROS 2** (Humble or Jazzy) and
 > **Gazebo Harmonic** on Ubuntu (or a container), and clone
-> `mycobot_ros`. This single environment carries every hello world
+> `mycobot_ros`. This single environment carries every ketchup milestone
 > below. Budget a couple of hours for this; it's the only real
 > yak-shave.
 
@@ -121,7 +127,7 @@ Every hello world uses the **HPLC vial / tray** as its subject.
   [`01-simulation-and-digital-twin.md`](04-mycobot-280-impl/01-simulation-and-digital-twin.md).
 - [ ] **Know the comparison:** Gazebo Harmonic vs MuJoCo vs Isaac Sim
   vs PyBullet vs Webots — and *why we pick Gazebo* (open, ROS-native).
-- [ ] **Hello world — "spawn the cell":** load the **myCobot 280 URDF**
+- [ ] **Ketchup milestone — "spawn the cell":** load the **myCobot 280 URDF**
   into an empty Gazebo world with a **table** and a **2 mL vial** model;
   view it in **RViz2**. *Done when:* the arm and a vial appear in both
   Gazebo and RViz, and you can see `/joint_states` and the tf tree.
@@ -133,7 +139,7 @@ Every hello world uses the **HPLC vial / tray** as its subject.
   [`02-middleware-and-control.md`](04-mycobot-280-impl/02-middleware-and-control.md).
 - [ ] **Know the comparison:** ROS 2 vs bare middleware; rclpy vs rclcpp;
   CycloneDDS vs FastDDS (just the gist).
-- [ ] **Hello world — "the mock decapper":** write a tiny **rclpy**
+- [ ] **Ketchup milestone — "the mock decapper":** write a tiny **rclpy**
   node that offers a `/decap` **service** (returns "cap removed") and a
   publisher that streams a fake `/balance/mass` reading. Call the
   service from the CLI (`ros2 service call …`). *Done when:* you can
@@ -147,17 +153,17 @@ Every hello world uses the **HPLC vial / tray** as its subject.
   [`03-arm-motion-planning.md`](04-mycobot-280-impl/03-arm-motion-planning.md).
 - [ ] **Know the comparison:** MoveIt 2 vs raw OMPL vs writing your own
   IK; MoveIt Servo and MoveIt Task Constructor at a glance.
-- [ ] **Hello world — "reach the vial":** with the `mycobot_ros` MoveIt
+- [ ] **Ketchup milestone — "reach the vial":** with the `mycobot_ros` MoveIt
   config, plan and execute (in sim) a collision-free motion from home to
   a **named pose above the vial**, then to a **tray slot** pose. *Done
   when:* the arm moves between the supply nest and a tray slot in
   RViz/Gazebo without colliding with the table.
-- [ ] **Hello world (extension) — "keep the world current":** stream the
+- [ ] **Ketchup milestone (extension) — "keep the world current":** stream the
   tray's (moving) position into MoveIt's **planning scene** as a
   collision object, so a fresh plan routes around wherever the tray is
   *now*. *Done when:* the tray box tracks its real position in RViz and a
   new plan avoids its current spot — you never edited the path yourself.
-- [ ] **Hello world (extension) — "close the loop on motion":** write the
+- [ ] **Ketchup milestone (extension) — "close the loop on motion":** write the
   tiny **executive** that calls MoveIt over and over toward the latest
   target, then **verifies** the move by comparing the commanded pose to
   the hand's measured pose from the **TF tree**, passing or failing
@@ -172,7 +178,7 @@ Every hello world uses the **HPLC vial / tray** as its subject.
   [`04-perception-and-vision.md`](04-mycobot-280-impl/04-perception-and-vision.md).
 - [ ] **Know the comparison:** Ultralytics YOLO for detection; OpenCV vs
   Open3D vs PCL; camera SDKs (RealSense / OAK / Orbbec) for later hardware.
-- [ ] **Hello world — "see the tray":** add a **simulated camera** to the
+- [ ] **Ketchup milestone — "see the tray":** add a **simulated camera** to the
   Gazebo world, run a **YOLO** detector (`ultralytics`) on the frame to
   **detect the tray and vials**, and **print each detection's box +
   class**; as a bonus, lift a box-centre to a 3-D point using the
@@ -193,20 +199,20 @@ Every hello world uses the **HPLC vial / tray** as its subject.
   — be able to say which VLA you'd reach for and why (LeRobot/SmolVLA to
   start, π0.5 as the open flagship, Gemini Robotics as the gated
   frontier).
-- [ ] **Hello world — "grab the vial":** compute an **antipodal pinch**
+- [ ] **Ketchup milestone — "grab the vial":** compute an **antipodal pinch**
   on the vial cylinder (jaws perpendicular to its axis, just under
   ~12 mm), command the **sim gripper** (`GripperCommand`) to close, and
   use the **grasp-fix attach** so the vial follows the gripper. *Done
   when:* the arm picks the vial, lifts it, and the **gripper width +
   effort** confirm a hold (the two-witness check from the sensor suite).
-- [ ] **VLA hello world #1 (open low-level policy) — "run SmolVLA in
+- [ ] **VLA ketchup milestone #1 (open low-level policy) — "run SmolVLA in
   sim":** install **LeRobot** and roll out the pretrained **SmolVLA**
   (~450M, runs on a normal GPU; **OpenVLA** is the heavier alternative)
   on a simulation benchmark (LIBERO / SIMPLER), or fine-tune it on a few
   recorded vial-pick episodes. *Done when:* a learned policy drives a
   simulated pick end-to-end — so you can credibly say "we've run a modern
   open VLA," not just read about one.
-- [ ] **VLA hello world #2 (frontier planner) — "let Gemini plan the
+- [ ] **VLA ketchup milestone #2 (frontier planner) — "let Gemini plan the
   task":** call **Gemini Robotics-ER** via the **Gemini API in Google AI
   Studio** with a photo of the bench + an instruction like *"plan how to
   load vial QC-007 into tray slot A3."* *Done when:* the model returns a
@@ -226,7 +232,7 @@ Every hello world uses the **HPLC vial / tray** as its subject.
   [`06-identification-and-barcode.md`](04-mycobot-280-impl/06-identification-and-barcode.md).
 - [ ] **Know the comparison:** ZBar/pyzbar vs OpenCV QR vs a cloud OCR
   (and why local/open is enough here).
-- [ ] **Hello world — "read the vial ID":** generate a **QR code** for a
+- [ ] **Ketchup milestone — "read the vial ID":** generate a **QR code** for a
   sample ID, render it on a vial label in an image, and decode it with
   **pyzbar** — then look the ID up in a tiny worklist dict. ~10 lines:
   ```python
@@ -245,7 +251,7 @@ Every hello world uses the **HPLC vial / tray** as its subject.
   [`07-orchestration-and-task-logic.md`](04-mycobot-280-impl/07-orchestration-and-task-logic.md).
 - [ ] **Know the comparison:** BehaviorTree.CPP (+ Groot2) vs **py_trees**
   vs SMACH/YASMIN/FlexBE.
-- [ ] **Hello world — "the per-vial loop":** in **py_trees** (fastest in
+- [ ] **Ketchup milestone — "the per-vial loop":** in **py_trees** (fastest in
   Python) build a tree: `pick → [gate: held?] → place → [gate: seated?]`
   with a **fallback that retries** a failed gate once then quarantines.
   Tick it with mocked gate results. *Done when:* a forced gate-failure
@@ -258,7 +264,7 @@ Every hello world uses the **HPLC vial / tray** as its subject.
   [`08-software-worklist-and-compliance.md`](04-mycobot-280-impl/08-software-worklist-and-compliance.md).
 - [ ] **Know the comparison:** FastAPI + SQLite (our mock) vs a real
   LIMS/CDS; a SiLA 2 mock vs the real standard.
-- [ ] **Hello world — "the mock LIMS + audit log":** a small **FastAPI**
+- [ ] **Ketchup milestone — "the mock LIMS + audit log":** a small **FastAPI**
   service that serves a **worklist** (`GET /worklist`) and accepts step
   events (`POST /event`) which it writes — append-only, timestamped,
   with the **sensor reading that gated each step** — into **SQLite**.
@@ -270,7 +276,7 @@ Every hello world uses the **HPLC vial / tray** as its subject.
 - [ ] **Understand:** the [sensor suite](04-mycobot-280-impl/sensor-suite.md)
   — 3 cameras, gripper feedback, load cell, balance, presence, safety,
   IMU — and the off-arm payload rule.
-- [ ] **Hello world — "subscribe to a sense":** echo a **simulated
+- [ ] **Ketchup milestone — "subscribe to a sense":** echo a **simulated
   force-torque** or **IMU** topic from Gazebo (or the gripper
   **effort**) and print a PASS/FAIL when it crosses a threshold. *Done
   when:* a number from a simulated sensor drives a boolean gate — the
@@ -278,12 +284,12 @@ Every hello world uses the **HPLC vial / tray** as its subject.
 
 ---
 
-## Part C — The capstone "hello cell" (½ day, day 4)
+## Part C — The capstone "ketchup cell" (½ day, day 4)
 
-Chain the hello worlds into the **smallest end-to-end loop**, because
+Chain the ketchup milestones into the **smallest end-to-end loop**, because
 *this* is what you screen-record for the pitch:
 
-- [ ] **One vial, start to finish, in sim:** `read worklist (L8)` →
+- [ ] **One ketchup vial, start to finish, in sim:** `read worklist (L8)` →
   `locate vial via YOLO (L4)` → `pick + verify hold (L5+S)` →
   `call mock /decap (L2)` → `place in tray slot + verify seated (L3+L4)`
   → `log every step + its gating sensor to the audit trail (L8)`,
@@ -354,7 +360,7 @@ ballpark ROI — without notes.
 > **If you only have 3 days:** drop the bonus items (OpenCV rim find,
 > MoveIt Servo, multiple prospects), and treat Contact-GraspNet,
 > MuJoCo, and real SiLA 2 as *read-only* (know the comparison, skip the
-> hello world). The capstone (Part C) and Part D are **not** optional —
+> ketchup milestone). The capstone (Part C) and Part D are **not** optional —
 > they're what the pitch rests on.
 
 ---
@@ -379,7 +385,7 @@ can:
 
 ## See also
 
-- The stack these hello worlds build:
+- The stack these ketchup milestones build:
   [`04-mycobot-280-impl/`](04-mycobot-280-impl/README.md).
 - The problem being demoed: the
   [sample-prep primer](02-lab-bench-new.md) and the
