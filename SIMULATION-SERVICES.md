@@ -73,7 +73,10 @@ generation pipeline itself so they can re-run it.
 
 Typical tools: **Isaac Sim Replicator**, **BlenderProc**, **Unity
 Perception**; validated by training a detector (e.g. **YOLO**) on the
-output and testing on a small real-image set.
+output and testing on a small real-image set. This line is big enough
+to be its own catalog — see
+[`SYNTHETIC-DATA-SERVICES.md`](SYNTHETIC-DATA-SERVICES.md) for the
+full breakdown of synthetic-data offerings.
 
 ### 2.3 Reinforcement-learning training environments
 

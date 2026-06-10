@@ -19,11 +19,12 @@ We will do both, starting with the **ketchup** example and then maybe
 the **paracetamol** example, both explained in
 [`02-hplc-autosampler/02-lab-bench-new.md`](02-hplc-autosampler/02-lab-bench-new.md).
 
-The full service catalog — which simulation services we can sell, to
-which companies on the [outreach list](04-outreach/01-companies.md),
-how an offshore services company would deliver them, and what to learn
-first — is worked out in
-[`SIMULATION-SERVICES.md`](SIMULATION-SERVICES.md).
+The full service catalogs — which services we can sell, to which
+companies on the [outreach list](04-outreach/01-companies.md), how an
+offshore services company would deliver them, and what to learn first
+— are worked out in [`SIMULATION-SERVICES.md`](SIMULATION-SERVICES.md)
+(Task A) and
+[`SYNTHETIC-DATA-SERVICES.md`](SYNTHETIC-DATA-SERVICES.md) (Task B).
 
 ---
 
