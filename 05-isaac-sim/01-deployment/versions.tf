@@ -1,5 +1,6 @@
 terraform {
-  required_version = ">= 1.5.0"
+  # 1.10+ for native S3 state locking (use_lockfile) — no DynamoDB table needed.
+  required_version = ">= 1.10.0"
 
   required_providers {
     aws = {

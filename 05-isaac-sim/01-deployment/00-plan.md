@@ -30,6 +30,7 @@ you typed and what your teammate will log in as. Change
 | 3 | Manual start, automatic shutdown | Teammate starts on demand; **one** EventBridge **Scheduler** stop at 16:00, timezone `America/New_York`. No auto-start |
 | 4 | Start/stop on demand if needed | Same IAM start/stop rights → console button or one CLI command, any time |
 | 5 | Keep it simple, minimal services, Lightsail if possible | EC2 + IAM + EventBridge only. No Lambda, no Instance Scheduler stack. Lightsail rejected — see §2 |
+| 6 | Terraform state stored in S3 | S3 backend, versioned + encrypted bucket, native `use_lockfile` locking (no DynamoDB). Bucket made once by `bootstrap/` — see §8 |
 
 ---
 
@@ -55,9 +56,9 @@ instead. Honest reasoning:
   EventBridge Scheduler entries calling the EC2 API directly — **no
   Lambda, no extra moving parts**.
 
-Net: the *service list* stays tiny (EC2 + IAM + EventBridge Scheduler),
-and the GPU/driver story is the well-trodden one. That is the simplest
-thing that actually works.
+Net: the *service list* stays tiny (EC2 + IAM + EventBridge Scheduler,
+plus an S3 bucket for Terraform state), and the GPU/driver story is the
+well-trodden one. That is the simplest thing that actually works.
 
 > If you specifically want to pilot Lightsail GPU instead, that's a
 > swap of `main.tf` only; the IAM and scheduling design carries over.
@@ -123,8 +124,9 @@ it's exposed as `var.instance_type` so switching is a one-line change.
                                        (allowed_ssh_cidr)
 ```
 
-Total AWS services in play: **EC2, IAM, EventBridge Scheduler.** That's
-it.
+Total AWS services in play: **EC2, IAM, EventBridge Scheduler**, plus an
+**S3 bucket that only holds Terraform state** (not a runtime service —
+see §8). That's it.
 
 ---
 
@@ -233,19 +235,31 @@ if the teammate's work is light/headless.
 
 Full commands live in `README.md`. In short:
 
-1. `terraform init`
-2. Set `allowed_ssh_cidr` (your teammate's IP/32) in
+1. **Remote state (one-time).** State is stored in **S3**, so it's
+   shared across the team, versioned (rollback), and locked during
+   applies. Locking uses Terraform's **native S3 lockfile**
+   (`use_lockfile`, Terraform ≥ 1.10) — **no DynamoDB table**, keeping
+   the moving parts minimal. The state bucket has to exist before the
+   backend can use it, so a tiny `bootstrap/` config (local state)
+   creates it once — versioned, SSE-S3 encrypted, all public access
+   blocked, `prevent_destroy` on. Put the bucket name in `backend.hcl`
+   (gitignored; the globally-unique name stays out of VCS).
+2. `terraform init -backend-config=backend.hcl` (wires up the S3
+   backend).
+3. Set `allowed_ssh_cidr` (your teammate's IP/32) in
    `terraform.tfvars`; drop their public SSH key at
    `var.public_key_path`.
-3. `terraform plan` → `terraform apply`.
-4. Hand the teammate the outputs (console password + access keys —
-   marked sensitive). They change the password on first login.
-5. First boot installs the NVIDIA driver via `scripts/bootstrap.sh`;
+4. `terraform plan` → `terraform apply`.
+5. Hand the teammate the outputs (console password + access keys —
+   marked sensitive, and now stored encrypted in the S3 state, not on
+   anyone's laptop). They change the password on first login.
+6. First boot installs the NVIDIA driver via `scripts/bootstrap.sh`;
    they then install Isaac Sim itself (container or Omniverse launcher)
    — that step is intentionally manual and documented in the README,
    not baked into Terraform (the asset download is large and
    licensing-gated).
-6. Tear down: `terraform destroy`.
+7. Tear down: `terraform destroy` (the S3 state bucket created by
+   `bootstrap/` is intentionally left standing — `prevent_destroy`).
 
 ---
 

@@ -22,7 +22,8 @@ about *standing up a GPU box to run it on*, cheaply and safely.
   resize, rebuild, and terminate are explicitly denied.
 - **Manual start**, **automatic stop at 16:00** New-York time (DST-safe),
   plus on-demand stop whenever they're done.
-- Minimal service footprint: **EC2 + IAM + EventBridge Scheduler.**
+- Minimal service footprint: **EC2 + IAM + EventBridge Scheduler**, with
+  **Terraform state in S3** (versioned, encrypted, native locking).
 
 See [`01-deployment/00-plan.md`](01-deployment/00-plan.md) for the full
 rationale (including why EC2 over Lightsail) and

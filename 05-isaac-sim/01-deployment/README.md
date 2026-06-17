@@ -32,18 +32,42 @@ Services involved: **EC2, IAM, EventBridge Scheduler.** Nothing else.
 | `iam.tf` | Teammate user + allow/deny operator policy |
 | `scheduler.tf` | 16:00 auto-stop schedule + role (manual start) |
 | `outputs.tf` | Instance id/IP + teammate credentials (sensitive) |
+| `backend.tf` | S3 remote-state backend (partial config) |
+| `backend.hcl.example` | Copy to `backend.hcl`, set the state bucket name |
+| `bootstrap/` | One-time config that creates the S3 state bucket |
 | `scripts/bootstrap.sh` | First-boot NVIDIA driver install |
 | `terraform.tfvars.example` | Copy to `terraform.tfvars` and edit |
 
 ## Prerequisites
 
-- Terraform ≥ 1.5 and AWS credentials (you, the admin) with rights to
-  create EC2/IAM/Scheduler resources.
+- Terraform ≥ 1.10 (needed for native S3 state locking) and AWS
+  credentials (you, the admin) with rights to create
+  EC2/IAM/Scheduler/S3 resources.
 - An SSH keypair for break-glass access:
   ```bash
   ssh-keygen -t ed25519 -f ~/.ssh/isaac-sim-key -C isaac-sim
   ```
 - Your teammate's public IP (for the firewall): `curl ifconfig.me`
+
+## Remote state (one-time)
+
+State lives in S3 so it's shared, versioned, and locked (native
+`use_lockfile` locking — no DynamoDB table). The state bucket has to
+exist before the main config can use it, so create it once with the
+bootstrap config (it runs on local state):
+
+```bash
+cd 05-isaac-sim/01-deployment/bootstrap
+terraform init
+terraform apply -var state_bucket_name=isaac-sim-tfstate-<unique-suffix>
+# note the output: state_bucket_name
+cd ..
+cp backend.hcl.example backend.hcl
+# edit backend.hcl: set `bucket` to the name you just created
+```
+
+The bucket is created with versioning, SSE-S3 encryption, and all public
+access blocked (state can hold the teammate's credentials).
 
 ## Deploy
 
@@ -52,7 +76,7 @@ cd 05-isaac-sim/01-deployment
 cp terraform.tfvars.example terraform.tfvars
 # edit terraform.tfvars: set allowed_ssh_cidr to "<their-ip>/32"
 
-terraform init
+terraform init -backend-config=backend.hcl   # wires up the S3 backend
 terraform plan
 terraform apply
 ```
