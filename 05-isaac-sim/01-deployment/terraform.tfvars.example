@@ -1,0 +1,16 @@
+# Copy to terraform.tfvars and edit. Only allowed_ssh_cidr is required.
+
+# REQUIRED — your teammate's public IP as a /32 (find it: curl ifconfig.me)
+allowed_ssh_cidr = "203.0.113.4/32"
+
+# Optional overrides (defaults shown):
+# aws_region          = "us-east-1"
+# instance_type       = "g5.xlarge"     # g4dn.xlarge to halve cost (light work)
+# root_volume_size_gb = 250
+# iam_user_name       = "issac-sim-user-1"
+# public_key_path     = "~/.ssh/isaac-sim-key.pub"
+
+# Schedule (defaults = 06:00-16:00, weekdays, New York time):
+# schedule_start_cron = "cron(0 6 ? * MON-FRI *)"
+# schedule_stop_cron  = "cron(0 16 ? * MON-FRI *)"
+# schedule_timezone   = "America/New_York"
