@@ -5,9 +5,9 @@
 >
 > **One-line goal:** give one teammate
 > (`issac-sim-user-1`) a single cheap NVIDIA GPU server that runs
-> NVIDIA **Isaac Sim**, that they can **start / stop / log into**
-> on demand, that **auto-runs only 06:00–16:00 EST**, and that they
-> **cannot resize, rebuild, or destroy**.
+> NVIDIA **Isaac Sim**, that they **start manually** and log into on
+> demand, that **auto-shuts-down at 16:00 EST** so it never runs
+> overnight, and that they **cannot resize, rebuild, or destroy**.
 
 A note on spelling: the product is **Isaac Sim** (one "a", then
 "aac"). The request wrote "issac". We keep the *folder* and product
@@ -27,7 +27,7 @@ you typed and what your teammate will log in as. Change
 | 2 | User can **start** the server or **connect** to it | IAM allow on `ec2:StartInstances` / `StopInstances` + EC2 Instance Connect, scoped to this one instance |
 | 2 | User **cannot** modify/create the server config or **increase size** | Explicit IAM **Deny** on `RunInstances`, `ModifyInstanceAttribute`, `TerminateInstances`, volume changes, tag changes |
 | 2 | User **can** log in and update the OS | OS-level access (SSH / sudo) is independent of IAM — they get a shell, they can `apt upgrade` |
-| 3 | Run only 06:00–16:00 EST | Two EventBridge **Scheduler** schedules (start 06:00, stop 16:00), timezone `America/New_York` |
+| 3 | Manual start, automatic shutdown | Teammate starts on demand; **one** EventBridge **Scheduler** stop at 16:00, timezone `America/New_York`. No auto-start |
 | 4 | Start/stop on demand if needed | Same IAM start/stop rights → console button or one CLI command, any time |
 | 5 | Keep it simple, minimal services, Lightsail if possible | EC2 + IAM + EventBridge only. No Lambda, no Instance Scheduler stack. Lightsail rejected — see §2 |
 
@@ -100,17 +100,17 @@ it's exposed as `var.instance_type` so switching is a one-line change.
                          │                                          │
    EventBridge          │   ┌──────────────────────────────────┐   │
    Scheduler            │   │  EC2 g5.xlarge "isaac-sim-server" │   │
-   ┌──────────┐  start  │   │  - NVIDIA A10G + driver           │   │
-   │ 06:00 ET ├─────────┼──▶│  - Ubuntu 22.04                   │   │
-   ├──────────┤  stop   │   │  - 250 GB gp3 root                │   │
-   │ 16:00 ET ├─────────┼──▶│  - Isaac Sim (installed post-boot)│   │
+   ┌──────────┐         │   │  - NVIDIA A10G + driver           │   │
+   │ 16:00 ET │  stop   │   │  - Ubuntu 22.04                   │   │
+   │  (stop   ├─────────┼──▶│  - 250 GB gp3 root                │   │
+   │  only)   │         │   │  - Isaac Sim (installed post-boot)│   │
    └────┬─────┘         │   └──────────────▲───────────────────┘   │
         │ assumes       │                  │ start/stop + connect    │
         ▼               │                  │ (scoped to THIS arn)    │
-   scheduler role       │                  │                         │
-   (StartInstances /    │          ┌───────┴────────┐                │
-    StopInstances on    │          │ IAM user        │                │
-    one instance)       │          │ issac-sim-user-1│                │
+   scheduler role       │                  │ (manual start by user)  │
+   (StopInstances on    │          ┌───────┴────────┐                │
+    one instance)       │          │ IAM user        │                │
+                         │          │ issac-sim-user-1│                │
                          │          │  ALLOW: start/  │                │
                          │          │   stop/connect  │                │
                          │          │  DENY: resize/  │                │
@@ -169,42 +169,53 @@ security group already opens that port.
 
 ---
 
-## 6. Scheduling — "only 06:00–16:00 EST" (requirements 3 & 4)
+## 6. Scheduling — manual start, automatic shutdown (requirements 3 & 4)
 
-- Two **EventBridge Scheduler** schedules (not Lambda, not the EC2
-  Instance Scheduler solution — both are heavier):
-  - **start** — `cron(0 6 ? * MON-FRI *)` → calls `ec2:StartInstances`
-  - **stop**  — `cron(0 16 ? * MON-FRI *)` → calls `ec2:StopInstances`
-- Both carry `schedule_expression_timezone = "America/New_York"`, so
-  the platform handles **EST↔EDT (daylight saving) automatically** — you
+The model is **manual on, automatic off**: the teammate powers the box
+up only when they need it, and a single scheduled stop guarantees it is
+never left running overnight.
+
+- **No auto-start.** Nothing turns the box on for you — that's the point.
+  The teammate starts it on demand (console button or one CLI command;
+  they already hold `ec2:StartInstances`).
+- **One auto-stop**, via **EventBridge Scheduler** (not Lambda, not the
+  EC2 Instance Scheduler solution — both are heavier):
+  - **stop** — `cron(0 16 ? * MON-FRI *)` → calls `ec2:StopInstances`
+- It carries `schedule_expression_timezone = "America/New_York"`, so the
+  platform handles **EST↔EDT (daylight saving) automatically** — you
   asked for "EST" and you get true New-York local time year round, no
   manual clock shifts.
-- The schedules target the EC2 API **directly** through the Scheduler
-  *universal target* (`arn:aws:scheduler:::aws-sdk:ec2:startInstances`),
-  using a tiny dedicated role that can only start/stop this one
-  instance. No function to maintain.
+- The schedule targets the EC2 API **directly** through the Scheduler
+  *universal target* (`arn:aws:scheduler:::aws-sdk:ec2:stopInstances`),
+  using a tiny dedicated role that can only **stop** this one instance.
+  No function to maintain.
 - **Weekdays only** by default (`MON-FRI`). Change to `* * *` in
-  `var.schedule_*_cron` if weekends are wanted.
-- **On demand (requirement 4):** because the teammate already holds
-  start/stop rights, they can power the box on outside the window
-  (e.g. a 20:00 debugging session) and the 16:00 stop simply applies
-  the next time it fires. The schedule is a *safety net that caps cost*,
-  not a lock.
+  `var.schedule_stop_cron` if you want a weekend stop too.
+- **On demand (requirement 4):** the teammate also holds
+  `ec2:StopInstances`, so they can shut down early themselves whenever
+  they're done — the 16:00 stop is the *safety net*, not the only way off.
 
-> Edge case to know: if the teammate starts the box at 22:00, it stays
-> up until **they** stop it (next scheduled stop is 16:00 the following
-> day). If you want a hard "auto-off N hours after any manual start,"
-> that needs a small Lambda — deliberately left out to keep things
-> simple. Flagged in §9.
+> Edge cases to know:
+> - **Box started after 16:00** (e.g. a 20:00 debugging session): it runs
+>   until the teammate stops it, or until the **next** 16:00 stop the
+>   following weekday. If you want a hard "auto-off N hours after any
+>   manual start" regardless of clock time, that needs a small Lambda —
+>   deliberately left out to keep things simple. Flagged in §9.
+> - **Box left running from earlier:** the 16:00 stop is idempotent — if
+>   it's already stopped, stopping again is a no-op.
 
 ---
 
 ## 7. Cost sketch (approximate — re-check before quoting)
 
-Assuming `g5.xlarge`, weekdays, 10 h/day (06:00–16:00):
+Assuming `g5.xlarge`, weekdays, and a *worst case* of the teammate
+starting early and the box running until the 16:00 auto-stop (~10 h/day):
 
-- Compute: ~$1.01/hr × 10 h × ~22 weekdays ≈ **~$220/mo**.
-- If left 24/7 it would be ~$730/mo — so the schedule saves **~70%**.
+- Compute: ~$1.01/hr × 10 h × ~22 weekdays ≈ **~$220/mo** (an upper
+  bound — manual start means real usage is usually less, since they only
+  turn it on when working).
+- If left 24/7 it would be ~$730/mo — so the auto-stop saves **~70%**
+  even before counting the days they don't start it at all.
 - EBS root (250 GB gp3) while stopped/running: **~$20/mo** (always on).
 - Elastic IP: none by default (uses the auto-assigned public IP, which
   changes on each stop/start — fine with Instance Connect, which

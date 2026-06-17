@@ -2,8 +2,11 @@
 
 Terraform for a single NVIDIA GPU server that runs **NVIDIA Isaac Sim**,
 operated by one teammate (`issac-sim-user-1`) who can start / stop / log
-in but **cannot resize or rebuild** it, on a **06:00–16:00 EST** auto
-schedule.
+in but **cannot resize or rebuild** it. The teammate **starts it
+manually**; it **auto-stops at 16:00 EST** so it never runs overnight.
+
+> The teammate starts the box on demand (see "Day-to-day" below); there
+> is no scheduled start. The only schedule is the safety-net stop.
 
 **Read [`00-plan.md`](00-plan.md) first** — it explains the design, the
 GPU-instance choice, the IAM allow/deny split, and why EC2 over
@@ -13,7 +16,7 @@ Lightsail. This file is just the commands.
 
 - 1 × EC2 `g5.xlarge` (NVIDIA A10G) Ubuntu 22.04 GPU instance
 - IAM user `issac-sim-user-1` + scoped start/stop/connect policy
-- 2 × EventBridge Scheduler schedules (auto start 06:00, stop 16:00 NY)
+- 1 × EventBridge Scheduler schedule (auto **stop** 16:00 NY; start is manual)
 - A security group + break-glass key pair
 
 Services involved: **EC2, IAM, EventBridge Scheduler.** Nothing else.
@@ -27,7 +30,7 @@ Services involved: **EC2, IAM, EventBridge Scheduler.** Nothing else.
 | `variables.tf` | All inputs (only `allowed_ssh_cidr` is required) |
 | `main.tf` | The GPU instance, SG, AMI lookup, key pair |
 | `iam.tf` | Teammate user + allow/deny operator policy |
-| `scheduler.tf` | 06:00/16:00 start-stop schedules + role |
+| `scheduler.tf` | 16:00 auto-stop schedule + role (manual start) |
 | `outputs.tf` | Instance id/IP + teammate credentials (sensitive) |
 | `scripts/bootstrap.sh` | First-boot NVIDIA driver install |
 | `terraform.tfvars.example` | Copy to `terraform.tfvars` and edit |

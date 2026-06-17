@@ -1,9 +1,10 @@
 ###############################################################################
-# Run only 06:00-16:00 EST. Two EventBridge Scheduler entries call the EC2 API
-# directly (no Lambda). Timezone America/New_York => automatic DST. §6.
+# Manual start, automatic stop. The teammate powers the box ON on demand; one
+# EventBridge Scheduler entry guarantees it goes OFF at 16:00 to cap cost. No
+# auto-start, no Lambda. Timezone America/New_York => automatic DST. §6.
 ###############################################################################
 
-# Role the scheduler assumes; can only start/stop this one instance.
+# Role the scheduler assumes; can only STOP this one instance.
 resource "aws_iam_role" "scheduler" {
   name = "isaac-sim-scheduler-role"
 
@@ -21,35 +22,17 @@ resource "aws_iam_role" "scheduler" {
 }
 
 resource "aws_iam_role_policy" "scheduler" {
-  name = "isaac-sim-scheduler-startstop"
+  name = "isaac-sim-scheduler-stop"
   role = aws_iam_role.scheduler.id
 
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
       Effect   = "Allow"
-      Action   = ["ec2:StartInstances", "ec2:StopInstances"]
+      Action   = ["ec2:StopInstances"]
       Resource = local.instance_arn
     }]
   })
-}
-
-resource "aws_scheduler_schedule" "start" {
-  name        = "isaac-sim-start"
-  description = "Power the Isaac Sim box ON at the start of the working window"
-
-  flexible_time_window {
-    mode = "OFF"
-  }
-
-  schedule_expression          = var.schedule_start_cron
-  schedule_expression_timezone = var.schedule_timezone
-
-  target {
-    arn      = "arn:aws:scheduler:::aws-sdk:ec2:startInstances"
-    role_arn = aws_iam_role.scheduler.arn
-    input    = jsonencode({ InstanceIds = [aws_instance.isaac.id] })
-  }
 }
 
 resource "aws_scheduler_schedule" "stop" {

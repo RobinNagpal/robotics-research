@@ -49,14 +49,8 @@ variable "public_key_path" {
   default     = "~/.ssh/isaac-sim-key.pub"
 }
 
-variable "schedule_start_cron" {
-  description = "When to auto-START. Default 06:00, weekdays."
-  type        = string
-  default     = "cron(0 6 ? * MON-FRI *)"
-}
-
 variable "schedule_stop_cron" {
-  description = "When to auto-STOP. Default 16:00, weekdays."
+  description = "When to auto-STOP. Default 16:00, weekdays. (Start is manual — no auto-start.)"
   type        = string
   default     = "cron(0 16 ? * MON-FRI *)"
 }

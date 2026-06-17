@@ -10,8 +10,8 @@ about *standing up a GPU box to run it on*, cheaply and safely.
 
 ```
 01-deployment/   Terraform + plan for a single GPU server one teammate can
-                 start/stop/log-into (but not resize or rebuild), auto-running
-                 06:00-16:00 EST. Read 01-deployment/00-plan.md first.
+                 start/stop/log-into (but not resize or rebuild). Manual start,
+                 automatic 16:00 EST stop. Read 01-deployment/00-plan.md first.
 ```
 
 ## At a glance
@@ -20,8 +20,8 @@ about *standing up a GPU box to run it on*, cheaply and safely.
   Isaac Sim comfortably; `g4dn.xlarge` (T4) is the cost floor.
 - Teammate IAM user **`issac-sim-user-1`**: start / stop / connect only;
   resize, rebuild, and terminate are explicitly denied.
-- Auto **start 06:00 / stop 16:00** New-York time (DST-safe), plus
-  on-demand start/stop.
+- **Manual start**, **automatic stop at 16:00** New-York time (DST-safe),
+  plus on-demand stop whenever they're done.
 - Minimal service footprint: **EC2 + IAM + EventBridge Scheduler.**
 
 See [`01-deployment/00-plan.md`](01-deployment/00-plan.md) for the full
