@@ -1,1 +1,4 @@
-.claude/
+# Ignore local Claude config, but share the SessionStart hook + project settings
+.claude/*
+!.claude/settings.json
+!.claude/hooks/

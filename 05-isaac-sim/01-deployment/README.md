@@ -49,6 +49,24 @@ Services involved: **EC2, IAM, EventBridge Scheduler.** Nothing else.
   ```
 - Your teammate's public IP (for the firewall): `curl ifconfig.me`
 
+### Running from a Claude Code on the web session
+
+The repo ships a SessionStart hook (`.claude/hooks/session-start.sh`) that
+makes a web session deploy-ready automatically: it installs Terraform and
+works around the sandbox network policy, which **blocks
+`registry.terraform.io`** (so a normal `terraform init` 403s on provider
+download). `releases.hashicorp.com` *is* reachable, so the hook downloads
+the `hashicorp/aws` provider from there into a filesystem mirror
+(`~/tf-mirror`) and points Terraform at it via `~/.terraformrc`. After
+that, `init`/`validate`/`plan`/`apply` behave normally.
+
+What the hook does **not** provide is AWS credentials. The sandbox's
+`AWS_*` env vars must be *valid keys for your account* — if they're
+placeholders, every call fails fast with
+`InvalidClientTokenId: The security token included in the request is
+invalid` before anything is created. Supply working credentials (admin
+rights for EC2/IAM/Scheduler/S3) before applying.
+
 ## Remote state (one-time)
 
 State lives in S3 so it's shared, versioned, and locked (native
